@@ -1,0 +1,47 @@
+*.gem
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+# Used by dotenv library to load environment variables.
+.env
+
+# Ignore Byebug command history file.
+.byebug_history
+
+# Ignore bundler config.
+/.bundle
+
+# Ignore the default SQLite database.
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-*
+
+# Ignore all logfiles and tempfiles.
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+
+# Ignore uploaded files in development.
+/storage/*
+!/storage/.keep
+.DS_Store
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Ignore mise local settings
+.mise.local.toml
+.claude

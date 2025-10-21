@@ -1,0 +1,32 @@
+[settings]
+experimental = true
+
+[env]
+_.file = ".env"
+
+[tools]
+ruby = "3.2"
+rust = "1.83"
+watchexec = "latest"
+
+[tasks.lint]
+run = "bundle exec standardrb"
+
+[tasks."lint:fix"]
+run = "bundle exec standardrb --fix"
+
+[tasks.watch-test]
+description = "Runs tests when files change"
+run = "watchexec --exts rb --watch lib --watch test --restart --clear -- rake test"
+
+[tasks.verify-fmt]
+silent = true
+run = "bundle exec standardrb --format progress || (bundle exec standardrb --fix && exit 1)"
+
+[hooks]
+postinstall = """
+echo "Installing gem dependencies..."
+bundle install
+echo "Setting up git pre-commit hook..."
+mise generate git-pre-commit --write --task=verify-fmt
+"""
