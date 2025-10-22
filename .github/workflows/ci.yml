@@ -34,3 +34,19 @@ jobs:
       with:
         files: ./coverage/.resultset.json
         fail_ci_if_error: false
+
+  # Summary job that requires all matrix tests to pass
+  # This is what branch protection will check
+  ci-success:
+    name: CI Success
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check test matrix success
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Test matrix failed"
+            exit 1
+          fi
+          echo "All tests passed!"
