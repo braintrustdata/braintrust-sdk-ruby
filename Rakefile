@@ -19,6 +19,26 @@ task :"lint:fix" do
   sh "bundle exec standardrb --fix"
 end
 
+desc "Remove all ignored files (coverage, pkg, etc.)"
+task :clean do
+  sh "git clean -fdX"
+end
+
+desc "Run all examples"
+task :examples do
+  examples = FileList["examples/**/*.rb"].exclude("examples/**/README.md")
+
+  puts "Running #{examples.length} examples..."
+
+  examples.each do |example|
+    puts "\n=== Running #{example} ==="
+    sh "bundle exec ruby #{example}" do |ok, res|
+      puts "✓ #{example} completed" if ok
+      puts "✗ #{example} failed (#{res.exitstatus})" unless ok
+    end
+  end
+end
+
 desc "Verify CI (lint + test)"
 task ci: [:lint, :test]
 
