@@ -33,12 +33,7 @@ module Braintrust
         request["Authorization"] = "Bearer #{api_key}"
 
         http = Net::HTTP.new(uri.hostname, uri.port)
-        if uri.scheme == "https"
-          http.use_ssl = true
-          # TODO: This should be VERIFY_PEER but macOS has CRL issues
-          # Need to update system certs or configure ca_file properly
-          http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        end
+        http.use_ssl = true if uri.scheme == "https"
 
         response = http.start do |http_session|
           http_session.request(request)

@@ -58,11 +58,7 @@ module Braintrust
         request.body = JSON.dump({name: name})
 
         http = Net::HTTP.new(uri.hostname, uri.port)
-        if uri.scheme == "https"
-          http.use_ssl = true
-          # TODO: This should be VERIFY_PEER but macOS has CRL issues
-          http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        end
+        http.use_ssl = true if uri.scheme == "https"
 
         response = http.start do |http_session|
           http_session.request(request)
@@ -110,11 +106,7 @@ module Braintrust
         request.body = JSON.dump(payload)
 
         http = Net::HTTP.new(uri.hostname, uri.port)
-        if uri.scheme == "https"
-          http.use_ssl = true
-          # TODO: This should be VERIFY_PEER but macOS has CRL issues
-          http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        end
+        http.use_ssl = true if uri.scheme == "https"
 
         response = http.start do |http_session|
           http_session.request(request)

@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-# Load SSL config first to configure OpenSSL defaults before any connections
-require_relative "braintrust/ssl_config"
-
 require_relative "braintrust/version"
 require_relative "braintrust/config"
 require_relative "braintrust/state"
