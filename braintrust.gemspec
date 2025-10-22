@@ -30,11 +30,13 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Runtime dependencies
-  # (will be added as needed during implementation)
+  spec.add_runtime_dependency "opentelemetry-sdk", "~> 1.0"
+  spec.add_runtime_dependency "opentelemetry-exporter-otlp", "~> 0.28"
 
   # Development dependencies
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "standard", "~> 1.0"
   spec.add_development_dependency "simplecov", "~> 0.22"
+  spec.add_development_dependency "openai", "~> 0.34"
 end
