@@ -33,6 +33,12 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "opentelemetry-sdk", "~> 1.0"
   spec.add_runtime_dependency "opentelemetry-exporter-otlp", "~> 0.28"
 
+  # OpenSSL 3.3.1+ fixes macOS CRL (Certificate Revocation List) verification issues
+  # that occur with OpenSSL 3.6 + Ruby (certificate verify failed: unable to get certificate CRL).
+  # See: https://github.com/ruby/openssl/issues/949
+  # This dependency may be removable in future Ruby versions once the fix is widely available.
+  spec.add_runtime_dependency "openssl", "~> 3.3.1"
+
   # Development dependencies
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "rake", "~> 13.0"
