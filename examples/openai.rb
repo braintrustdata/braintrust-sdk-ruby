@@ -39,11 +39,10 @@ Braintrust.init(blocking_login: true)
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
 # Wrap the client with Braintrust tracing
-# This automatically creates spans for all chat completion requests
-Braintrust::Trace::OpenAI.wrap(client, tracer_provider: tracer_provider)
+Braintrust::Trace::OpenAI.wrap(client)
 
 # Create a root span to capture the entire operation
-tracer = tracer_provider.tracer("openai-example")
+tracer = OpenTelemetry.tracer_provider.tracer("openai-example")
 root_span = nil
 
 # Make a chat completion request (automatically traced!)
@@ -76,6 +75,6 @@ puts "\n✓ View this trace in Braintrust:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
 
 # Shutdown to flush spans to Braintrust
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown
 
 puts "\n✓ Trace sent to Braintrust!"

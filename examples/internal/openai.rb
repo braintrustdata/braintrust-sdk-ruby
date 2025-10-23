@@ -172,6 +172,6 @@ puts "✓ View this trace at:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
 
 # Shutdown to flush spans
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown
 
 puts "\n✓ Trace sent to Braintrust!"
