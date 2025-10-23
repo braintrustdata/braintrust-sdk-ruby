@@ -52,14 +52,16 @@ module Braintrust
         http_get("/v1/dataset/#{id}")
       end
 
-      # Create or register a dataset
-      # Uses app API /api/dataset/register which returns both project and dataset
+      # Create or register a dataset (idempotent)
+      # Uses app API /api/dataset/register which is idempotent - calling this method
+      # multiple times with the same name will return the existing dataset.
       # @param project_name [String, nil] Project name
       # @param project_id [String, nil] Project ID
       # @param name [String] Dataset name
       # @param description [String, nil] Optional description
       # @param metadata [Hash, nil] Optional metadata
-      # @return [Hash] Response with "project" and "dataset" keys
+      # @return [Hash] Response with "project", "dataset", and optional "found_existing" keys.
+      #   The "found_existing" field is true if the dataset already existed, false/nil if newly created.
       def create(name:, project_name: nil, project_id: nil, description: nil, metadata: nil)
         payload = {dataset_name: name, org_id: @state.org_id}
         payload[:project_name] = project_name if project_name

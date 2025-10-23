@@ -32,15 +32,18 @@ module Braintrust
         http_get("/v1/function", params)
       end
 
-      # Create or register a function
+      # Create or register a function (idempotent)
       # POST /v1/function
+      # This method is idempotent - if a function with the same slug already exists in the project,
+      # it will return the existing function unmodified. Unlike datasets, the response does not
+      # include a "found_existing" field.
       # @param project_name [String] Project name
       # @param slug [String] Function slug (URL-friendly identifier)
       # @param function_data [Hash] Function configuration (usually {type: "prompt"})
       # @param prompt_data [Hash, nil] Prompt configuration (prompt, options, etc.)
       # @param name [String, nil] Optional display name (defaults to slug)
       # @param description [String, nil] Optional description
-      # @return [Hash] Created function metadata
+      # @return [Hash] Function metadata
       def create(project_name:, slug:, function_data:, prompt_data: nil, name: nil, description: nil)
         # Look up project ID
         projects_result = http_get("/v1/project", {"project_name" => project_name})

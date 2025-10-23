@@ -42,14 +42,18 @@ class Braintrust::API::DatasetsTest < Minitest::Test
       name: dataset_name
     )
 
+    # First call should create a new dataset (found_existing should be false or nil)
+    refute response1["found_existing"], "First call should create new dataset"
+
     # Create again with same name
     response2 = @api.datasets.create(
       project_name: @project_name,
       name: dataset_name
     )
 
-    # Should return the same dataset ID
+    # Should return the same dataset ID and indicate it already existed
     assert_equal response1["dataset"]["id"], response2["dataset"]["id"]
+    assert response2["found_existing"], "Second call should return existing dataset with found_existing=true"
   end
 
   def test_datasets_get_by_project_and_name
