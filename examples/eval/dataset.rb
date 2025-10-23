@@ -64,7 +64,7 @@ puts "\n" + "=" * 60
 puts "Example 1: Dataset as string (same project)"
 puts "=" * 60
 
-result1 = Braintrust::Eval.run(
+Braintrust::Eval.run(
   project: project_name,
   experiment: "dataset-eval-string",
   dataset: dataset_name,  # Simple string - fetches from same project
@@ -72,18 +72,12 @@ result1 = Braintrust::Eval.run(
   scorers: [scorer]
 )
 
-puts "Experiment completed!"
-puts "  Experiment ID: #{result1.experiment_id}"
-puts "  Duration: #{result1.duration.round(2)}s"
-puts "  Errors: #{result1.errors.length}"
-puts "  Permalink: #{result1.permalink}"
-
 # Example 2: Run eval with dataset as hash (explicit project)
 puts "\n" + "=" * 60
 puts "Example 2: Dataset as hash with explicit project"
 puts "=" * 60
 
-result2 = Braintrust::Eval.run(
+Braintrust::Eval.run(
   project: project_name,
   experiment: "dataset-eval-hash",
   dataset: {
@@ -94,18 +88,12 @@ result2 = Braintrust::Eval.run(
   scorers: [scorer]
 )
 
-puts "Experiment completed!"
-puts "  Experiment ID: #{result2.experiment_id}"
-puts "  Duration: #{result2.duration.round(2)}s"
-puts "  Errors: #{result2.errors.length}"
-puts "  Permalink: #{result2.permalink}"
-
 # Example 3: Run eval with dataset by ID
 puts "\n" + "=" * 60
 puts "Example 3: Dataset by ID"
 puts "=" * 60
 
-result3 = Braintrust::Eval.run(
+Braintrust::Eval.run(
   project: project_name,
   experiment: "dataset-eval-id",
   dataset: {id: dataset_id},  # Fetch by ID
@@ -113,18 +101,12 @@ result3 = Braintrust::Eval.run(
   scorers: [scorer]
 )
 
-puts "Experiment completed!"
-puts "  Experiment ID: #{result3.experiment_id}"
-puts "  Duration: #{result3.duration.round(2)}s"
-puts "  Errors: #{result3.errors.length}"
-puts "  Permalink: #{result3.permalink}"
-
 # Example 4: Run eval with dataset limit
 puts "\n" + "=" * 60
 puts "Example 4: Dataset with record limit"
 puts "=" * 60
 
-result4 = Braintrust::Eval.run(
+Braintrust::Eval.run(
   project: project_name,
   experiment: "dataset-eval-limit",
   dataset: {
@@ -135,13 +117,3 @@ result4 = Braintrust::Eval.run(
   task: task,
   scorers: [scorer]
 )
-
-puts "Experiment completed!"
-puts "  Experiment ID: #{result4.experiment_id}"
-puts "  Duration: #{result4.duration.round(2)}s"
-puts "  Errors: #{result4.errors.length}"
-puts "  Permalink: #{result4.permalink}"
-
-puts "\n" + "=" * 60
-puts "All examples completed successfully!"
-puts "=" * 60

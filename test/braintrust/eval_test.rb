@@ -34,7 +34,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert_instance_of Braintrust::Eval::Result, result
@@ -67,7 +68,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.failed?
@@ -97,7 +99,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.failed?
@@ -171,7 +174,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer1, scorer2],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.success?
@@ -201,7 +205,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: callable_task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.success?
@@ -254,7 +259,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [test_method_scorer],  # Pass lambda directly
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.success?
@@ -322,7 +328,8 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       state: state,
-      tracer_provider: rig.tracer_provider
+      tracer_provider: rig.tracer_provider,
+      quiet: true
     )
 
     assert result.success?
@@ -397,7 +404,8 @@ class Braintrust::EvalTest < Minitest::Test
       dataset: dataset_name,  # String - should fetch from same project
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert_instance_of Braintrust::Eval::Result, eval_result
@@ -440,7 +448,8 @@ class Braintrust::EvalTest < Minitest::Test
       dataset: {name: dataset_name, project: project_name},
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert eval_result.success?
@@ -480,7 +489,8 @@ class Braintrust::EvalTest < Minitest::Test
       dataset: {id: dataset_id},  # By ID only
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert eval_result.success?
@@ -531,7 +541,8 @@ class Braintrust::EvalTest < Minitest::Test
       dataset: {name: dataset_name, project: project_name, limit: 2},
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert eval_result.success?

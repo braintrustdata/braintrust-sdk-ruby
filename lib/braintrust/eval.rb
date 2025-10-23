@@ -33,12 +33,13 @@ module Braintrust
       # @param tags [Array<String>] Optional experiment tags
       # @param metadata [Hash] Optional experiment metadata
       # @param update [Boolean] If true, allow reusing existing experiment (default: false)
+      # @param quiet [Boolean] If true, suppress result output (default: false)
       # @param state [State, nil] Braintrust state (defaults to global state)
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider (defaults to global)
       # @return [Result]
       def run(project:, experiment:, task:, scorers:,
         cases: nil, dataset: nil,
-        parallelism: 1, tags: nil, metadata: nil, update: false,
+        parallelism: 1, tags: nil, metadata: nil, update: false, quiet: false,
         state: nil, tracer_provider: nil)
         # Validate required parameters
         validate_params!(project: project, experiment: experiment,
@@ -64,7 +65,7 @@ module Braintrust
         project_name = result[:project_name]
 
         # Run the eval with resolved experiment info
-        run_internal(
+        result = run_internal(
           experiment_id: experiment_id,
           experiment_name: experiment,
           project_id: project_id,
@@ -75,6 +76,11 @@ module Braintrust
           state: state,
           tracer_provider: tracer_provider
         )
+
+        # Print result summary unless quiet
+        print_result(result) unless quiet
+
+        result
       end
 
       private
@@ -131,6 +137,12 @@ module Braintrust
           errors: errors,
           duration: duration
         )
+      end
+
+      # Print result summary to stdout
+      # @param result [Result] The evaluation result
+      def print_result(result)
+        puts result
       end
 
       # Validate required parameters

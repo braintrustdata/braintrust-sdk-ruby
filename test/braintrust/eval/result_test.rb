@@ -43,7 +43,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
   end
 
   def test_result_to_s_success
-    # Test to_s formatting for successful result
+    # Test to_s formatting for successful result (Go SDK format)
     result = Braintrust::Eval::Result.new(
       experiment_id: "exp_123",
       experiment_name: "food-classifier",
@@ -55,15 +55,15 @@ class Braintrust::Eval::ResultTest < Minitest::Test
 
     output = result.to_s
 
-    assert_match(/food-classifier/, output)
-    assert_match(/proj_456/, output)
-    assert_match(/1.2s/, output)  # Rounded to 1 decimal
-    assert_match(/braintrust.dev\/link/, output)
-    refute_match(/Errors:/, output)  # No errors section
+    assert_match(/Experiment: food-classifier/, output)
+    assert_match(/ID: exp_123/, output)
+    assert_match(/Link: https:\/\/braintrust.dev\/link/, output)
+    assert_match(/Duration: 1.23s/, output)  # Rounded to 2 decimals
+    assert_match(/Errors: 0/, output)
   end
 
   def test_result_to_s_with_errors
-    # Test to_s formatting for failed result
+    # Test to_s formatting for failed result (Go SDK format)
     result = Braintrust::Eval::Result.new(
       experiment_id: "exp_123",
       experiment_name: "food-classifier",
@@ -75,10 +75,9 @@ class Braintrust::Eval::ResultTest < Minitest::Test
 
     output = result.to_s
 
-    assert_match(/food-classifier/, output)
-    assert_match(/Errors:/, output)
-    assert_match(/Error 1/, output)
-    assert_match(/Error 2/, output)
+    assert_match(/Experiment: food-classifier/, output)
+    assert_match(/ID: exp_123/, output)
+    assert_match(/Errors: 2/, output)  # Shows count, not details
   end
 
   def test_result_requires_all_fields
