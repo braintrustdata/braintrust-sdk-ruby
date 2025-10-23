@@ -37,6 +37,11 @@ jobs:
       - name: Run linter
         run: bundle exec rake lint
 
+      # Unfreeze bundler because the prerelease task modifies version.rb,
+      # which changes the gemspec and would otherwise fail in frozen mode
+      - name: Unfreeze bundler for prerelease
+        run: bundle config set --local frozen false
+
       - name: Configure RubyGems credentials
         uses: rubygems/configure-rubygems-credentials@main
 
