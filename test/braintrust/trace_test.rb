@@ -148,9 +148,18 @@ class Braintrust::TraceTest < Minitest::Test
       otel_span = span
     end
 
-    # Should return empty string for missing attributes instead of raising
-    link = Braintrust::Trace.permalink(otel_span)
-    assert_equal "", link
+    # Suppress error logs for this test (we're intentionally testing missing attributes)
+    original_level = Braintrust::Log.logger.level
+    Braintrust::Log.logger.level = Logger::FATAL
+
+    begin
+      # Should return empty string for missing attributes instead of raising
+      link = Braintrust::Trace.permalink(otel_span)
+      assert_equal "", link
+    ensure
+      # Restore original log level
+      Braintrust::Log.logger.level = original_level
+    end
   end
 
   def test_permalink_with_nil_span
