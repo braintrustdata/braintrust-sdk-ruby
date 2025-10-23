@@ -1,17 +1,19 @@
 # frozen_string_literal: true
 
+# Start SimpleCov BEFORE loading any code to track
+require "simplecov"
+
+SimpleCov.start do
+  add_filter "/test/"
+  enable_coverage :branch
+  # TODO: Re-enable minimum coverage requirement once we reach 80%
+  # minimum_coverage line: 80, branch: 80
+end
+
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "braintrust"
 
 require "minitest/autorun"
-# Disabled SimpleCov for now - will re-enable later
-# require "simplecov"
-#
-# SimpleCov.start do
-#   add_filter "/test/"
-#   enable_coverage :branch
-#   minimum_coverage 80
-# end
 
 # Test helpers for OpenTelemetry tracing
 module TracingTestHelper

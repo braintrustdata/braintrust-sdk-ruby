@@ -428,3 +428,44 @@
   - ✅ All OpenAI parameters captured in metadata
   - ✅ Full message structures (role, content, tool_calls, etc.)
 - **Total: 115 test runs, 398 assertions, all passing, linter clean**
+
+### Session 10 Completed (Documentation & Release Infrastructure) ✅
+- **Phase 3: Trace Utilities** ✅
+  - Implemented Trace.permalink (lib/braintrust/trace.rb:42-82)
+  - Generates Braintrust UI permalinks from OpenTelemetry spans
+  - Extracts trace_id and span_id from span context
+  - Handles missing org_id/app_url gracefully (returns empty string)
+  - Used in examples (trace.rb, openai.rb, internal/openai.rb)
+- **Phase 8: Documentation & Polish** ✅ (Mostly Complete)
+  - **README.md** ✅
+    - Comprehensive documentation with Overview, Installation, Quick Start
+    - Three complete working examples (Evals, Tracing, OpenAI)
+    - Features section listing all capabilities
+    - Links to examples directory and API documentation
+    - Badge showing BETA status and gem version
+  - **CONTRIBUTING.md** ✅
+    - Development setup instructions (mise, bundle)
+    - Testing guidelines (Minitest, plain assert)
+    - Pull request workflow
+    - Troubleshooting section
+  - **CI/CD Pipeline** ✅
+    - GitHub Actions workflow (ci.yml) - runs tests and linter
+    - Publish workflows (publish-gem.yaml, publish-gem-prerelease.yaml)
+    - Automated gem publishing to RubyGems
+  - **Release Infrastructure** ✅
+    - Rake tasks: release, release:validate, release:publish, release:github, release:changelog
+    - Full release automation (validate → lint → changelog → build → publish → tag)
+    - Prerelease support with alpha suffix
+  - **Linter** ✅
+    - Standard linter configured and passing
+    - Rake tasks: lint, lint:fix
+    - Integrated into CI pipeline
+  - **Examples** ✅
+    - Working examples at root level: trace.rb, openai.rb, eval.rb, login.rb
+    - Subdirectory examples: api/dataset.rb, eval/dataset.rb, eval/remote_functions.rb
+    - Internal examples: internal/openai.rb, internal/kitchen-sink.rb, internal/evals-with-errors.rb
+- **Phase 8: Incomplete Items** ⚠️
+  - Test coverage: 25% (target was 80%+) ❌
+  - No v0.1.0 release tag yet (still at v0.0.1) ❌
+  - CHANGELOG.md not found (may need creation) ❌
+- **Total: 115 test runs, 398 assertions, all passing, linter clean**

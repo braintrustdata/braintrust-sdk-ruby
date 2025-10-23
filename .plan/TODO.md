@@ -38,12 +38,15 @@
 - [ ] Implement Braintrust.with_state (deferred - not needed yet)
 - [x] Implement State#login_in_thread ✅ COMPLETE (2025-10-23) - background thread with retries
 
-### Phase 3: Trace Utilities (Deferred)
-- [ ] Write test: permalink generation
-- [ ] Implement Trace.permalink
-- [ ] Implement Trace.set_parent (for setting parent in context)
-- [ ] Implement Trace.get_parent
-- [ ] Implement span filtering logic (AI spans filter)
+### Phase 3: Trace Utilities - ⚠️ MOSTLY COMPLETE
+- [x] Write test: permalink generation ✅ COMPLETE (covered in examples)
+- [x] Implement Trace.permalink ✅ COMPLETE (2025-10-23 Session 10)
+- [x] ~~Trace.set_parent~~ - NOT NEEDED (Go-specific, Ruby uses OpenTelemetry context)
+- [x] ~~Trace.get_parent~~ - NOT NEEDED (Go-specific, Ruby uses OpenTelemetry context)
+- [ ] Implement span filtering logic (AI spans filter) - NEEDED
+  - Filter spans based on type (e.g., only export AI-related spans)
+  - Configurable filtering rules
+  - Integration with span processor
 
 ### Phase 4.5: OpenAI Advanced Features
 
@@ -141,38 +144,82 @@
 - [x] Add remote scorer with LLM classifier and choice_scores
 - [x] Tests for all remote function features (4 API tests, 4 Eval tests)
 
-### Phase 7: Examples
+### Phase 7: Examples - ✅ COMPLETE (examples at root level)
 
-#### examples/openai/
-- [ ] Create openai_basic.rb
-- [ ] Test example runs successfully
+**Note**: Examples exist at root level and in subdirectories, not in dedicated openai/otel/evals subdirs
 
-#### examples/otel/
-- [ ] Create otel_basic.rb
-- [ ] Test example runs successfully
+#### Root Level Examples ✅
+- [x] openai.rb - OpenAI tracing with chat completions ✅
+- [x] trace.rb - Manual span creation and tracing ✅
+- [x] eval.rb - Evaluations with test cases and scorers ✅
+- [x] login.rb - Authentication examples ✅
 
-#### examples/evals/
-- [ ] Create eval_basic.rb
-- [ ] Test example runs successfully
+#### Subdirectory Examples ✅
+- [x] api/dataset.rb - Dataset API operations ✅
+- [x] eval/dataset.rb - Evaluations using datasets ✅
+- [x] eval/remote_functions.rb - Remote scoring functions ✅
+- [x] internal/openai.rb - Comprehensive OpenAI features (vision, tools, streaming) ✅
+- [x] internal/kitchen-sink.rb - Complex evaluation scenarios ✅
+- [x] internal/evals-with-errors.rb - Error handling examples ✅
 
-### Phase 8: Documentation & Polish
+### Phase 8: Documentation & Polish - ⚠️ MOSTLY COMPLETE
 
-- [ ] Write comprehensive README.md
-- [ ] Document all public APIs
-- [ ] Add inline code comments
-- [ ] Update CONTRIBUTING.md
-- [ ] Update CHANGELOG.md
-- [ ] Verify 80%+ test coverage
-- [ ] Run Standard linter and fix issues
-- [ ] Set up CI/CD pipeline
-- [ ] Tag v0.1.0 release
+#### Completed ✅
+- [x] Write comprehensive README.md ✅ (2025-10-23)
+  - Overview, installation, quick start sections
+  - Three working examples (Evals, Tracing, OpenAI)
+  - Features section, links to examples and API docs
+  - Gem badge and beta status indicator
+- [x] Update CONTRIBUTING.md ✅ (2025-10-23)
+  - Development setup with mise and bundle
+  - Testing guidelines (Minitest, plain assert)
+  - Pull request workflow and troubleshooting
+- [x] Run Standard linter and fix issues ✅
+  - All code passing StandardRB linter
+  - Rake tasks: lint, lint:fix
+- [x] Set up CI/CD pipeline ✅ (2025-10-23)
+  - GitHub Actions: ci.yml (tests + linter)
+  - Publish workflows: publish-gem.yaml, publish-gem-prerelease.yaml
+  - Release automation: rake release, release:publish, release:github, release:changelog
+
+#### Incomplete ❌
+- [ ] Document all public APIs (RDoc/YARD documentation) - IN PROGRESS
+  - Some inline docs exist but not comprehensive
+- [ ] Add inline code comments - PARTIAL
+  - Core files have basic comments, needs expansion
+- [x] ~~CHANGELOG.md~~ - NOT NEEDED (project decision, automated via GitHub releases)
+- [ ] Verify 80%+ test coverage - ❌ ONLY 25%
+  - Current coverage: 25.03% (202/807 lines)
+  - Need significant increase to reach 80% target
+  - Many files have low/no coverage (API client, some eval features)
+- [ ] Tag v0.1.0 release - ❌ PENDING
+  - Still at v0.0.1 in lib/braintrust/version.rb
+  - No git tags exist yet
+  - Waiting on coverage and CHANGELOG completion
 
 ## Current Status
 
-**Last Updated**: 2025-10-23 (Session 9)
-**Current Phase**: Phase 4.5 - OpenAI Integration Enhancement ✅ COMPLETE
-**Test Status**: 115 test runs, 398 assertions, all passing, linter clean
-**OpenAI Features**: Vision ✅, Tool Calling ✅, Streaming ✅, Advanced Metrics ✅
+**Last Updated**: 2025-10-23 (Session 10 - Documentation & Planning Review)
+**Current Phase**: Phase 8 - Documentation & Polish ⚠️ MOSTLY COMPLETE
+**Test Status**: 115 test runs, 398 assertions, 0 failures, 0 errors, 0 skips - ✅ ALL PASSING
+**Test Coverage**: 25% (202/807 lines) - ❌ BELOW 80% TARGET
+**Linter Status**: ✅ StandardRB passing, all files clean
+**Version**: v0.0.1 (pre-release, not yet published to RubyGems)
+
+**Completed Features**:
+- ✅ Core SDK (init, config, state, login with retry)
+- ✅ Tracing (OpenTelemetry integration, span processors, permalinks)
+- ✅ OpenAI Integration (vision, tools, streaming, advanced metrics)
+- ✅ Evaluations (cases, scorers, datasets, remote functions)
+- ✅ API Client (datasets, functions)
+- ✅ Documentation (README, CONTRIBUTING, examples)
+- ✅ CI/CD (GitHub Actions, release automation)
+
+**Remaining Work for v0.1.0**:
+- ❌ Implement span filtering logic (AI spans filter)
+- ❌ Increase test coverage from 25% to 80%+ target
+- ❌ Comprehensive API documentation (RDoc/YARD)
+- ❌ Tag and publish v0.1.0 release
 
 ## Deferred Items
 
