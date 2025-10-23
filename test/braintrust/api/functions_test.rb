@@ -76,13 +76,13 @@ class Braintrust::API::FunctionsTest < Minitest::Test
     function_id = create_response["id"]
 
     # Invoke the function
-    # The invoke method returns the output value directly (not wrapped in a hash)
+    # The invoke method returns the function output directly (as returned by the HTTP API)
     result = @api.functions.invoke(
       id: function_id,
       input: "world"
     )
 
-    # Should return a string output from the LLM
+    # Should return the output value directly (in this case, a string from the LLM)
     assert_instance_of String, result
     assert result.length > 0
   end

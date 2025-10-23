@@ -64,17 +64,10 @@ module Braintrust
       # POST /v1/function/{id}/invoke
       # @param id [String] Function UUID
       # @param input [Object] Input data to pass to the function
-      # @return [Object] The function output (extracted from response)
+      # @return [Object] The function output (String, Hash, Array, etc.) as returned by the HTTP API
       def invoke(id:, input:)
         payload = {input: input}
-        response = http_post_json("/v1/function/#{id}/invoke", payload)
-
-        # Extract output field if response is a hash, otherwise return as-is
-        if response.is_a?(Hash) && response.key?("output")
-          response["output"]
-        else
-          response
-        end
+        http_post_json("/v1/function/#{id}/invoke", payload)
       end
 
       # Delete a function by ID
