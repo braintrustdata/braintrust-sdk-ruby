@@ -37,23 +37,16 @@ module Braintrust
         !success?
       end
 
-      # Format the result as a human-readable string
+      # Format the result as a human-readable string (Go SDK format)
       # @return [String]
       def to_s
-        output = <<~MSG
-
-          === Experiment: #{experiment_name} ===
-          Project: #{project_id}
-          Duration: #{duration.round(1)}s
-          Link: #{permalink}
-        MSG
-
-        if errors.any?
-          output += "\nErrors:\n"
-          errors.each { |err| output += "  - #{err}\n" }
-        end
-
-        output
+        [
+          "Experiment: #{experiment_name}",
+          "ID: #{experiment_id}",
+          "Link: #{permalink}",
+          "Duration: #{duration.round(2)}s",
+          "Errors: #{errors.length}"
+        ].join("\n")
       end
     end
   end

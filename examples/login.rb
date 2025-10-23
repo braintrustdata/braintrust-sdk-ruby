@@ -17,13 +17,6 @@ require "braintrust"
 # Run with:
 #   bundle exec ruby examples/login.rb
 
-# Check for API key
-unless ENV["BRAINTRUST_API_KEY"]
-  puts "Error: BRAINTRUST_API_KEY environment variable is required"
-  puts "Get your API key from: https://www.braintrust.dev/app/settings"
-  exit 1
-end
-
 # Initialize Braintrust with blocking login
 puts "Initializing and logging in to Braintrust..."
 state = Braintrust.init(blocking_login: true)

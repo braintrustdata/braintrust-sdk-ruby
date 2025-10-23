@@ -34,7 +34,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert_instance_of Braintrust::Eval::Result, result
@@ -67,7 +68,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.failed?
@@ -97,7 +99,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.failed?
@@ -171,7 +174,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [scorer1, scorer2],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.success?
@@ -201,7 +205,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: callable_task,
       scorers: [scorer],
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.success?
@@ -254,7 +259,8 @@ class Braintrust::EvalTest < Minitest::Test
       ],
       task: task,
       scorers: [test_method_scorer],  # Pass lambda directly
-      state: state
+      state: state,
+      quiet: true
     )
 
     assert result.success?
@@ -322,7 +328,8 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       state: state,
-      tracer_provider: rig.tracer_provider
+      tracer_provider: rig.tracer_provider,
+      quiet: true
     )
 
     assert result.success?
@@ -354,5 +361,217 @@ class Braintrust::EvalTest < Minitest::Test
     # Verify score span
     assert score_span.attributes["braintrust.scores"]
     assert_includes score_span.attributes["braintrust.scores"], "exact"
+  end
+
+  # Test dataset integration: dataset as string (same project as experiment)
+  def test_eval_run_with_dataset_string
+    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
+
+    Braintrust.init(blocking_login: true)
+    state = Braintrust.current_state
+    api = Braintrust::API.new(state: state)
+
+    # Create a test dataset with records
+    project_name = "ruby-sdk-test"
+    dataset_name = unique_name("dataset-string")
+
+    # Create dataset
+    result = api.datasets.create(
+      name: dataset_name,
+      project_name: project_name,
+      description: "Test dataset for eval integration"
+    )
+    dataset_id = result["dataset"]["id"]
+
+    # Insert test records
+    api.datasets.insert(
+      id: dataset_id,
+      events: [
+        {input: "hello", expected: "HELLO"},
+        {input: "world", expected: "WORLD"}
+      ]
+    )
+
+    # Run eval with dataset as string (should use same project)
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
+      (output == expected) ? 1.0 : 0.0
+    end
+
+    eval_result = Braintrust::Eval.run(
+      project: project_name,
+      experiment: unique_name("exp-dataset-string"),
+      dataset: dataset_name,  # String - should fetch from same project
+      task: task,
+      scorers: [scorer],
+      state: state,
+      quiet: true
+    )
+
+    assert_instance_of Braintrust::Eval::Result, eval_result
+    assert eval_result.success?
+    assert_equal [], eval_result.errors
+    assert eval_result.duration > 0
+  end
+
+  # Test dataset integration: dataset as hash with name + project
+  def test_eval_run_with_dataset_hash_name_project
+    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
+
+    Braintrust.init(blocking_login: true)
+    state = Braintrust.current_state
+    api = Braintrust::API.new(state: state)
+
+    # Create a test dataset
+    project_name = "ruby-sdk-test"
+    dataset_name = unique_name("dataset-hash")
+
+    result = api.datasets.create(
+      name: dataset_name,
+      project_name: project_name
+    )
+    dataset_id = result["dataset"]["id"]
+
+    # Insert test records
+    api.datasets.insert(
+      id: dataset_id,
+      events: [{input: "test", expected: "TEST"}]
+    )
+
+    # Run eval with dataset as hash with explicit name + project
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    eval_result = Braintrust::Eval.run(
+      project: project_name,
+      experiment: unique_name("exp-hash"),
+      dataset: {name: dataset_name, project: project_name},
+      task: task,
+      scorers: [scorer],
+      state: state,
+      quiet: true
+    )
+
+    assert eval_result.success?
+  end
+
+  # Test dataset integration: dataset as hash with id
+  def test_eval_run_with_dataset_hash_id
+    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
+
+    Braintrust.init(blocking_login: true)
+    state = Braintrust.current_state
+    api = Braintrust::API.new(state: state)
+
+    # Create a test dataset
+    project_name = "ruby-sdk-test"
+    dataset_name = unique_name("dataset-id")
+
+    result = api.datasets.create(
+      name: dataset_name,
+      project_name: project_name
+    )
+    dataset_id = result["dataset"]["id"]
+
+    # Insert test records
+    api.datasets.insert(
+      id: dataset_id,
+      events: [{input: "test", expected: "TEST"}]
+    )
+
+    # Run eval with dataset as hash with id
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    eval_result = Braintrust::Eval.run(
+      project: project_name,
+      experiment: unique_name("exp-id"),
+      dataset: {id: dataset_id},  # By ID only
+      task: task,
+      scorers: [scorer],
+      state: state,
+      quiet: true
+    )
+
+    assert eval_result.success?
+  end
+
+  # Test dataset integration: dataset with limit option
+  def test_eval_run_with_dataset_limit
+    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
+
+    Braintrust.init(blocking_login: true)
+    state = Braintrust.current_state
+    api = Braintrust::API.new(state: state)
+
+    # Create a test dataset with multiple records
+    project_name = "ruby-sdk-test"
+    dataset_name = unique_name("dataset-limit")
+
+    result = api.datasets.create(
+      name: dataset_name,
+      project_name: project_name
+    )
+    dataset_id = result["dataset"]["id"]
+
+    # Insert 5 test records
+    api.datasets.insert(
+      id: dataset_id,
+      events: [
+        {input: "one", expected: "ONE"},
+        {input: "two", expected: "TWO"},
+        {input: "three", expected: "THREE"},
+        {input: "four", expected: "FOUR"},
+        {input: "five", expected: "FIVE"}
+      ]
+    )
+
+    # Track how many cases were executed
+    executed_count = 0
+    task = ->(input) {
+      executed_count += 1
+      input.upcase
+    }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    # Run eval with limit of 2
+    eval_result = Braintrust::Eval.run(
+      project: project_name,
+      experiment: unique_name("exp-limit"),
+      dataset: {name: dataset_name, project: project_name, limit: 2},
+      task: task,
+      scorers: [scorer],
+      state: state,
+      quiet: true
+    )
+
+    assert eval_result.success?
+    assert_equal 2, executed_count, "Should have executed exactly 2 cases"
+  end
+
+  # Test dataset integration: error when both dataset and cases provided
+  def test_eval_run_with_both_dataset_and_cases_errors
+    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
+
+    Braintrust.init(blocking_login: true)
+    state = Braintrust.current_state
+
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    # Try to provide both dataset and cases - should raise error
+    error = assert_raises(ArgumentError) do
+      Braintrust::Eval.run(
+        project: "ruby-sdk-test",
+        experiment: "test-error",
+        dataset: "some-dataset",
+        cases: [{input: "test"}],
+        task: task,
+        scorers: [scorer],
+        state: state
+      )
+    end
+
+    assert_match(/mutually exclusive/i, error.message)
   end
 end

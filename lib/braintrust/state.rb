@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "api/auth"
+require_relative "api/internal/auth"
 
 module Braintrust
   # State object that holds Braintrust configuration
@@ -12,6 +12,8 @@ module Braintrust
     @global_state = nil
 
     def initialize(api_key: nil, org_name: nil, org_id: nil, default_parent: nil, app_url: nil, api_url: nil, proxy_url: nil, logged_in: false)
+      # Instance-level mutex for thread-safe login
+      @login_mutex = Mutex.new
       raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
 
       @api_key = api_key
@@ -37,21 +39,65 @@ module Braintrust
     # Login to Braintrust API and update state with org info
     # Makes synchronous HTTP request via API::Auth
     # Updates @org_id, @org_name, @api_url, @proxy_url, @logged_in
+    # Idempotent: returns early if already logged in
+    # Thread-safe: protected by mutex
     # @return [self]
     def login
-      result = API::Auth.login(
-        api_key: @api_key,
-        app_url: @app_url,
-        org_name: @org_name
-      )
+      @login_mutex.synchronize do
+        # Return early if already logged in
+        return self if @logged_in
 
-      # Update state with org info
-      @org_id = result.org_id
-      @org_name = result.org_name
-      @api_url = result.api_url
-      @proxy_url = result.proxy_url
-      @logged_in = true
+        result = API::Internal::Auth.login(
+          api_key: @api_key,
+          app_url: @app_url,
+          org_name: @org_name
+        )
 
+        # Update state with org info
+        @org_id = result.org_id
+        @org_name = result.org_name
+        @api_url = result.api_url
+        @proxy_url = result.proxy_url
+        @logged_in = true
+
+        self
+      end
+    end
+
+    # Login to Braintrust API in a background thread with retry logic
+    # Retries indefinitely with exponential backoff until success
+    # Idempotent: returns early if already logged in
+    # Thread-safe: login method is protected by mutex
+    # @return [self]
+    def login_in_thread
+      # Return early if already logged in (without spawning thread)
+      return self if @logged_in
+
+      @login_thread = Thread.new do
+        retry_count = 0
+        max_delay = 5.0
+
+        loop do
+          Log.debug("Background login attempt #{retry_count + 1}")
+          login
+          Log.debug("Background login succeeded")
+          break
+        rescue => e
+          retry_count += 1
+          delay = [0.001 * 2**(retry_count - 1), max_delay].min
+          Log.debug("Background login failed (attempt #{retry_count}): #{e.message}. Retrying in #{delay}s...")
+          sleep delay
+        end
+      end
+
+      self
+    end
+
+    # Wait for background login thread to complete (for testing)
+    # @param timeout [Numeric, nil] Optional timeout in seconds
+    # @return [self]
+    def wait_for_login(timeout = nil)
+      @login_thread&.join(timeout)
       self
     end
 
