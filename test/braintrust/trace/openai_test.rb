@@ -326,4 +326,72 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       end
     end
   end
+
+  def test_wrap_handles_streaming_chat_completions
+    require "openai"
+
+    # Set up test rig
+    rig = setup_otel_test_rig
+
+    # Create OpenAI client and wrap it
+    client = OpenAI::Client.new(api_key: @api_key)
+    Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+    # Make a streaming request
+    stream = client.chat.completions.stream_raw(
+      messages: [
+        {role: "user", content: "Count from 1 to 3"}
+      ],
+      model: "gpt-4o-mini",
+      max_tokens: 50,
+      stream_options: {
+        include_usage: true  # Request usage stats in stream
+      }
+    )
+
+    # Consume the stream
+    full_content = ""
+    stream.each do |chunk|
+      delta_content = chunk.choices[0]&.delta&.content
+      full_content += delta_content if delta_content
+    end
+
+    # Verify we got content
+    refute_empty full_content
+
+    # Drain and verify span
+    span = rig.drain_one
+
+    # Verify span name
+    assert_equal "openai.chat.completions.create", span.name
+
+    # Verify input was captured
+    assert span.attributes.key?("braintrust.input_json")
+    input = JSON.parse(span.attributes["braintrust.input_json"])
+    assert_equal 1, input.length
+    assert_equal "user", input[0]["role"]
+    assert_equal "Count from 1 to 3", input[0]["content"]
+
+    # Verify output was aggregated from stream
+    assert span.attributes.key?("braintrust.output_json")
+    output = JSON.parse(span.attributes["braintrust.output_json"])
+    assert_equal 1, output.length
+    assert_equal 0, output[0]["index"]
+    assert_equal "assistant", output[0]["message"]["role"]
+    assert output[0]["message"]["content"], "Should have aggregated content"
+    assert output[0]["message"]["content"].length > 0, "Content should not be empty"
+
+    # Verify metadata includes stream flag
+    assert span.attributes.key?("braintrust.metadata")
+    metadata = JSON.parse(span.attributes["braintrust.metadata"])
+    assert_equal "openai", metadata["provider"]
+    assert_equal true, metadata["stream"]
+    assert_match(/gpt-4o-mini/, metadata["model"])  # Model may include version suffix
+
+    # Verify metrics were captured (if include_usage was respected)
+    if span.attributes.key?("braintrust.metrics")
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["tokens"] > 0 if metrics["tokens"]
+    end
+  end
 end

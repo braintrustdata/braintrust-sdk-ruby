@@ -74,7 +74,113 @@ module Braintrust
         end
       end
 
+      # Aggregate streaming chunks into a single response structure
+      # Follows the Go SDK logic for aggregating deltas
+      # @param chunks [Array<Hash>] array of chunk hashes from stream
+      # @return [Hash] aggregated response with choices, usage, etc.
+      def self.aggregate_streaming_chunks(chunks)
+        return {} if chunks.empty?
+
+        # Initialize aggregated structure
+        aggregated = {
+          id: nil,
+          created: nil,
+          model: nil,
+          system_fingerprint: nil,
+          choices: [],
+          usage: nil
+        }
+
+        # Track aggregated content and tool_calls for each choice index
+        choice_data = {}
+
+        chunks.each do |chunk|
+          # Capture top-level fields from any chunk that has them
+          aggregated[:id] ||= chunk[:id]
+          aggregated[:created] ||= chunk[:created]
+          aggregated[:model] ||= chunk[:model]
+          aggregated[:system_fingerprint] ||= chunk[:system_fingerprint]
+
+          # Aggregate usage (usually only in last chunk if stream_options.include_usage is set)
+          if chunk[:usage]
+            aggregated[:usage] = chunk[:usage]
+          end
+
+          # Process choices
+          next unless chunk[:choices].is_a?(Array)
+          chunk[:choices].each do |choice|
+            index = choice[:index] || 0
+            choice_data[index] ||= {
+              index: index,
+              role: nil,
+              content: "",
+              tool_calls: [],
+              finish_reason: nil
+            }
+
+            delta = choice[:delta] || {}
+
+            # Aggregate role (set once from first delta that has it)
+            choice_data[index][:role] ||= delta[:role]
+
+            # Aggregate content
+            if delta[:content]
+              choice_data[index][:content] += delta[:content]
+            end
+
+            # Aggregate tool_calls (similar to Go SDK logic)
+            if delta[:tool_calls].is_a?(Array) && delta[:tool_calls].any?
+              delta[:tool_calls].each do |tool_call_delta|
+                # Check if this is a new tool call or continuation
+                if tool_call_delta[:id] && !tool_call_delta[:id].empty?
+                  # New tool call
+                  choice_data[index][:tool_calls] << {
+                    id: tool_call_delta[:id],
+                    type: tool_call_delta[:type],
+                    function: {
+                      name: tool_call_delta.dig(:function, :name) || "",
+                      arguments: tool_call_delta.dig(:function, :arguments) || ""
+                    }
+                  }
+                elsif choice_data[index][:tool_calls].any?
+                  # Continuation - append arguments to last tool call
+                  last_tool_call = choice_data[index][:tool_calls].last
+                  if tool_call_delta.dig(:function, :arguments)
+                    last_tool_call[:function][:arguments] += tool_call_delta[:function][:arguments]
+                  end
+                end
+              end
+            end
+
+            # Capture finish_reason
+            if choice[:finish_reason]
+              choice_data[index][:finish_reason] = choice[:finish_reason]
+            end
+          end
+        end
+
+        # Build final choices array
+        aggregated[:choices] = choice_data.values.sort_by { |c| c[:index] }.map do |choice|
+          message = {
+            role: choice[:role],
+            content: choice[:content].empty? ? nil : choice[:content]
+          }
+
+          # Add tool_calls to message if any
+          message[:tool_calls] = choice[:tool_calls] if choice[:tool_calls].any?
+
+          {
+            index: choice[:index],
+            message: message,
+            finish_reason: choice[:finish_reason]
+          }
+        end
+
+        aggregated
+      end
+
       # Wrap an OpenAI::Client to automatically create spans for chat completions
+      # Supports both synchronous and streaming requests
       # @param client [OpenAI::Client] the OpenAI client to wrap
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
       def self.wrap(client, tracer_provider: nil)
@@ -138,6 +244,75 @@ module Braintrust
 
               response
             end
+          end
+
+          # Wrap stream_raw for streaming chat completions
+          define_method(:stream_raw) do |**params|
+            tracer = tracer_provider.tracer("braintrust")
+            aggregated_chunks = []
+            metadata = {
+              "provider" => "openai",
+              "endpoint" => "/v1/chat/completions"
+            }
+
+            # Start span with proper context (will be child of current span if any)
+            span = tracer.start_span("openai.chat.completions.create")
+
+            # Capture request metadata fields
+            metadata_fields = %i[
+              model frequency_penalty logit_bias logprobs max_tokens n
+              presence_penalty response_format seed service_tier stop
+              stream stream_options temperature top_p top_logprobs
+              tools tool_choice parallel_tool_calls user functions function_call
+            ]
+
+            metadata_fields.each do |field|
+              metadata[field.to_s] = params[field] if params.key?(field)
+            end
+            metadata["stream"] = true  # Explicitly mark as streaming
+
+            # Set input messages as JSON
+            if params[:messages]
+              messages_array = params[:messages].map(&:to_h)
+              span.set_attribute("braintrust.input_json", JSON.generate(messages_array))
+            end
+
+            # Set initial metadata
+            span.set_attribute("braintrust.metadata", JSON.generate(metadata))
+
+            # Call the original stream_raw method
+            stream = super(**params)
+
+            # Wrap the stream to aggregate chunks
+            original_each = stream.method(:each)
+            stream.define_singleton_method(:each) do |&block|
+              original_each.call do |chunk|
+                aggregated_chunks << chunk.to_h
+                block&.call(chunk)
+              end
+
+              # After streaming completes, aggregate and set span attributes
+              aggregated_output = Braintrust::Trace::OpenAI.aggregate_streaming_chunks(aggregated_chunks)
+              span.set_attribute("braintrust.output_json", JSON.generate(aggregated_output[:choices])) if aggregated_output[:choices]
+
+              # Set metrics if usage is included (requires stream_options.include_usage)
+              if aggregated_output[:usage]
+                metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(aggregated_output[:usage])
+                span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
+              end
+
+              # Update metadata with response fields
+              metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
+              metadata["created"] = aggregated_output[:created] if aggregated_output[:created]
+              metadata["model"] = aggregated_output[:model] if aggregated_output[:model]
+              metadata["system_fingerprint"] = aggregated_output[:system_fingerprint] if aggregated_output[:system_fingerprint]
+              span.set_attribute("braintrust.metadata", JSON.generate(metadata))
+
+              # End the span after streaming completes
+              span.finish
+            end
+
+            stream
           end
         end
 

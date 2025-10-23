@@ -12,10 +12,12 @@ require "json"
 # This golden example showcases ALL OpenAI chat completion features with proper tracing:
 # 1. Vision (image understanding) with array content
 # 2. Tool/function calling (single-turn)
-# 3. Multi-turn tool calling with tool_call_id
-# 4. Mixed content (text + images)
-# 5. Reasoning models with advanced token metrics
-# 6. Temperature variations and other parameters
+# 3. Streaming chat completions with automatic chunk aggregation
+# 4. Multi-turn tool calling with tool_call_id
+# 5. Mixed content (text + images)
+# 6. Reasoning models with advanced token metrics
+# 7. Temperature variations
+# 8. Advanced parameters
 #
 # This example validates that the Ruby SDK captures the same data as TypeScript/Go SDKs.
 #
@@ -116,8 +118,38 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     puts "  Tokens: #{response.usage.total_tokens}"
   end
 
-  # Example 3: Multi-turn Tool Calling (with tool_call_id)
-  puts "\n3. Multi-turn Tool Calling"
+  # Example 3: Streaming Chat Completions
+  puts "\n3. Streaming Chat Completions"
+  puts "-" * 50
+  tracer.in_span("example-streaming") do
+    print "Streaming response: "
+    stream = client.chat.completions.stream_raw(
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "user", content: "Count from 1 to 5"}
+      ],
+      max_tokens: 50,
+      stream_options: {
+        include_usage: true  # Request usage stats in stream
+      }
+    )
+
+    # Consume and display the stream
+    total_tokens = 0
+    stream.each do |chunk|
+      delta_content = chunk.choices[0]&.delta&.content
+      print delta_content if delta_content
+
+      # Capture usage from final chunk
+      total_tokens = chunk.usage&.total_tokens if chunk.usage
+    end
+    puts ""
+    puts "✓ Streaming complete, tokens: #{total_tokens}"
+    puts "  (Note: Braintrust automatically aggregates all chunks for the trace)"
+  end
+
+  # Example 4: Multi-turn Tool Calling (with tool_call_id)
+  puts "\n4. Multi-turn Tool Calling"
   puts "-" * 50
   tracer.in_span("example-multi-turn-tools") do
     # First request - model decides to call a tool
@@ -195,8 +227,8 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     end
   end
 
-  # Example 4: Mixed Content (text + image in same message)
-  puts "\n4. Mixed Content (Text + Image)"
+  # Example 5: Mixed Content (text + image in same message)
+  puts "\n5. Mixed Content (Text + Image)"
   puts "-" * 50
   tracer.in_span("example-mixed-content") do
     response = client.chat.completions.create(
@@ -222,8 +254,8 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     puts "  Tokens: #{response.usage.total_tokens}"
   end
 
-  # Example 5: Reasoning Model (o1-mini) with Advanced Token Metrics
-  puts "\n5. Reasoning Model (o1-mini)"
+  # Example 6: Reasoning Model (o1-mini) with Advanced Token Metrics
+  puts "\n6. Reasoning Model (o1-mini)"
   puts "-" * 50
   tracer.in_span("example-reasoning") do
     response = client.chat.completions.create(
@@ -252,8 +284,8 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     end
   end
 
-  # Example 6: Temperature & Parameter Variations
-  puts "\n6. Temperature & Parameter Variations"
+  # Example 7: Temperature & Parameter Variations
+  puts "\n7. Temperature & Parameter Variations"
   puts "-" * 50
   tracer.in_span("example-temperature-variations") do
     [0.0, 0.7, 1.0].each do |temp|
@@ -269,8 +301,8 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     end
   end
 
-  # Example 7: Advanced Parameters Showcase
-  puts "\n7. Advanced Parameters (metadata capture)"
+  # Example 8: Advanced Parameters Showcase
+  puts "\n8. Advanced Parameters (metadata capture)"
   puts "-" * 50
   tracer.in_span("example-advanced-params") do
     response = client.chat.completions.create(
@@ -302,6 +334,7 @@ puts ""
 puts "This golden example validates that the Ruby SDK properly captures:"
 puts "  ✓ Vision messages with array content (text + image_url)"
 puts "  ✓ Tool calling (single and multi-turn with tool_call_id)"
+puts "  ✓ Streaming chat completions with chunk aggregation"
 puts "  ✓ Mixed content messages (multiple text/image blocks)"
 puts "  ✓ Advanced token metrics (cached, reasoning, audio tokens)"
 puts "  ✓ All request parameters (temperature, top_p, seed, user, etc.)"
