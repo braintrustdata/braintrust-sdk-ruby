@@ -108,11 +108,13 @@ class Braintrust::TraceTest < Minitest::Test
 
   def test_permalink_with_experiment_parent
     # Set up OpenTelemetry with memory exporter (includes Braintrust processor)
-    rig = setup_otel_test_rig(default_parent: "experiment_id:test-project/exp-123")
+    rig = setup_otel_test_rig
 
-    # Create a span
+    # Create a span with explicit experiment parent attribute
+    # Experiment parents come from evals, not from default_project
     otel_span = nil
     rig.tracer.in_span("test-operation") do |span|
+      span.set_attribute("braintrust.parent", "experiment_id:test-project/exp-123")
       otel_span = span
     end
 

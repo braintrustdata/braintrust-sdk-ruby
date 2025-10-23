@@ -11,16 +11,16 @@ class Braintrust::StateTest < Minitest::Test
   def test_creates_state_with_required_fields
     state = Braintrust::State.new(
       api_key: "test-key",
-      default_parent: "project_name:test-project"
+      default_project: "test-project"
     )
 
     assert_equal "test-key", state.api_key
-    assert_equal "project_name:test-project", state.default_parent
+    assert_equal "test-project", state.default_project
   end
 
   def test_validates_required_api_key
     error = assert_raises(ArgumentError) do
-      Braintrust::State.new(default_parent: "project_name:test")
+      Braintrust::State.new(default_project: "test")
     end
 
     assert_match(/api_key is required/, error.message)

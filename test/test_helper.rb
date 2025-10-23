@@ -58,7 +58,7 @@ module TracingTestHelper
       api_url: "https://api.example.com",
       app_url: "https://app.example.com",
       org_name: "test-org",
-      default_parent: "project_name:test-project"
+      default_project: "test-project"
     }
 
     state = Braintrust::State.new(**defaults.merge(options))

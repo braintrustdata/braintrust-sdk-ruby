@@ -6,12 +6,12 @@ module Braintrust
   # State object that holds Braintrust configuration
   # Thread-safe global state management
   class State
-    attr_reader :api_key, :org_name, :org_id, :default_parent, :app_url, :api_url, :proxy_url, :logged_in
+    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in
 
     @mutex = Mutex.new
     @global_state = nil
 
-    def initialize(api_key: nil, org_name: nil, org_id: nil, default_parent: nil, app_url: nil, api_url: nil, proxy_url: nil, logged_in: false)
+    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, logged_in: false)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
       raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
@@ -19,7 +19,7 @@ module Braintrust
       @api_key = api_key
       @org_name = org_name
       @org_id = org_id
-      @default_parent = default_parent
+      @default_project = default_project
       @app_url = app_url || "https://www.braintrust.dev"
       @api_url = api_url
       @proxy_url = proxy_url
