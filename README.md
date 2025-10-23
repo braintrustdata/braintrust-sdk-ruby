@@ -81,10 +81,7 @@ result = Braintrust::Eval.run(
     Braintrust::Eval.scorer("exact_match") { |input, expected, output|
       (output == expected) ? 1.0 : 0.0
     }
-  ],
-
-  # Optional: Run 3 cases in parallel
-  parallelism: 3
+  ]
 )
 
 # View results
