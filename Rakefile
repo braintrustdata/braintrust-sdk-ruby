@@ -19,9 +19,13 @@ task :"lint:fix" do
   sh "bundle exec standardrb --fix"
 end
 
-desc "Remove all ignored files (coverage, pkg, etc.)"
+desc "Remove Ruby build artifacts (coverage, pkg, gems, etc.)"
 task :clean do
-  sh "git clean -fdX"
+  FileUtils.rm_rf("pkg")
+  FileUtils.rm_rf("coverage")
+  FileUtils.rm_rf("tmp")
+  FileUtils.rm_f(Dir.glob("*.gem"))
+  FileUtils.rm_f("changelog.md")
 end
 
 desc "Run all examples"
@@ -39,6 +43,11 @@ task :examples do
   end
 end
 
+desc "Build the gem"
+task build: [:clean] do
+  sh "gem build braintrust.gemspec"
+end
+
 desc "Verify CI (lint + test)"
 task ci: [:lint, :test]
 
@@ -51,19 +60,18 @@ namespace :release do
     sh "bash scripts/validate-release-tag.sh"
   end
 
-  desc "Build the gem"
-  task build: [:clean] do
-    sh "gem build braintrust.gemspec"
-  end
-
   desc "Publish gem to RubyGems (requires authentication)"
   task :publish do
-    gem_file = FileList["braintrust-*.gem"].first
-    unless gem_file
-      puts "Error: No gem file found. Run 'rake release:build' first."
+    gem_files = FileList["braintrust-*.gem"]
+    if gem_files.empty?
+      puts "Error: No gem file found. Run 'rake build' first."
+      exit 1
+    elsif gem_files.length > 1
+      puts "Error: Multiple gem files found. Run 'rake clean' first."
+      puts "Found: #{gem_files.join(", ")}"
       exit 1
     end
-    sh "gem push #{gem_file}"
+    sh "gem push #{gem_files.first}"
   end
 
   desc "Generate changelog for release"
@@ -111,7 +119,7 @@ namespace :release do
 
     begin
       # Build and publish
-      Rake::Task["release:build"].invoke
+      Rake::Task["build"].invoke
       Rake::Task["release:publish"].invoke
       puts "✓ Prerelease #{prerelease_version} published successfully!"
     ensure
@@ -123,6 +131,6 @@ namespace :release do
 end
 
 desc "Full release: validate, lint, generate changelog, build, publish, and create GitHub release"
-task release: ["release:validate", :lint, "release:changelog", "release:build", "release:publish", "release:github"] do
+task release: ["release:validate", :lint, "release:changelog", :build, "release:publish", "release:github"] do
   puts "✓ Release completed successfully!"
 end
