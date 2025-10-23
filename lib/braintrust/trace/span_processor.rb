@@ -51,7 +51,14 @@ module Braintrust
       private
 
       def default_parent
-        @state.default_parent || "project_name:ruby-sdk-default-project"
+        # If default_project is set, format it as "project_name:value"
+        # The default_project should be a plain project name (e.g., "my-project")
+        # not a formatted parent string (e.g., "project_name:my-project")
+        if @state.default_project
+          "project_name:#{@state.default_project}"
+        else
+          "project_name:ruby-sdk-default-project"
+        end
       end
 
       # Get parent attribute from parent span in context

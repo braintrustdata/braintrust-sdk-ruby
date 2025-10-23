@@ -4,8 +4,9 @@ require "test_helper"
 
 class BraintrustTest < Minitest::Test
   def setup
-    # Save original env var
+    # Save original env vars
     @original_api_key = ENV["BRAINTRUST_API_KEY"]
+    @original_default_project = ENV["BRAINTRUST_DEFAULT_PROJECT"]
 
     # Reset global state before each test
     Braintrust::State.instance_variable_set(:@global_state, nil)
@@ -21,11 +22,17 @@ class BraintrustTest < Minitest::Test
     # Reset global tracer provider to default proxy
     OpenTelemetry.tracer_provider = OpenTelemetry::Internal::ProxyTracerProvider.new
 
-    # Restore original env var
+    # Restore original env vars
     if @original_api_key
       ENV["BRAINTRUST_API_KEY"] = @original_api_key
     else
       ENV.delete("BRAINTRUST_API_KEY")
+    end
+
+    if @original_default_project
+      ENV["BRAINTRUST_DEFAULT_PROJECT"] = @original_default_project
+    else
+      ENV.delete("BRAINTRUST_DEFAULT_PROJECT")
     end
   end
 
@@ -53,10 +60,10 @@ class BraintrustTest < Minitest::Test
   def test_init_merges_options_with_env
     ENV["BRAINTRUST_API_KEY"] = "env-key"
 
-    state = Braintrust.init(set_global: false, api_key: "explicit-key", default_parent: "project_name:my-project")
+    state = Braintrust.init(set_global: false, api_key: "explicit-key", default_project: "my-project")
 
     assert_equal "explicit-key", state.api_key
-    assert_equal "project_name:my-project", state.default_parent
+    assert_equal "my-project", state.default_project
   end
 
   def test_init_with_tracing_true_creates_tracer_provider
@@ -125,5 +132,51 @@ class BraintrustTest < Minitest::Test
     # But should have added span processor to the custom provider
     processors = custom_provider.instance_variable_get(:@span_processors)
     refute_empty processors
+  end
+
+  def test_default_project_from_env_flows_to_spans
+    # Purpose: Verify that BRAINTRUST_DEFAULT_PROJECT env var flows through Config -> State -> SpanProcessor
+    # and that spans created with tracing enabled have the correct braintrust.parent attribute
+    # The env var contains just the project name, SpanProcessor formats it as "project_name:value"
+    ENV["BRAINTRUST_API_KEY"] = "test-key"
+    ENV["BRAINTRUST_DEFAULT_PROJECT"] = "env-project"
+
+    # Set up test rig with tracing
+    rig = setup_otel_test_rig(default_project: "env-project")
+
+    # Create a span
+    tracer = rig.tracer("test")
+    span = tracer.start_span("test-span")
+    span.finish
+
+    # Drain spans and verify - should be formatted as "project_name:env-project"
+    spans = rig.drain
+    assert_equal 1, spans.length
+
+    span_data = spans.first
+    assert_equal "project_name:env-project", span_data.attributes["braintrust.parent"]
+  end
+
+  def test_default_project_from_parameter_overrides_env
+    # Purpose: Verify that explicit default_project parameter to init() overrides BRAINTRUST_DEFAULT_PROJECT env var
+    # This ensures users can override the env var at runtime
+    # The parameter takes just the project name, SpanProcessor formats it as "project_name:value"
+    ENV["BRAINTRUST_API_KEY"] = "test-key"
+    ENV["BRAINTRUST_DEFAULT_PROJECT"] = "env-project"
+
+    # Set up test rig with explicit parameter (should override env var)
+    rig = setup_otel_test_rig(default_project: "param-project")
+
+    # Create a span
+    tracer = rig.tracer("test")
+    span = tracer.start_span("test-span")
+    span.finish
+
+    # Drain spans and verify parameter won - should be formatted as "project_name:param-project"
+    spans = rig.drain
+    assert_equal 1, spans.length
+
+    span_data = spans.first
+    assert_equal "project_name:param-project", span_data.attributes["braintrust.parent"]
   end
 end
