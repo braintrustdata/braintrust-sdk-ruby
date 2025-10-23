@@ -33,17 +33,7 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-# Initialize Braintrust with blocking login to ensure org name is available for permalinks
 Braintrust.init(blocking_login: true)
-
-# Create OpenTelemetry TracerProvider
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-# Enable Braintrust tracing
-Braintrust::Trace.enable(tracer_provider)
-
-# Set as global provider
-OpenTelemetry.tracer_provider = tracer_provider
 
 # Create OpenAI client
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])

@@ -8,11 +8,9 @@ require "opentelemetry/sdk"
 # Example: Enable Braintrust tracing and send a span manually
 #
 # This example demonstrates how to:
-# 1. Initialize Braintrust with a project
-# 2. Create an OpenTelemetry TracerProvider
-# 3. Enable Braintrust tracing (automatically adds braintrust.parent, org, app_url)
-# 4. Create spans manually
-# 5. Send the spans to Braintrust
+# 1. Initialize Braintrust with tracing enabled (automatically configures OpenTelemetry)
+# 2. Create spans manually
+# 3. Send the spans to Braintrust
 #
 # Usage:
 #   BRAINTRUST_API_KEY=your-key bundle exec ruby examples/trace.rb
@@ -30,17 +28,7 @@ unless ENV["BRAINTRUST_API_KEY"]
   exit 1
 end
 
-# Initialize Braintrust with blocking login to ensure org name is available for permalinks
 Braintrust.init(blocking_login: true)
-
-# Create a TracerProvider
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-# Enable Braintrust tracing (adds OTLP exporter)
-Braintrust::Trace.enable(tracer_provider)
-
-# Set as global provider
-OpenTelemetry.tracer_provider = tracer_provider
 
 # Get a tracer
 tracer = OpenTelemetry.tracer_provider.tracer("my-app")

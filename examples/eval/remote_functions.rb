@@ -20,13 +20,8 @@ require "braintrust"
 require "braintrust/eval"
 require "braintrust/eval/functions"
 
-# Initialize Braintrust
+# Initialize Braintrust with tracing enabled (default)
 Braintrust.init
-
-# Configure tracing with OpenTelemetry
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-Braintrust::Trace.enable(tracer_provider)
-OpenTelemetry.tracer_provider = tracer_provider
 
 project_name = "ruby-sdk-examples"
 
@@ -133,4 +128,4 @@ Braintrust::Eval.run(
 )
 
 # Flush all spans to ensure they're exported
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown

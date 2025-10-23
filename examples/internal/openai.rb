@@ -28,24 +28,14 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-# Initialize Braintrust with blocking login to get org info
 Braintrust.init(blocking_login: true)
-
-# Create OpenTelemetry TracerProvider
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-# Enable Braintrust tracing
-Braintrust::Trace.enable(tracer_provider)
-
-# Set as global provider
-OpenTelemetry.tracer_provider = tracer_provider
 
 # Get a tracer for this example
 tracer = OpenTelemetry.tracer_provider.tracer("openai-comprehensive-example")
 
 # Create OpenAI client and wrap it
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
-Braintrust::Trace::OpenAI.wrap(client, tracer_provider: tracer_provider)
+Braintrust::Trace::OpenAI.wrap(client)
 
 puts "OpenAI Comprehensive Features Example"
 puts "=" * 50
