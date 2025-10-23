@@ -15,18 +15,9 @@ require "opentelemetry/sdk"
 #   2. Run from the SDK root: bundle exec ruby examples/openai.rb
 #
 # Usage:
-#   BRAINTRUST_API_KEY=your-bt-key OPENAI_API_KEY=your-openai-key bundle exec ruby examples/openai.rb
-#
-# Optional: Set a default project for traces
-#   BRAINTRUST_DEFAULT_PROJECT=project_name:my-project bundle exec ruby examples/openai.rb
+#   OPENAI_API_KEY=your-openai-key bundle exec ruby examples/openai.rb
 
 # Check for API keys
-unless ENV["BRAINTRUST_API_KEY"]
-  puts "Error: BRAINTRUST_API_KEY environment variable is required"
-  puts "Get your API key from: https://www.braintrust.dev/app/settings"
-  exit 1
-end
-
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
   puts "Get your API key from: https://platform.openai.com/api-keys"

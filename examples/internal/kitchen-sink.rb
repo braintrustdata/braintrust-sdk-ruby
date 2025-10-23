@@ -17,12 +17,7 @@ require "json"
 # - Full OpenTelemetry tracing
 #
 # Usage:
-#   BRAINTRUST_API_KEY=key OPENAI_API_KEY=key bundle exec ruby examples/internal/kitchen-sink.rb
-
-unless ENV["BRAINTRUST_API_KEY"]
-  puts "Error: BRAINTRUST_API_KEY environment variable is required"
-  exit 1
-end
+#   OPENAI_API_KEY=key bundle exec ruby examples/internal/kitchen-sink.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"

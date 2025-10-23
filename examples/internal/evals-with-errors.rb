@@ -15,12 +15,7 @@ require "opentelemetry/sdk"
 # The eval continues despite errors and reports them in the results.
 #
 # Usage:
-#   BRAINTRUST_API_KEY=key bundle exec ruby examples/internal/evals-with-errors.rb
-
-unless ENV["BRAINTRUST_API_KEY"]
-  puts "Error: BRAINTRUST_API_KEY environment variable is required"
-  exit 1
-end
+#   bundle exec ruby examples/internal/evals-with-errors.rb
 
 # Initialize Braintrust with blocking login
 Braintrust.init(blocking_login: true)

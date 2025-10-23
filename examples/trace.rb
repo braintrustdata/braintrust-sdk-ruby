@@ -13,20 +13,7 @@ require "opentelemetry/sdk"
 # 3. Send the spans to Braintrust
 #
 # Usage:
-#   BRAINTRUST_API_KEY=your-key bundle exec ruby examples/trace.rb
-#
-# Optional: Set a default project for traces
-#   BRAINTRUST_DEFAULT_PROJECT=project_name:ruby-sdk-examples bundle exec ruby examples/trace.rb
-#
-# With console debug logging:
-#   BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG=true BRAINTRUST_API_KEY=your-key bundle exec ruby examples/trace.rb
-
-# Check for API key
-unless ENV["BRAINTRUST_API_KEY"]
-  puts "Error: BRAINTRUST_API_KEY environment variable is required"
-  puts "Get your API key from: https://www.braintrust.dev/app/settings"
-  exit 1
-end
+#   bundle exec ruby examples/trace.rb
 
 Braintrust.init(blocking_login: true)
 
