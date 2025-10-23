@@ -6,6 +6,74 @@ require "json"
 module Braintrust
   module Trace
     module OpenAI
+      # Parse usage tokens from OpenAI API response, handling nested token_details
+      # Maps OpenAI field names to Braintrust standard names:
+      # - input_tokens → prompt_tokens
+      # - output_tokens → completion_tokens
+      # - total_tokens → tokens
+      # - *_tokens_details.* → prefix_*
+      #
+      # @param usage [Hash, Object] usage object from OpenAI response
+      # @return [Hash<String, Integer>] metrics hash with normalized names
+      def self.parse_usage_tokens(usage)
+        metrics = {}
+        return metrics unless usage
+
+        # Convert to hash if it's an object
+        usage_hash = usage.respond_to?(:to_h) ? usage.to_h : usage
+
+        usage_hash.each do |key, value|
+          key_str = key.to_s
+
+          # Handle nested *_tokens_details objects
+          if key_str.end_with?("_tokens_details")
+            # Convert to hash if it's an object (OpenAI gem returns objects)
+            details_hash = value.respond_to?(:to_h) ? value.to_h : value
+            next unless details_hash.is_a?(Hash)
+
+            # Extract prefix (e.g., "prompt" from "prompt_tokens_details")
+            prefix = key_str.sub(/_tokens_details$/, "")
+            # Translate "input" → "prompt", "output" → "completion"
+            prefix = translate_metric_prefix(prefix)
+
+            # Process nested fields (e.g., cached_tokens, reasoning_tokens)
+            details_hash.each do |detail_key, detail_value|
+              next unless detail_value.is_a?(Numeric)
+              metrics["#{prefix}_#{detail_key}"] = detail_value.to_i
+            end
+          elsif value.is_a?(Numeric)
+            # Handle top-level token fields
+            case key_str
+            when "input_tokens"
+              metrics["prompt_tokens"] = value.to_i
+            when "output_tokens"
+              metrics["completion_tokens"] = value.to_i
+            when "total_tokens"
+              metrics["tokens"] = value.to_i
+            else
+              # Keep other numeric fields as-is (future-proofing)
+              metrics[key_str] = value.to_i
+            end
+          end
+        end
+
+        metrics
+      end
+
+      # Translate metric prefix to be consistent between different API formats
+      # @param prefix [String] the prefix to translate
+      # @return [String] translated prefix
+      def self.translate_metric_prefix(prefix)
+        case prefix
+        when "input"
+          "prompt"
+        when "output"
+          "completion"
+        else
+          prefix
+        end
+      end
+
       # Wrap an OpenAI::Client to automatically create spans for chat completions
       # @param client [OpenAI::Client] the OpenAI client to wrap
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
@@ -37,10 +105,9 @@ module Braintrust
               end
 
               # Set input messages as JSON
+              # Pass through all message fields to preserve tool_calls, tool_call_id, name, etc.
               if params[:messages]
-                messages_array = params[:messages].map do |msg|
-                  {role: msg[:role].to_s, content: msg[:content]}
-                end
+                messages_array = params[:messages].map(&:to_h)
                 span.set_attribute("braintrust.input_json", JSON.generate(messages_array))
               end
 
@@ -54,13 +121,10 @@ module Braintrust
                 span.set_attribute("braintrust.output_json", JSON.generate(choices_array))
               end
 
-              # Set metrics (token usage)
+              # Set metrics (token usage with advanced details)
               if response.respond_to?(:usage) && response.usage
-                metrics = {}
-                metrics["prompt_tokens"] = response.usage.prompt_tokens if response.usage.prompt_tokens
-                metrics["completion_tokens"] = response.usage.completion_tokens if response.usage.completion_tokens
-                metrics["tokens"] = response.usage.total_tokens if response.usage.total_tokens
-                span.set_attribute("braintrust.metrics", JSON.generate(metrics))
+                metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(response.usage)
+                span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
               end
 
               # Add response metadata fields
