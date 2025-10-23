@@ -37,8 +37,12 @@ module Braintrust
     # Login to Braintrust API and update state with org info
     # Makes synchronous HTTP request via API::Auth
     # Updates @org_id, @org_name, @api_url, @proxy_url, @logged_in
+    # Idempotent: returns early if already logged in
     # @return [self]
     def login
+      # Return early if already logged in
+      return self if @logged_in
+
       result = API::Internal::Auth.login(
         api_key: @api_key,
         app_url: @app_url,

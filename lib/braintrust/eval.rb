@@ -49,6 +49,10 @@ module Braintrust
         state ||= Braintrust.current_state
         raise Error, "No state available" unless state
 
+        # Ensure state is logged in (to populate org_name, etc.)
+        # login is idempotent and returns early if already logged in
+        state.login
+
         # Resolve dataset to cases if dataset parameter provided
         if dataset
           cases = resolve_dataset(dataset, project, state)
