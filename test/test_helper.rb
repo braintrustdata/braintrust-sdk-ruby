@@ -91,6 +91,20 @@ module TracingTestHelper
   def run_test_eval(**kwargs)
     Braintrust::Eval.send(:run_internal, **kwargs)
   end
+
+  # Generate unique name for parallel test runs
+  # Returns: "ruby-sdk-test--prefix-d3adb33f" (8 hex chars of entropy)
+  # @param prefix [String] optional prefix for the name
+  # @return [String] unique name safe for parallel execution
+  def unique_name(prefix = "")
+    require "securerandom"
+    entropy = SecureRandom.hex(4) # 8 hex chars
+    if prefix.empty?
+      "ruby-sdk-test--#{entropy}"
+    else
+      "ruby-sdk-test--#{prefix}-#{entropy}"
+    end
+  end
 end
 
 # Include helper in all test cases

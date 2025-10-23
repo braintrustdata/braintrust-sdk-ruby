@@ -4,6 +4,7 @@ require_relative "braintrust/version"
 require_relative "braintrust/config"
 require_relative "braintrust/state"
 require_relative "braintrust/trace"
+require_relative "braintrust/api"
 require_relative "braintrust/internal/experiments"
 require_relative "braintrust/eval"
 

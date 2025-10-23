@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "api/auth"
+require_relative "api/internal/auth"
 
 module Braintrust
   # State object that holds Braintrust configuration
@@ -39,7 +39,7 @@ module Braintrust
     # Updates @org_id, @org_name, @api_url, @proxy_url, @logged_in
     # @return [self]
     def login
-      result = API::Auth.login(
+      result = API::Internal::Auth.login(
         api_key: @api_key,
         app_url: @app_url,
         org_name: @org_name
