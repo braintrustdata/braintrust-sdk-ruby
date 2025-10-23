@@ -1,0 +1,46 @@
+#
+# This workflow is used to publish the Ruby SDK to RubyGems as a prerelease.
+# The version number is automatically modified to append an "alpha" suffix with
+# the GitHub run number, so you can push multiple prereleases from any branch.
+#
+
+name: Publish Ruby SDK Prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Publish the given Git ref as a prerelease (branch, tag, or commit SHA)"
+        required: true
+        type: string
+        default: "main"
+
+jobs:
+  build-and-publish-prerelease:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Run linter
+        run: bundle exec rake lint
+
+      - name: Configure RubyGems credentials
+        uses: rubygems/configure-rubygems-credentials@main
+
+      - name: Build and publish prerelease
+        run: bundle exec rake release:prerelease
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
