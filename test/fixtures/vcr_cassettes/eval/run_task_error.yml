@@ -37,7 +37,7 @@ http_interactions:
       - '257'
       Content-Security-Policy:
       - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
-        ''nonce-ZjYxYWMyNjUtYjQyNi00ZDU0LWI3YTMtMThiZjJlMDVhZmNi''  *.js.stripe.com
+        ''nonce-YTdiM2I3YWQtNmQ2NS00ODFlLWFkYWEtY2Q4ZmYxZTI5MjY5''  *.js.stripe.com
         js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
         btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
         font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
@@ -47,7 +47,7 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Fri, 24 Oct 2025 14:56:24 GMT
+      - Fri, 24 Oct 2025 15:29:27 GMT
       Etag:
       - '"ubzjf1iqqj75"'
       Reporting-Endpoints:
@@ -70,15 +70,15 @@ http_interactions:
       X-Matched-Path:
       - "/api/apikey/login"
       X-Nonce:
-      - ZjYxYWMyNjUtYjQyNi00ZDU0LWI3YTMtMThiZjJlMDVhZmNi
+      - YTdiM2I3YWQtNmQ2NS00ODFlLWFkYWEtY2Q4ZmYxZTI5MjY5
       X-Vercel-Cache:
       - MISS
       X-Vercel-Id:
-      - iad1::iad1::xltrm-1761317784030-82a3c57ad813
+      - iad1::iad1::c74h2-1761319767039-eae7392ab902
     body:
       encoding: UTF-8
       string: '{"org_info":[{"id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"matt-test-org","api_url":"https://api.braintrust.dev","git_metadata":null,"is_universal_api":null,"proxy_url":"https://api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
-  recorded_at: Fri, 24 Oct 2025 14:56:24 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:27 GMT
 - request:
     method: post
     uri: https://api.braintrust.dev/v1/project
@@ -113,15 +113,15 @@ http_interactions:
       - JFK50-P2
       - JFK50-P5
       Date:
-      - Fri, 24 Oct 2025 14:56:24 GMT
+      - Fri, 24 Oct 2025 15:29:27 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - 402eb510-9f06-41a2-9399-7c28c8c7cabd
+      - 458deff8-1676-4c5f-ba52-eb218174b897
       X-Bt-Internal-Trace-Id:
-      - 68fb93980000000040f24da7bc7c6aaa
+      - 68fb9b570000000031641f80ff770a79
       X-Amz-Apigw-Id:
-      - S9P_1GsWoAMERpA=
+      - S9U1rEy6IAMEs1A=
       Vary:
       - Origin, Accept-Encoding
       Etag:
@@ -129,20 +129,20 @@ http_interactions:
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
       X-Amzn-Trace-Id:
-      - Root=1-68fb9398-19120f3d7a4c4b3b1232f8fa;Parent=0725d63ae18901dd;Sampled=0;Lineage=1:24be3d11:0
+      - Root=1-68fb9b57-7c0dacf30e269be541928691;Parent=0762235f4e0124d2;Sampled=0;Lineage=1:24be3d11:0
       X-Bt-Found-Existing:
       - 'true'
       Via:
-      - 1.1 9750f5ee94b45ad0faba87b3fac2aad6.cloudfront.net (CloudFront), 1.1 d3a2886dcf7e47b1e56baf628c69dc24.cloudfront.net
+      - 1.1 52143757d25f4b31ebf04bc09765f6c0.cloudfront.net (CloudFront), 1.1 e42e8491a089e2183879e26e61dae708.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - ugVFotVs3KAYrzGyB-S1O3oZBh59BHD-sAoPjrvgMwRdT2mdgDfSJA==
+      - 7DfDSFrrPNMzke_ZUS5qlLR1X_TCJuGVuvg-cF2B6gwdy4B-C2AMCg==
     body:
       encoding: ASCII-8BIT
       string: '{"id":"c532bc50-7094-4bbb-8704-42344c9728b9","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"ruby-sdk-test","created":"2025-10-22T02:53:49.779Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","settings":null}'
-  recorded_at: Fri, 24 Oct 2025 14:56:24 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:27 GMT
 - request:
     method: post
     uri: https://api.braintrust.dev/v1/experiment
@@ -177,32 +177,32 @@ http_interactions:
       - JFK50-P2
       - JFK50-P5
       Date:
-      - Fri, 24 Oct 2025 14:56:24 GMT
+      - Fri, 24 Oct 2025 15:29:27 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - af6f882f-07e5-46c3-8b6b-2756e4a8b248
+      - 590d6555-fc0a-43cc-9ca1-7411e86009dc
       X-Bt-Internal-Trace-Id:
-      - 68fb9398000000002831c58fa3b0e3fb
+      - 68fb9b570000000059933bc5639feb98
       X-Amz-Apigw-Id:
-      - S9P_3HkToAMEgYw=
+      - S9U1tFHYoAMEagw=
       Vary:
       - Origin, Accept-Encoding
       Etag:
-      - W/"18b-oVyp1ukNGqE/ioukK9IQm4pC8Aw"
+      - W/"18b-kFbJ2eJgoMyYsFDkztTlt3q/bII"
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
       X-Amzn-Trace-Id:
-      - Root=1-68fb9398-41a95c83606fa1c052fde36b;Parent=1bfda03670bc3605;Sampled=0;Lineage=1:24be3d11:0
+      - Root=1-68fb9b57-6a77760327995c0b2151c1a3;Parent=538e408c42c2d2f1;Sampled=0;Lineage=1:24be3d11:0
       Via:
-      - 1.1 53a1f042d35b1ad7e45dd18908041b36.cloudfront.net (CloudFront), 1.1 10a23502057a5449ee9e08eab6e9c0d4.cloudfront.net
+      - 1.1 5af2699243b550d789ef9dce0b522ed2.cloudfront.net (CloudFront), 1.1 8fd21502425077e617fde7325b45e112.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - IL8SdehCbQHN_R7qXAUHfLAcWfCpIb-HwBNrIrnXbbvDyT8kwGFbLQ==
+      - bfaOaXvNwATMQEvNiolyr9ZEkZg8QcL66mKwBle4Ets_qz8nseiz8A==
     body:
       encoding: ASCII-8BIT
-      string: '{"id":"0b8ea377-bc89-40fe-a8a6-9b71ea903c04","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-task-error-b5cd2853","description":null,"created":"2025-10-24T14:56:24.438Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
-  recorded_at: Fri, 24 Oct 2025 14:56:24 GMT
+      string: '{"id":"474d637b-5955-47af-beec-acd36770346b","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-task-error-9fafffe8","description":null,"created":"2025-10-24T15:29:27.450Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
+  recorded_at: Fri, 24 Oct 2025 15:29:27 GMT
 recorded_with: VCR 6.3.1

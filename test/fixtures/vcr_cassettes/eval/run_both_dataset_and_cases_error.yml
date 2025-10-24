@@ -37,7 +37,7 @@ http_interactions:
       - '257'
       Content-Security-Policy:
       - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
-        ''nonce-YjU1YzNjYWUtM2Y2Mi00MGI0LWFlYjYtY2NiNGNhYjEyNGZl''  *.js.stripe.com
+        ''nonce-ZDI3ODhjMDMtNmVkNC00YmJmLTk1ODktNjNmZjk5ZThhOGRj''  *.js.stripe.com
         js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
         btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
         font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
@@ -47,7 +47,7 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Fri, 24 Oct 2025 14:56:26 GMT
+      - Fri, 24 Oct 2025 15:29:29 GMT
       Etag:
       - '"ubzjf1iqqj75"'
       Reporting-Endpoints:
@@ -70,13 +70,13 @@ http_interactions:
       X-Matched-Path:
       - "/api/apikey/login"
       X-Nonce:
-      - YjU1YzNjYWUtM2Y2Mi00MGI0LWFlYjYtY2NiNGNhYjEyNGZl
+      - ZDI3ODhjMDMtNmVkNC00YmJmLTk1ODktNjNmZjk5ZThhOGRj
       X-Vercel-Cache:
       - MISS
       X-Vercel-Id:
-      - iad1::iad1::czkfh-1761317786774-3eba1e841eb8
+      - iad1::iad1::6qnfq-1761319769019-aa53d3af2570
     body:
       encoding: UTF-8
       string: '{"org_info":[{"id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"matt-test-org","api_url":"https://api.braintrust.dev","git_metadata":null,"is_universal_api":null,"proxy_url":"https://api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
-  recorded_at: Fri, 24 Oct 2025 14:56:26 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:29 GMT
 recorded_with: VCR 6.3.1

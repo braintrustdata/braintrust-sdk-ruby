@@ -37,7 +37,7 @@ http_interactions:
       - '257'
       Content-Security-Policy:
       - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
-        ''nonce-NDM0M2VhNzMtNTA4YS00ZTJiLWIwNTctODE2ODE4MjczYjBk''  *.js.stripe.com
+        ''nonce-ZGZiM2E0ZDAtZDJhMi00YmIwLThlN2UtM2Y5YjdlY2VhMmEy''  *.js.stripe.com
         js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
         btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
         font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
@@ -47,7 +47,7 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Fri, 24 Oct 2025 14:56:03 GMT
+      - Fri, 24 Oct 2025 15:29:11 GMT
       Etag:
       - '"ubzjf1iqqj75"'
       Reporting-Endpoints:
@@ -70,15 +70,15 @@ http_interactions:
       X-Matched-Path:
       - "/api/apikey/login"
       X-Nonce:
-      - NDM0M2VhNzMtNTA4YS00ZTJiLWIwNTctODE2ODE4MjczYjBk
+      - ZGZiM2E0ZDAtZDJhMi00YmIwLThlN2UtM2Y5YjdlY2VhMmEy
       X-Vercel-Cache:
       - MISS
       X-Vercel-Id:
-      - iad1::iad1::lsfhj-1761317762997-58e820e43f92
+      - iad1::iad1::vqvw4-1761319751392-811c80a7cc72
     body:
       encoding: UTF-8
       string: '{"org_info":[{"id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"matt-test-org","api_url":"https://api.braintrust.dev","git_metadata":null,"is_universal_api":null,"proxy_url":"https://api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
-  recorded_at: Fri, 24 Oct 2025 14:56:03 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:11 GMT
 - request:
     method: post
     uri: https://api.braintrust.dev/v1/project
@@ -113,15 +113,15 @@ http_interactions:
       - JFK50-P2
       - JFK50-P5
       Date:
-      - Fri, 24 Oct 2025 14:56:03 GMT
+      - Fri, 24 Oct 2025 15:29:11 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - 862c5a16-650e-4696-80e4-6d3930f501ab
+      - 702175e0-d1ac-41ce-baf1-ec444bde0601
       X-Bt-Internal-Trace-Id:
-      - 68fb9383000000004618048d2a345bcf
+      - 68fb9b470000000060695691a0c77389
       X-Amz-Apigw-Id:
-      - S9P8jEgwIAMEZ1Q=
+      - S9UzPH1IoAMEilg=
       Vary:
       - Origin, Accept-Encoding
       Etag:
@@ -129,20 +129,20 @@ http_interactions:
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
       X-Amzn-Trace-Id:
-      - Root=1-68fb9383-1d70b26d68a8c2d05a66524e;Parent=56acf0a4fdf00d88;Sampled=0;Lineage=1:24be3d11:0
+      - Root=1-68fb9b47-1264d36d044bc1ed2079dd27;Parent=127826c8419c0cfe;Sampled=0;Lineage=1:24be3d11:0
       X-Bt-Found-Existing:
       - 'true'
       Via:
-      - 1.1 f9aa0e4086fcbefc20f307d96a8e3b44.cloudfront.net (CloudFront), 1.1 8cdf4e2d4f4070992665477c4dbca0c0.cloudfront.net
+      - 1.1 53a1f042d35b1ad7e45dd18908041b36.cloudfront.net (CloudFront), 1.1 8fd21502425077e617fde7325b45e112.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - H7QPeoTKFVsW0rS5XM7Hp_WBb-yWCuK6NovV5Az6C6bpJMJ0FWLlEg==
+      - LAyHp2kvQuX3UyG4QilYwVv2G8BQ9cjLDrlJ7n4uIyZHklvvnx7nXg==
     body:
       encoding: ASCII-8BIT
       string: '{"id":"c532bc50-7094-4bbb-8704-42344c9728b9","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"ruby-sdk-test","created":"2025-10-22T02:53:49.779Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","settings":null}'
-  recorded_at: Fri, 24 Oct 2025 14:56:03 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:11 GMT
 - request:
     method: post
     uri: https://api.braintrust.dev/v1/experiment
@@ -177,34 +177,34 @@ http_interactions:
       - JFK50-P2
       - JFK50-P5
       Date:
-      - Fri, 24 Oct 2025 14:56:03 GMT
+      - Fri, 24 Oct 2025 15:29:11 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - 6a5ea393-97cf-4853-8974-7a120930458c
+      - 33b1e4b7-0c40-4fd1-8197-273845908064
       X-Bt-Internal-Trace-Id:
-      - 68fb938300000000202617e5cc8ec5fa
+      - 68fb9b4700000000481912e0e0efb6f5
       X-Amz-Apigw-Id:
-      - S9P8kGYyIAMEbOg=
+      - S9UzREZIIAMEGyg=
       Vary:
       - Origin, Accept-Encoding
       Etag:
-      - W/"189-G9QENqsWadUtx1CSVkGn8Kg2D5U"
+      - W/"189-Z5jahuVBncyuEPbnW3KPxx7F63g"
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
       X-Amzn-Trace-Id:
-      - Root=1-68fb9383-0c8880774b1ec475356afe28;Parent=701942adc4b8ad8c;Sampled=0;Lineage=1:24be3d11:0
+      - Root=1-68fb9b47-79e7e65b0e865bd4282ca0a9;Parent=7cb1104c607d4184;Sampled=0;Lineage=1:24be3d11:0
       Via:
-      - 1.1 98bc8180e0431e8f05afc9802305f1d2.cloudfront.net (CloudFront), 1.1 bd3e3884ce6fe1fd36336541cce9ec7e.cloudfront.net
+      - 1.1 f8debc28b6c73eb3dc7540e2ac2f0e18.cloudfront.net (CloudFront), 1.1 babb61789095288ef1d09146c15e7f1e.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - GQ1vQBXP-LAoxrIVhozU_m3YlJ5ijn8gfp8Z6X9gnN2ds-BRmbs6Wg==
+      - r-UklxLsjNJri8jEErCE0ukd3Oj2HC-cURz-v6uxPUiyIztfoCUHuw==
     body:
       encoding: ASCII-8BIT
-      string: '{"id":"b7237f2c-2012-41fe-b31f-6a1d528d9498","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-experiment-update-8444e5ab","description":null,"created":"2025-10-24T14:56:03.386Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
-  recorded_at: Fri, 24 Oct 2025 14:56:03 GMT
+      string: '{"id":"634c7434-901a-4491-9b1f-40ec1f567e6c","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-experiment-update-0545f357","description":null,"created":"2025-10-24T15:29:11.874Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
+  recorded_at: Fri, 24 Oct 2025 15:29:11 GMT
 - request:
     method: post
     uri: https://api.braintrust.dev/v1/project
@@ -239,15 +239,15 @@ http_interactions:
       - JFK50-P2
       - JFK50-P5
       Date:
-      - Fri, 24 Oct 2025 14:56:03 GMT
+      - Fri, 24 Oct 2025 15:29:12 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - ba3e307a-4171-4aac-9723-8f8dbe82ecca
+      - 1f618c8d-52bf-4291-a090-cfcd61a22946
       X-Bt-Internal-Trace-Id:
-      - 68fb93830000000062ba695cffe1f7a4
+      - 68fb9b4700000000729f3c8f49a2cb66
       X-Amz-Apigw-Id:
-      - S9P8mHqpoAMEJSQ=
+      - S9UzTHbvoAMEBqQ=
       Vary:
       - Origin, Accept-Encoding
       Etag:
@@ -255,20 +255,20 @@ http_interactions:
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
       X-Amzn-Trace-Id:
-      - Root=1-68fb9383-1cbf3bcf5673362e0d8d75b2;Parent=3befbd330a2950fa;Sampled=0;Lineage=1:24be3d11:0
+      - Root=1-68fb9b47-4c9b41a2798d1330020d3902;Parent=262285098239b5d8;Sampled=0;Lineage=1:24be3d11:0
       X-Bt-Found-Existing:
       - 'true'
       Via:
-      - 1.1 38bc9c97daf30f968ccac44ef89e14e0.cloudfront.net (CloudFront), 1.1 92672fff57a11d8cf4f64313a69242d0.cloudfront.net
+      - 1.1 6e202b767e6bdee837ba15ada7e3120e.cloudfront.net (CloudFront), 1.1 ef73a156d5c211fdbb7e4231f2a0edca.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - hhHUuOtICgVN9Mt00ZPx-VVNQcCkYfLCdM1E3AE-Dv944T2-pW4xDA==
+      - LSoz4qR4F_jj7yVVeUGnwckgPCRkp2uYWGuIWF1gJO6_6jlKg7xDcg==
     body:
       encoding: ASCII-8BIT
       string: '{"id":"c532bc50-7094-4bbb-8704-42344c9728b9","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"ruby-sdk-test","created":"2025-10-22T02:53:49.779Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","settings":null}'
-  recorded_at: Fri, 24 Oct 2025 14:56:03 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:12 GMT
 - request:
     method: post
     uri: https://api.braintrust.dev/v1/experiment
@@ -303,15 +303,15 @@ http_interactions:
       - JFK50-P2
       - JFK50-P5
       Date:
-      - Fri, 24 Oct 2025 14:56:03 GMT
+      - Fri, 24 Oct 2025 15:29:12 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - 967d3374-6b72-4d6c-bcfe-e6f9ab1bac78
+      - 16d5aeef-d788-49a0-984d-78be2903b3fc
       X-Bt-Internal-Trace-Id:
-      - 68fb93830000000049b60414966cb223
+      - 68fb9b48000000000674f01085979fd9
       X-Amz-Apigw-Id:
-      - S9P8nG-aoAMEfUg=
+      - S9UzUElRIAMEPew=
       Vary:
       - Origin, Accept-Encoding
       Etag:
@@ -319,16 +319,16 @@ http_interactions:
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
       X-Amzn-Trace-Id:
-      - Root=1-68fb9383-7f8c9c2a3639e77b2ff24166;Parent=1aa1b1a9f5e1d28b;Sampled=0;Lineage=1:24be3d11:0
+      - Root=1-68fb9b48-1e5038b541eeff1621983045;Parent=5f326d7ac5ebebf7;Sampled=0;Lineage=1:24be3d11:0
       Via:
-      - 1.1 241db89625f6ef70a00b0e19e0cfc332.cloudfront.net (CloudFront), 1.1 8e923e72a50f75048382f193bf6c8c4e.cloudfront.net
+      - 1.1 f8b0654d6e6bbf12f54a635de5db7ee4.cloudfront.net (CloudFront), 1.1 babb61789095288ef1d09146c15e7f1e.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - Dp1xjh3Ytgx6aPAgnjKGS-2A_nF6bZyBpaPnvapEf0HgdaGIsW2P1A==
+      - 8RyJa7E6qB_o5vP6y9APymCpi00c7Xg0qCocG11yCdMQKqR_ofDwuw==
     body:
       encoding: ASCII-8BIT
       string: '{"id":"327668a4-6f6a-4a94-ba6a-75f6fc153acc","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-experiment-update","description":null,"created":"2025-10-22T02:53:51.418Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
-  recorded_at: Fri, 24 Oct 2025 14:56:03 GMT
+  recorded_at: Fri, 24 Oct 2025 15:29:12 GMT
 recorded_with: VCR 6.3.1
