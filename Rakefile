@@ -65,7 +65,7 @@ task coverage: :test do
 end
 
 desc "Verify CI (lint + test all appraisal scenarios)"
-task ci: [:lint, :"test:appraisal"]
+task ci: [:lint, :"test:appraisal:install", :"test:appraisal"]
 
 task default: :ci
 
