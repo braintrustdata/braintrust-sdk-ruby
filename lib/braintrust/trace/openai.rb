@@ -6,6 +6,17 @@ require "json"
 module Braintrust
   module Trace
     module OpenAI
+      # Helper to safely set a JSON attribute on a span
+      # Only sets the attribute if obj is present
+      # @param span [OpenTelemetry::Trace::Span] the span to set attribute on
+      # @param attr_name [String] the attribute name (e.g., "braintrust.output_json")
+      # @param obj [Object] the object to serialize to JSON
+      # @return [void]
+      def self.set_json_attr(span, attr_name, obj)
+        return unless obj
+        span.set_attribute(attr_name, JSON.generate(obj))
+      end
+
       # Parse usage tokens from OpenAI API response, handling nested token_details
       # Maps OpenAI field names to Braintrust standard names:
       # - input_tokens → prompt_tokens
@@ -280,8 +291,16 @@ module Braintrust
             # Set initial metadata
             span.set_attribute("braintrust.metadata", JSON.generate(metadata))
 
-            # Call the original stream_raw method
-            stream = super(**params)
+            # Call the original stream_raw method with error handling
+            begin
+              stream = super(**params)
+            rescue => e
+              # Record exception if stream creation fails
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("OpenAI API error: #{e.message}")
+              span.finish
+              raise
+            end
 
             # Wrap the stream to aggregate chunks
             original_each = stream.method(:each)
@@ -290,25 +309,32 @@ module Braintrust
                 aggregated_chunks << chunk.to_h
                 block&.call(chunk)
               end
+            rescue => e
+              # Record exception if streaming fails
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+              raise
+            ensure
+              # Always aggregate whatever chunks we collected and finish span
+              # This runs on normal completion, break, or exception
+              unless aggregated_chunks.empty?
+                aggregated_output = Braintrust::Trace::OpenAI.aggregate_streaming_chunks(aggregated_chunks)
+                Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.output_json", aggregated_output[:choices])
 
-              # After streaming completes, aggregate and set span attributes
-              aggregated_output = Braintrust::Trace::OpenAI.aggregate_streaming_chunks(aggregated_chunks)
-              span.set_attribute("braintrust.output_json", JSON.generate(aggregated_output[:choices])) if aggregated_output[:choices]
+                # Set metrics if usage is included (requires stream_options.include_usage)
+                if aggregated_output[:usage]
+                  metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(aggregated_output[:usage])
+                  Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                end
 
-              # Set metrics if usage is included (requires stream_options.include_usage)
-              if aggregated_output[:usage]
-                metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(aggregated_output[:usage])
-                span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
+                # Update metadata with response fields
+                metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
+                metadata["created"] = aggregated_output[:created] if aggregated_output[:created]
+                metadata["model"] = aggregated_output[:model] if aggregated_output[:model]
+                metadata["system_fingerprint"] = aggregated_output[:system_fingerprint] if aggregated_output[:system_fingerprint]
+                Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.metadata", metadata)
               end
 
-              # Update metadata with response fields
-              metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
-              metadata["created"] = aggregated_output[:created] if aggregated_output[:created]
-              metadata["model"] = aggregated_output[:model] if aggregated_output[:model]
-              metadata["system_fingerprint"] = aggregated_output[:system_fingerprint] if aggregated_output[:system_fingerprint]
-              span.set_attribute("braintrust.metadata", JSON.generate(metadata))
-
-              # End the span after streaming completes
               span.finish
             end
 

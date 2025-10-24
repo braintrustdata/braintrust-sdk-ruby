@@ -394,4 +394,136 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert metrics["tokens"] > 0 if metrics["tokens"]
     end
   end
+
+  def test_wrap_closes_span_for_partially_consumed_stream
+    require "openai"
+
+    # Set up test rig
+    rig = setup_otel_test_rig
+
+    # Create OpenAI client and wrap it
+    client = OpenAI::Client.new(api_key: @api_key)
+    Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+    # Make a streaming request
+    stream = client.chat.completions.stream_raw(
+      messages: [
+        {role: "user", content: "Count from 1 to 10"}
+      ],
+      model: "gpt-4o-mini",
+      max_tokens: 50
+    )
+
+    # Consume only part of the stream
+    chunk_count = 0
+    begin
+      stream.each do |chunk|
+        chunk_count += 1
+        break if chunk_count >= 2  # Stop after 2 chunks
+      end
+    rescue StopIteration
+      # Expected when breaking out of iteration
+    end
+
+    # Span should be finished even though we didn't consume all chunks
+    span = rig.drain_one
+
+    # Verify span name
+    assert_equal "openai.chat.completions.create", span.name
+
+    # Verify input was captured
+    assert span.attributes.key?("braintrust.input_json")
+    input = JSON.parse(span.attributes["braintrust.input_json"])
+    assert_equal 1, input.length
+
+    # Note: output will be partially aggregated
+  end
+
+  def test_wrap_records_exception_for_create_errors
+    require "openai"
+
+    # Set up test rig
+    rig = setup_otel_test_rig
+
+    # Create OpenAI client with invalid API key to trigger an error
+    client = OpenAI::Client.new(api_key: "invalid_key")
+    Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+    # Make a request that will fail
+    error = assert_raises do
+      client.chat.completions.create(
+        messages: [
+          {role: "user", content: "test"}
+        ],
+        model: "gpt-4o-mini"
+      )
+    end
+
+    # Verify an error was raised
+    refute_nil error
+
+    # Drain and verify span was created with error information
+    span = rig.drain_one
+
+    # Verify span name
+    assert_equal "openai.chat.completions.create", span.name
+
+    # Verify span status indicates an error
+    assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
+
+    # Verify error message is captured in status description
+    refute_nil span.status.description
+    assert span.status.description.length > 0
+
+    # Verify exception event was recorded
+    assert span.events.any? { |event| event.name == "exception" }, "Should have an exception event"
+
+    exception_event = span.events.find { |event| event.name == "exception" }
+    assert exception_event.attributes.key?("exception.type"), "Should have exception type"
+    assert exception_event.attributes.key?("exception.message"), "Should have exception message"
+  end
+
+  def test_wrap_records_exception_for_stream_errors
+    require "openai"
+
+    # Set up test rig
+    rig = setup_otel_test_rig
+
+    # Create OpenAI client with invalid API key to trigger an error
+    client = OpenAI::Client.new(api_key: "invalid_key")
+    Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+    # Make a streaming request that will fail
+    error = assert_raises do
+      stream = client.chat.completions.stream_raw(
+        messages: [
+          {role: "user", content: "test"}
+        ],
+        model: "gpt-4o-mini"
+      )
+
+      # Error occurs when we try to consume the stream
+      stream.each do |chunk|
+        # Won't get here
+      end
+    end
+
+    # Verify an error was raised
+    refute_nil error
+
+    # Drain and verify span was created with error information
+    span = rig.drain_one
+
+    # Verify span name
+    assert_equal "openai.chat.completions.create", span.name
+
+    # Verify span status indicates an error
+    assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
+
+    # Verify error message is captured in status description
+    refute_nil span.status.description
+
+    # Verify exception event was recorded
+    assert span.events.any? { |event| event.name == "exception" }, "Should have an exception event"
+  end
 end
