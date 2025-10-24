@@ -12,11 +12,14 @@ GEM
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
     ansi (1.5.0)
+    appraisal (2.5.0)
+      bundler
+      rake
+      thor (>= 0.14.0)
     ast (2.4.3)
     base64 (0.3.0)
     bigdecimal (3.3.1)
     builder (3.3.0)
-    connection_pool (2.5.4)
     crack (1.0.1)
       bigdecimal
       rexml
@@ -42,8 +45,6 @@ GEM
       builder
       minitest (>= 5.0)
       ruby-progressbar
-    openai (0.34.1)
-      connection_pool
     openssl (3.3.1)
     opentelemetry-api (1.7.0)
     opentelemetry-common (0.23.0)
@@ -112,6 +113,7 @@ GEM
     standard-performance (1.8.0)
       lint_roller (~> 1.1)
       rubocop-performance (~> 1.25.0)
+    thor (1.4.0)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.1.0)
@@ -130,10 +132,10 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  appraisal (~> 2.5)
   braintrust!
   minitest (~> 5.0)
   minitest-reporters (~> 1.6)
-  openai (~> 0.34)
   rake (~> 13.0)
   simplecov (~> 0.22)
   standard (~> 1.0)

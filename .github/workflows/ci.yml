@@ -29,13 +29,6 @@ jobs:
         BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      if: matrix.ruby-version == '3.4' && matrix.os == 'ubuntu-latest'
-      with:
-        files: ./coverage/.resultset.json
-        fail_ci_if_error: false
-
   # Summary job that requires all matrix tests to pass
   # This is what branch protection will check
   ci-success:

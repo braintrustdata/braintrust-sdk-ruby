@@ -10,22 +10,23 @@ rust = "1.83"
 watchexec = "latest"
 
 [tasks.lint]
-run = "bundle exec standardrb"
+run = "bundle exec rake lint"
 
 [tasks."lint:fix"]
-run = "bundle exec standardrb --fix"
+run = "bundle exec rake lint:fix"
 
 [tasks.watch-test]
 description = "Runs tests when files change"
 run = "watchexec --exts rb --watch lib --watch test --restart --clear -- rake test"
 
-[tasks.verify-fmt]
-run = "bundle exec standardrb --format progress"
+[tasks.precommit]
+description = "Run linter before commit (full CI runs on push)"
+run = "bundle exec rake lint"
 
 [hooks]
 postinstall = """
 echo "Installing gem dependencies..."
 bundle install
 echo "Setting up git pre-commit hook..."
-mise generate git-pre-commit --write --task=verify-fmt
+mise generate git-pre-commit --write --task=precommit
 """

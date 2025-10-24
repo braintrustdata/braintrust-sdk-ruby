@@ -8,10 +8,6 @@ class Braintrust::StateLoginTest < Minitest::Test
     assert @api_key, "BRAINTRUST_API_KEY environment variable is required for login tests"
   end
 
-  def teardown
-    Braintrust::State.instance_variable_set(:@global_state, nil)
-  end
-
   def test_login_fetches_org_info
     VCR.use_cassette("auth/login_success") do
       state = Braintrust::State.new(

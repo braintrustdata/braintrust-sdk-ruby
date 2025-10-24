@@ -9,12 +9,6 @@ Rake::TestTask.new(:test) do |t|
   t.warning = false
 end
 
-desc "Run tests with verbose timing output"
-task :"test:verbose" do
-  ENV["MT_VERBOSE"] = "1"
-  Rake::Task[:test].invoke
-end
-
 desc "Run Standard linter"
 task :lint do
   sh "bundle exec standardrb"
@@ -70,13 +64,62 @@ task coverage: :test do
   end
 end
 
-desc "Verify CI (lint + test)"
-task ci: [:lint, :test]
+desc "Verify CI (lint + test all appraisal scenarios)"
+task ci: [:lint, :"test:appraisal:install", :"test:appraisal"]
 
 task default: :ci
 
-# VCR tasks for managing HTTP cassettes
+# Test-related tasks
 namespace :test do
+  desc "Run tests with verbose timing output"
+  task :verbose do
+    ENV["MT_VERBOSE"] = "1"
+    Rake::Task[:test].invoke
+  end
+
+  desc "Install optional test dependencies (e.g., openai gem)"
+  task :install do
+    puts "Installing optional test dependencies..."
+    sh "gem install openai -v '~> 0.34'"
+    puts "✓ Optional dependencies installed"
+    puts ""
+    puts "Now run 'rake test' to run tests with OpenAI integration"
+  end
+
+  # Appraisal tasks for testing with/without optional dependencies
+  # Run directly: bundle exec appraisal [scenario] rake test
+  # List scenarios: bundle exec appraisal list
+  desc "Run tests against different dependencies"
+  task :appraisal do
+    sh "bundle exec appraisal rake test"
+  end
+
+  namespace :appraisal do
+    desc "Show help for appraisal scenarios and usage"
+    task :help do
+      puts "\n=== Appraisal Test Scenarios ==="
+      puts "\nAvailable scenarios:"
+      sh "bundle exec appraisal list"
+      puts "\n=== Usage ==="
+      puts "Run specific scenario:"
+      puts "  bundle exec appraisal <scenario> rake test"
+      puts ""
+      puts "Example:"
+      puts "  bundle exec appraisal openai-0.34 rake test"
+      puts ""
+      puts "Run all scenarios:"
+      puts "  bundle exec appraisal rake test"
+      puts "  or: rake test:appraisal"
+      puts ""
+    end
+
+    desc "Install all appraisal gemfiles"
+    task :install do
+      sh "bundle exec appraisal install"
+    end
+  end
+
+  # VCR tasks for managing HTTP cassettes
   namespace :vcr do
     desc "Re-record all VCR cassettes"
     task :record_all do

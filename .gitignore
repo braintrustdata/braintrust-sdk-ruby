@@ -48,3 +48,6 @@
 
 # Release artifacts
 changelog.md
+
+# Appraisal: commit gemfiles but ignore lock files
+gemfiles/*.gemfile.lock

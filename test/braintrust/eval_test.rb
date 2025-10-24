@@ -16,8 +16,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_basic
     VCR.use_cassette("eval/run_basic") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
@@ -46,8 +45,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_task_error
     VCR.use_cassette("eval/run_task_error") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) {
         raise "Task failed!" if input == "bad"
@@ -79,8 +77,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_scorer_error
     VCR.use_cassette("eval/run_scorer_error") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) { input.upcase }
 
@@ -152,8 +149,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_multiple_scorers
     VCR.use_cassette("eval/run_multiple_scorers") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) { input.upcase }
 
@@ -183,8 +179,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_callable_task
     VCR.use_cassette("eval/run_callable_task") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       callable_task = Class.new do
         def call(input)
@@ -243,8 +238,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_method_scorer
     VCR.use_cassette("eval/run_method_scorer") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) { input.upcase }
       # Use a lambda instead of nested method
@@ -314,8 +308,7 @@ class Braintrust::EvalTest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Initialize and login
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
@@ -366,8 +359,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as string (same project as experiment)
   def test_eval_run_with_dataset_string
     VCR.use_cassette("eval/dataset_string") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
       api = Braintrust::API.new(state: state)
 
       # Create a test dataset with records
@@ -417,8 +409,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as hash with name + project
   def test_eval_run_with_dataset_hash_name_project
     VCR.use_cassette("eval/dataset_hash_name_project") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
       api = Braintrust::API.new(state: state)
 
       # Create a test dataset
@@ -458,8 +449,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as hash with id
   def test_eval_run_with_dataset_hash_id
     VCR.use_cassette("eval/dataset_hash_id") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
       api = Braintrust::API.new(state: state)
 
       # Create a test dataset
@@ -499,8 +489,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset with limit option
   def test_eval_run_with_dataset_limit
     VCR.use_cassette("eval/dataset_limit") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
       api = Braintrust::API.new(state: state)
 
       # Create a test dataset with multiple records
@@ -552,8 +541,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: error when both dataset and cases provided
   def test_eval_run_with_both_dataset_and_cases_errors
     VCR.use_cassette("eval/run_both_dataset_and_cases_error") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }

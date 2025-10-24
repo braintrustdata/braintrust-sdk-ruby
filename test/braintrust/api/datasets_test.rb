@@ -9,7 +9,7 @@ class Braintrust::API::DatasetsTest < Minitest::Test
   end
 
   def get_test_api
-    state = Braintrust.init(set_global: false, blocking_login: true)
+    state = get_non_global_state
     Braintrust::API.new(state: state)
   end
 
