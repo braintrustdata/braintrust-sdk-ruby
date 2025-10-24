@@ -46,7 +46,8 @@ VCR.configure do |config|
   # Recording mode: :once (default), :all (re-record), :none (no recording)
   config.default_cassette_options = {
     record: ENV["VCR_MODE"]&.to_sym || :once,
-    match_requests_on: [:method, :uri]  # Don't match on body (contains dynamic data)
+    match_requests_on: [:method, :uri],  # Don't match on body (contains dynamic data)
+    allow_playback_repeats: true  # Allow same HTTP interaction to be replayed multiple times
   }
 end
 
