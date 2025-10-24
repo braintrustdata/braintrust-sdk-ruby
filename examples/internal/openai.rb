@@ -326,6 +326,44 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     puts "  Tokens: #{response.usage.total_tokens}"
     puts "  All params captured in metadata for Braintrust trace"
   end
+
+  # Example 9: Responses API (Non-streaming)
+  if client.respond_to?(:responses)
+    puts "\n9. Responses API (Non-streaming)"
+    puts "-" * 50
+    tracer.in_span("example-responses-api") do
+      response = client.responses.create(
+        model: "gpt-4o-mini",
+        instructions: "You are a helpful assistant that provides concise answers.",
+        input: "What are three benefits of Ruby programming language?"
+      )
+      puts "✓ Response API output: #{response.output.first.content.first[:text][0..100]}..."
+      puts "  Tokens: #{response.usage.total_tokens}"
+      puts "  Response automatically traced by Braintrust"
+    end
+
+    # Example 10: Responses API (Streaming)
+    puts "\n10. Responses API (Streaming)"
+    puts "-" * 50
+    tracer.in_span("example-responses-streaming") do
+      print "Streaming response: "
+      stream = client.responses.stream(
+        model: "gpt-4o-mini",
+        input: "Count from 1 to 5"
+      )
+
+      event_count = 0
+      stream.each do |event|
+        event_count += 1
+        # Events are streamed and automatically aggregated by Braintrust
+      end
+      puts ""
+      puts "✓ Streaming complete, received #{event_count} events"
+      puts "  (Note: Braintrust automatically aggregates all events for the trace)"
+    end
+  else
+    puts "\n9-10. Responses API examples skipped (not available in this OpenAI gem version)"
+  end
 end # End of parent trace
 
 puts "\n" + "=" * 50
@@ -339,6 +377,7 @@ puts "  ✓ Mixed content messages (multiple text/image blocks)"
 puts "  ✓ Advanced token metrics (cached, reasoning, audio tokens)"
 puts "  ✓ All request parameters (temperature, top_p, seed, user, etc.)"
 puts "  ✓ Full message structures (role, content, tool_calls, etc.)"
+puts "  ✓ Responses API (non-streaming and streaming)"
 puts ""
 puts "View this trace at:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"

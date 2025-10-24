@@ -540,4 +540,160 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert span.events.any? { |event| event.name == "exception" }, "Should have an exception event"
     end
   end
+
+  def test_wrap_responses_create_non_streaming
+    require "openai"
+
+    VCR.use_cassette("openai_responses_create_non_streaming") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
+
+      # Make a non-streaming responses.create request
+      response = client.responses.create(
+        model: "gpt-4o-mini",
+        instructions: "You are a helpful assistant.",
+        input: "What is 2+2?"
+      )
+
+      # Verify response
+      refute_nil response
+      refute_nil response.output
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.responses.create", span.name
+
+      # Verify braintrust.input_json contains input
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert_equal "What is 2+2?", input
+
+      # Verify braintrust.output_json contains output
+      assert span.attributes.key?("braintrust.output_json")
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      refute_nil output
+
+      # Verify braintrust.metadata contains request metadata
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal "openai", metadata["provider"]
+      assert_equal "gpt-4o-mini", metadata["model"]
+      assert_equal "You are a helpful assistant.", metadata["instructions"]
+
+      # Verify braintrust.metrics contains token usage
+      assert span.attributes.key?("braintrust.metrics")
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["tokens"] > 0 if metrics["tokens"]
+    end
+  end
+
+  def test_wrap_responses_create_streaming
+    require "openai"
+
+    VCR.use_cassette("openai_responses_create_streaming") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
+
+      # Make a streaming responses request using .stream method
+      stream = client.responses.stream(
+        model: "gpt-4o-mini",
+        input: "Count from 1 to 3"
+      )
+
+      # Consume the stream
+      event_count = 0
+      stream.each do |event|
+        event_count += 1
+      end
+
+      # Verify we got events
+      assert event_count > 0, "Should have received streaming events"
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.responses.create", span.name
+
+      # Verify input was captured
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert_equal "Count from 1 to 3", input
+
+      # Verify output was aggregated from stream
+      assert span.attributes.key?("braintrust.output_json"), "Missing braintrust.output_json. Keys: #{span.attributes.keys}"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      refute_nil output, "Output is nil: #{output.inspect}"
+
+      # Verify metadata includes stream flag
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal "openai", metadata["provider"]
+      assert_equal true, metadata["stream"]
+
+      # Verify metrics were captured if available
+      if span.attributes.key?("braintrust.metrics")
+        metrics = JSON.parse(span.attributes["braintrust.metrics"])
+        assert metrics["tokens"] > 0 if metrics["tokens"]
+      end
+    end
+  end
+
+  def test_wrap_responses_stream_partial_consumption
+    require "openai"
+
+    VCR.use_cassette("openai_responses_stream_partial") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
+
+      # Make a streaming request
+      stream = client.responses.stream(
+        model: "gpt-4o-mini",
+        input: "Count from 1 to 10"
+      )
+
+      # Consume only part of the stream
+      event_count = 0
+      begin
+        stream.each do |event|
+          event_count += 1
+          break if event_count >= 3  # Stop after 3 events
+        end
+      rescue StopIteration
+        # Expected when breaking out of iteration
+      end
+
+      # Span should be finished even though we didn't consume all events
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.responses.create", span.name
+
+      # Verify input was captured
+      assert span.attributes.key?("braintrust.input_json")
+    end
+  end
 end

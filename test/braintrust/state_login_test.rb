@@ -44,40 +44,48 @@ class Braintrust::StateLoginTest < Minitest::Test
   end
 
   def test_login_in_thread_retries_on_failure
-    VCR.use_cassette("auth/login_with_retries") do
-      state = Braintrust::State.new(
-        api_key: @api_key,
-        app_url: "https://www.braintrust.dev"
+    state = Braintrust::State.new(
+      api_key: @api_key,
+      app_url: "https://www.braintrust.dev"
+    )
+
+    # Stub HTTP to fail twice, then succeed
+    # This tests the real Auth.login code path and retry logic
+    stub = stub_request(:post, "https://www.braintrust.dev/api/apikey/login")
+      .to_return(
+        {status: 500, body: "Internal Server Error"},
+        {status: 500, body: "Internal Server Error"},
+        {
+          status: 200,
+          body: JSON.generate({
+            org_info: [{
+              id: "test-org-id",
+              name: "test-org",
+              api_url: "https://api.braintrust.dev",
+              proxy_url: "https://api.braintrust.dev"
+            }]
+          }),
+          headers: {"Content-Type" => "application/json"}
+        }
       )
 
-      # Track how many times Auth.login is called
-      call_count = 0
-      original_login = Braintrust::API::Internal::Auth.method(:login)
+    begin
+      # Start background login
+      state.login_in_thread
 
-      # Stub Auth.login to fail twice, then succeed
-      Braintrust::API::Internal::Auth.define_singleton_method(:login) do |**args|
-        call_count += 1
-        if call_count <= 2
-          raise Braintrust::Error, "Simulated network error"
-        else
-          original_login.call(**args)
-        end
-      end
+      # Wait for it to complete (should retry and eventually succeed)
+      state.wait_for_login(5)
 
-      begin
-        # Start background login
-        state.login_in_thread
+      # Should have retried and succeeded
+      assert state.logged_in, "State should be logged in after wait_for_login"
+      assert_equal "test-org-id", state.org_id
+      assert_equal "test-org", state.org_name
 
-        # Wait for it to complete (should retry and eventually succeed)
-        state.wait_for_login(30)
-
-        # Should have retried and succeeded
-        assert state.logged_in, "State should be logged in after wait_for_login, but logged_in=#{state.logged_in}, call_count=#{call_count}"
-        assert call_count >= 3, "Expected at least 3 login attempts, got #{call_count}"
-      ensure
-        # Restore original method
-        Braintrust::API::Internal::Auth.define_singleton_method(:login, original_login)
-      end
+      # Verify we made at least 3 requests (2 failures + 1 success)
+      assert_requested stub, at_least_times: 3
+    ensure
+      # Clean up the stub to prevent interference with other tests
+      remove_request_stub(stub)
     end
   end
 
@@ -123,7 +131,7 @@ class Braintrust::StateLoginTest < Minitest::Test
       5.times { state.login_in_thread }
 
       # Wait for login to complete
-      state.wait_for_login(30)
+      state.wait_for_login(5)
 
       # Should be logged in exactly once (not multiple times)
       assert state.logged_in

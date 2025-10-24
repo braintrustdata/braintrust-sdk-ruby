@@ -4,32 +4,7 @@
 
 ## High Priority - Next Steps
 
-### 1. VCR Integration for Fast HTTP Tests
-- [ ] Add `vcr` and `webmock` gems as development dependencies
-- [ ] Configure VCR in test_helper.rb
-  - Set cassette library path (`test/fixtures/vcr_cassettes`)
-  - Configure recording mode (`:once` by default)
-  - Filter sensitive data (API keys, tokens)
-  - Match requests by method, URI, body
-- [ ] Update API integration tests to use VCR
-  - Datasets tests (4 tests with real API calls)
-  - Functions tests (4 tests with real API calls)
-  - Auth/login tests
-  - Eval remote functions tests
-- [ ] Add VCR cassettes to .gitignore or commit sanitized versions
-- [ ] Document how to re-record cassettes (`VCR_MODE=all`)
-- [ ] **Goal**: Tests run fast without real API calls, easy to add more coverage
-
-### 2. OpenAI Responses API Support
-- [ ] Research current openai gem version support for responses endpoint
-- [ ] Implement `Braintrust::Trace::OpenAI.wrap_responses(client)`
-- [ ] Handle streaming responses (Server-Sent Events)
-- [ ] Capture input_json, output_json, metadata, metrics
-- [ ] Add test coverage with VCR cassettes
-- [ ] Create example: `examples/openai_responses.rb`
-- [ ] **Goal**: Support newer streaming-first OpenAI API
-
-### 3. Validate Optional Dependencies & Version Support
+### 1. Validate Optional Dependencies & Version Support
 - [ ] **Validate OpenAI gem is NOT a runtime dependency** ✅ (currently dev-only)
   - Ensure SDK works without openai gem installed
   - OpenAI integration is opt-in via `require "braintrust/trace/openai"`
@@ -51,9 +26,9 @@
 ## Medium Priority
 
 ### Test Coverage Improvement
-- [ ] Increase coverage from 25% → 80%+ target
-  - Current: 25.03% (202/807 lines)
-  - With VCR, adding tests will be fast
+- [ ] Increase coverage from 91% → 95%+ target
+  - Current: 91.48% (805/880 lines)
+  - Focus on edge cases and error paths
 - [ ] Focus on under-tested areas:
   - API client edge cases (error responses, pagination)
   - Error handling paths

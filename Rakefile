@@ -9,6 +9,12 @@ Rake::TestTask.new(:test) do |t|
   t.warning = false
 end
 
+desc "Run tests with verbose timing output"
+task :"test:verbose" do
+  ENV["MT_VERBOSE"] = "1"
+  Rake::Task[:test].invoke
+end
+
 desc "Run Standard linter"
 task :lint do
   sh "bundle exec standardrb"
