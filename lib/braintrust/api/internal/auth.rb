@@ -26,6 +26,17 @@ module Braintrust
         # @return [AuthResult] org info
         # @raise [Braintrust::Error] if login fails
         def self.login(api_key:, app_url:, org_name: nil)
+          # Test mode: return fake auth for test API key
+          if api_key == "test-api-key"
+            Log.debug("Login: using test API key, returning fake auth")
+            return AuthResult.new(
+              org_id: "test-org-id",
+              org_name: org_name || "test-org",
+              api_url: "https://api.ruby-sdk-fixture.com",
+              proxy_url: "https://proxy.ruby-sdk-fixture.com"
+            )
+          end
+
           masked_key = mask_api_key(api_key)
           Log.debug("Login: attempting login with API key #{masked_key}, org #{org_name.inspect}, app URL #{app_url}")
 

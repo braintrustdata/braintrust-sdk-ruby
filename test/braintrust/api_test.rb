@@ -8,17 +8,21 @@ class Braintrust::APITest < Minitest::Test
   end
 
   def test_api_new_with_explicit_state
-    state = Braintrust.init(set_global: false, blocking_login: true)
+    VCR.use_cassette("api/new_explicit_state") do
+      state = Braintrust.init(set_global: false, blocking_login: true)
 
-    api = Braintrust::API.new(state: state)
-    assert_equal state, api.state
+      api = Braintrust::API.new(state: state)
+      assert_equal state, api.state
+    end
   end
 
   def test_api_new_uses_global_state
-    state = Braintrust.init(set_global: true, blocking_login: true)
+    VCR.use_cassette("api/new_global_state") do
+      state = Braintrust.init(set_global: true, blocking_login: true)
 
-    api = Braintrust::API.new
-    assert_equal state, api.state
+      api = Braintrust::API.new
+      assert_equal state, api.state
+    end
   end
 
   def test_api_new_raises_without_state
@@ -36,19 +40,23 @@ class Braintrust::APITest < Minitest::Test
   end
 
   def test_api_datasets_returns_datasets_instance
-    state = Braintrust.init(set_global: false, blocking_login: true)
-    api = Braintrust::API.new(state: state)
+    VCR.use_cassette("api/datasets_instance") do
+      state = Braintrust.init(set_global: false, blocking_login: true)
+      api = Braintrust::API.new(state: state)
 
-    datasets = api.datasets
-    assert_instance_of Braintrust::API::Datasets, datasets
+      datasets = api.datasets
+      assert_instance_of Braintrust::API::Datasets, datasets
+    end
   end
 
   def test_api_datasets_is_memoized
-    state = Braintrust.init(set_global: false, blocking_login: true)
-    api = Braintrust::API.new(state: state)
+    VCR.use_cassette("api/datasets_memoized") do
+      state = Braintrust.init(set_global: false, blocking_login: true)
+      api = Braintrust::API.new(state: state)
 
-    datasets1 = api.datasets
-    datasets2 = api.datasets
-    assert_same datasets1, datasets2
+      datasets1 = api.datasets
+      datasets2 = api.datasets
+      assert_same datasets1, datasets2
+    end
   end
 end

@@ -74,6 +74,29 @@ task ci: [:lint, :test]
 
 task default: :ci
 
+# VCR tasks for managing HTTP cassettes
+namespace :test do
+  namespace :vcr do
+    desc "Re-record all VCR cassettes (overwrites existing)"
+    task :record_all do
+      ENV["VCR_MODE"] = "all"
+      Rake::Task["test"].invoke
+    end
+
+    desc "Record new VCR cassettes only (keeps existing)"
+    task :record_new do
+      ENV["VCR_MODE"] = "new_episodes"
+      Rake::Task["test"].invoke
+    end
+
+    desc "Run tests without VCR (hit real APIs for debugging)"
+    task :off do
+      ENV["VCR_OFF"] = "true"
+      Rake::Task["test"].invoke
+    end
+  end
+end
+
 # Release tasks
 namespace :release do
   desc "Validate release tag and version"
