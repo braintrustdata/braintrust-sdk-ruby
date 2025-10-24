@@ -15,6 +15,12 @@ require "braintrust"
 
 require "minitest/autorun"
 
+# Show test timings when MT_VERBOSE is set
+if ENV["MT_VERBOSE"]
+  require "minitest/reporters"
+  Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+end
+
 # VCR for recording/replaying HTTP interactions
 require "vcr"
 require "webmock/minitest"

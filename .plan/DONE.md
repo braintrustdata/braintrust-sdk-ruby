@@ -470,135 +470,61 @@
   - CHANGELOG.md not found (may need creation) ❌
 - **Total: 115 test runs, 398 assertions, all passing, linter clean**
 
-## Known Issues / Tech Debt - COMPLETED
+### Session 11 Completed (VCR Integration & Test Infrastructure) ✅
+- **VCR Integration** ✅
+  - Added vcr and webmock gems
+  - Configured VCR in test_helper.rb with sensitive data filtering
+  - Added rake tasks: test:vcr:record_all, test:vcr:record_new, test:vcr:off
+  - Refactored API tests to use get_test_api helpers (no shared cassettes)
+  - Re-recorded all cassettes with fresh API interactions
+- **Test Improvements** ✅
+  - Removed 16 skip statements (tests now work with cassettes regardless of API keys)
+  - Updated CI workflow to pass OPENAI_API_KEY from secrets
+  - Re-recorded eval and experiments cassettes
+  - Made coverage task depend on test task
+- **Test Results** ✅
+  - 119 tests, 421 assertions, 0 failures, 0 errors, 0 skips
+  - 91.48% line coverage, 62.5% branch coverage (up from 25%)
+  - All cassettes safe to commit (credentials properly filtered)
 
-### High Priority - FIXED ✅
-- [x] **SSL Certificate Verification on macOS**: ✅ FIXED (2025-10-22)
-  - **Solution**: Added `openssl` gem v3.3.1+ as runtime dependency
-  - Fixed in Ruby/OpenSSL maintainers' release (see https://github.com/ruby/openssl/issues/949)
-  - Removed all `VERIFY_NONE` workarounds and ssl_config.rb
-  - Now uses proper SSL verification with VERIFY_PEER
-  - Tests passing, SSL connections verified working
-
-### Medium Priority - RESOLVED ✅
-- [x] **Kitchen-Sink Span Export Inconsistency**: ✅ RESOLVED (2025-10-22)
-  - Issue was timing-related with concurrent OpenAI API calls
-  - Now working correctly
-
-## Phase 2: State#login_in_thread ✅
-- [x] Implement State#login_in_thread ✅ COMPLETE (2025-10-23) - background thread with retries
-
-## Phase 3: Trace Utilities - ✅ COMPLETE
-- [x] Write test: permalink generation ✅ COMPLETE (covered in examples)
-- [x] Implement Trace.permalink ✅ COMPLETE (2025-10-23 Session 10)
-- [x] ~~Trace.set_parent~~ - NOT NEEDED (Go-specific, Ruby uses OpenTelemetry context)
-- [x] ~~Trace.get_parent~~ - NOT NEEDED (Go-specific, Ruby uses OpenTelemetry context)
-
-## Phase 4.5: OpenAI Advanced Features - Streaming Support ✅ COMPLETE (2025-10-23)
-- [x] Add support for `stream_raw` API
-- [x] Handle streaming responses and chunks
-- [x] Aggregate streaming data for tracing
-- [x] Test streaming with console output
-- [x] Proper span parenting with `tracer.start_span`
-- [x] Automatic chunk aggregation (100+ lines of logic)
-- [x] Usage metrics capture with `stream_options.include_usage`
-
-## Phase 5: API Client (TDD) - ✅ DATASETS COMPLETE
-
-### lib/braintrust/api.rb ✅
-- [x] Write test: API with explicit state
-- [x] Write test: API with global state
-- [x] Write test: API#datasets returns Datasets instance
-- [x] Implement API class with memoized resource accessors
-- [x] Add unique_name() test helper for parallel-safe tests
-
-### lib/braintrust/api/datasets.rb ✅
-- [x] Write test: Datasets#list with project_name
-- [x] Write test: Datasets#get by project + name
-- [x] Write test: Datasets#get_by_id
-- [x] Write test: Datasets#create (idempotent)
-- [x] Write test: Datasets#insert events
-- [x] Write test: Datasets#fetch with pagination
-- [x] Implement Datasets class with all methods
-- [x] Implement list, get, get_by_id, create, insert, fetch, permalink
-- [x] Implement consolidated http_request() function
-- [x] Add debug logging with timing information
-- [x] Create examples/api/dataset.rb
-
-## Phase 6: Evals - Completed Items
-
-### Auto-print Results ✅ COMPLETE (2025-10-23)
-- [x] Add `quiet:` parameter to Eval.run (defaults to false)
-- [x] Update Result#to_s to Go SDK format
-- [x] Auto-print results via `puts result` unless quiet: true
-- [x] Format: Experiment name, ID, Link, Duration, Error count
-- [x] Updated all tests to use quiet: true
-- [x] Updated examples to rely on auto-printing
-
-### Dataset Integration ✅ COMPLETE (2025-10-22)
-- [x] Add `dataset:` parameter to Eval.run (string or hash)
-- [x] Support dataset by name (same project as experiment)
-- [x] Support dataset by name + explicit project
-- [x] Support dataset by ID
-- [x] Support dataset with limit option
-- [x] Support dataset with version option
-- [x] Auto-pagination (fetch all records by default)
-- [x] Validation: dataset and cases are mutually exclusive
-- [x] Tests for all dataset features
-- [x] Example: examples/eval/dataset.rb
-
-### Remote Functions ✅ COMPLETE (2025-10-23)
-- [x] Write test: API::Functions#list with project_name
-- [x] Write test: API::Functions#create with function_data and prompt_data
-- [x] Write test: API::Functions#invoke by ID
-- [x] Write test: API::Functions#delete
-- [x] Implement API::Functions class (lib/braintrust/api/functions.rb)
-- [x] Write test: Functions.task returns callable
-- [x] Write test: Functions.task invokes remote function
-- [x] Write test: Functions.scorer returns Scorer
-- [x] Write test: Use remote task in Eval.run
-- [x] Implement Eval::Functions module (lib/braintrust/eval/functions.rb)
-- [x] Add OpenTelemetry tracing for function invocations (type: "function")
-- [x] Make State#login idempotent (returns early if already logged in)
-- [x] Add automatic state.login in Eval.run to populate org_name
-- [x] Create example: examples/eval/remote_functions.rb
-- [x] Add remote scorer with LLM classifier and choice_scores
-- [x] Tests for all remote function features (4 API tests, 4 Eval tests)
-
-## Phase 7: Examples - ✅ COMPLETE (examples at root level)
-
-**Note**: Examples exist at root level and in subdirectories, not in dedicated openai/otel/evals subdirs
-
-### Root Level Examples ✅
-- [x] openai.rb - OpenAI tracing with chat completions ✅
-- [x] trace.rb - Manual span creation and tracing ✅
-- [x] eval.rb - Evaluations with test cases and scorers ✅
-- [x] login.rb - Authentication examples ✅
-
-### Subdirectory Examples ✅
-- [x] api/dataset.rb - Dataset API operations ✅
-- [x] eval/dataset.rb - Evaluations using datasets ✅
-- [x] eval/remote_functions.rb - Remote scoring functions ✅
-- [x] internal/openai.rb - Comprehensive OpenAI features (vision, tools, streaming) ✅
-- [x] internal/kitchen-sink.rb - Complex evaluation scenarios ✅
-- [x] internal/evals-with-errors.rb - Error handling examples ✅
-
-## Phase 8: Documentation & Polish - Completed Items ✅
-
-- [x] Write comprehensive README.md ✅ (2025-10-23)
-  - Overview, installation, quick start sections
-  - Three working examples (Evals, Tracing, OpenAI)
-  - Features section, links to examples and API docs
-  - Gem badge and beta status indicator
-- [x] Update CONTRIBUTING.md ✅ (2025-10-23)
-  - Development setup with mise and bundle
-  - Testing guidelines (Minitest, plain assert)
-  - Pull request workflow and troubleshooting
-- [x] Run Standard linter and fix issues ✅
-  - All code passing StandardRB linter
-  - Rake tasks: lint, lint:fix
-- [x] Set up CI/CD pipeline ✅ (2025-10-23)
-  - GitHub Actions: ci.yml (tests + linter)
-  - Publish workflows: publish-gem.yaml, publish-gem-prerelease.yaml
-  - Release automation: rake release, release:publish, release:github, release:changelog
-- [x] ~~CHANGELOG.md~~ - NOT NEEDED (project decision, automated via GitHub releases)
+### Session 12 Completed (OpenAI Responses API Support) ✅
+- **Responses API Integration** ✅
+  - Extended `Braintrust::Trace::OpenAI.wrap()` to automatically trace Responses API
+  - Single `wrap(client)` call now handles both Chat Completions AND Responses API
+  - Gracefully handles missing Responses API (older OpenAI gem versions)
+  - No separate wrap method needed - it just works!
+- **Non-Streaming Support** (`responses.create`) ✅
+  - Captures input, output, metadata (model, instructions, tools, etc.)
+  - Extracts token usage metrics via shared `parse_usage_tokens()` helper
+  - Span name: `"openai.responses.create"`
+  - Full integration with existing tracing infrastructure
+- **Streaming Support** (`responses.stream`) ✅
+  - Aggregates streaming events while yielding to consumer
+  - Finds `response.completed` event and extracts final response
+  - Handles Ruby OpenAI gem event objects (not hashes, with symbol types)
+  - Logs complete output and metrics when stream completes
+  - Ensures span finishes even on partial consumption or errors
+- **Event Aggregation** ✅
+  - Implemented `aggregate_responses_events()` helper
+  - Works with Ruby OpenAI gem event objects (with `.type` and `.response` methods)
+  - Extracts final response from `:"response.completed"` event (symbol, not string)
+  - Returns output array and usage data for logging
+- **Test Coverage** ✅
+  - Added 3 comprehensive tests (8 + 10 + 2 = 20 assertions)
+  - `test_wrap_responses_create_non_streaming` - validates basic responses.create
+  - `test_wrap_responses_create_streaming` - validates responses.stream with aggregation
+  - `test_wrap_responses_stream_partial_consumption` - validates span finishes on early break
+  - All tests pass with 11 total OpenAI tests (135 assertions)
+- **Examples** ✅
+  - Updated `examples/internal/openai.rb` with Examples 9 & 10
+  - Example 9: Responses API (Non-streaming) - demonstrates responses.create
+  - Example 10: Responses API (Streaming) - demonstrates responses.stream
+  - Both examples run successfully and produce proper traces
+  - Updated summary to include Responses API in validation checklist
+- **Implementation Details** ✅
+  - Refactored `wrap()` into `wrap_chat_completions()` and `wrap_responses()`
+  - Responses API uses separate `responses.stream()` method (not `stream: true` parameter)
+  - Event types are symbols (e.g., `:"response.completed"`) not strings
+  - Event objects have accessor methods (`.type`, `.response`, `.output`, `.usage`)
+  - Wrapper stores actual event objects (not converted to hashes) for aggregation
+- **Total: 11 OpenAI tests (135 assertions), 122 total tests (441 assertions), all passing, linter clean**

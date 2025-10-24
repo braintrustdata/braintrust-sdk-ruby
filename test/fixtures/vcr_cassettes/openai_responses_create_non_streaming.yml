@@ -1,0 +1,248 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer test-key
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '193'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-NzMzYTc0Y2MtZDRmMi00NmJmLTg2NDQtOTZkMTgyNjZjOTZi''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
+        font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
+        object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors
+        ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - text/plain; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 17:38:44 GMT
+      Etag:
+      - '"e10ll431e05d"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Nonce:
+      - NzMzYTc0Y2MtZDRmMi00NmJmLTg2NDQtOTZkMTgyNjZjOTZi
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::v564p-1761327524079-f88ef2637729
+    body:
+      encoding: UTF-8
+      string: 'Failed to validate Cognito JWT: Error: JWT string does not consist
+        of exactly 3 parts (header, payload, signature) [timestamp=1761327524.123]
+        [request_id=iad1::v564p-1761327524079-f88ef2637729]'
+  recorded_at: Fri, 24 Oct 2025 17:38:44 GMT
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","instructions":"You are a helpful assistant.","input":"What
+        is 2+2?"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.openai.com
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.34.1
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.9
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '92'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 24 Oct 2025 17:38:44 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999957'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      Openai-Version:
+      - '2020-10-01'
+      Openai-Organization:
+      - braintrust-data
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      X-Request-Id:
+      - req_5407579f77c54192afded46a1e7805e0
+      Openai-Processing-Ms:
+      - '908'
+      X-Envoy-Upstream-Service-Time:
+      - '915'
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=i9ybaD0UjgCVU12xf.PRnFxR2QDTtS9UHyTpEH5dtX8-1761327524-1.0.1.1-TokTdLsEUNzcLUu8Bc6Fk4.wNpSOAGO8xFEDdXd5VMjhLTf8AIhS7f6ltN9Pvzr1muzxVR0cwZzhiFMWyZSJ2Cx3buaysFYRg5qlvLZJp.4;
+        path=/; expires=Fri, 24-Oct-25 18:08:44 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=M.8HuO5pC1J_7U5AP2H0itOlePHED4CQ12SMi_xhIyE-1761327524552-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 993b3fde5a27c9ad-IAD
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_0dcd30dd665455750068fbb9a3a2d88196ad2fc728e59e6186",
+          "object": "response",
+          "created_at": 1761327523,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "error": null,
+          "incomplete_details": null,
+          "instructions": "You are a helpful assistant.",
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "output": [
+            {
+              "id": "msg_0dcd30dd665455750068fbb9a41e9c8196ab5d17fd177971ec",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "2 + 2 equals 4."
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 24,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 9,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 33
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Fri, 24 Oct 2025 17:38:44 GMT
+recorded_with: VCR 6.3.1

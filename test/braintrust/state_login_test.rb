@@ -69,7 +69,7 @@ class Braintrust::StateLoginTest < Minitest::Test
         state.login_in_thread
 
         # Wait for it to complete (should retry and eventually succeed)
-        state.wait_for_login(30)
+        state.wait_for_login(5)
 
         # Should have retried and succeeded
         assert state.logged_in, "State should be logged in after wait_for_login, but logged_in=#{state.logged_in}, call_count=#{call_count}"

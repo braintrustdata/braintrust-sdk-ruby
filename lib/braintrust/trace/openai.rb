@@ -190,13 +190,26 @@ module Braintrust
         aggregated
       end
 
-      # Wrap an OpenAI::Client to automatically create spans for chat completions
+      # Wrap an OpenAI::Client to automatically create spans for chat completions and responses
       # Supports both synchronous and streaming requests
       # @param client [OpenAI::Client] the OpenAI client to wrap
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
       def self.wrap(client, tracer_provider: nil)
         tracer_provider ||= ::OpenTelemetry.tracer_provider
 
+        # Wrap chat completions
+        wrap_chat_completions(client, tracer_provider)
+
+        # Wrap responses API if available
+        wrap_responses(client, tracer_provider) if client.respond_to?(:responses)
+
+        client
+      end
+
+      # Wrap chat completions API
+      # @param client [OpenAI::Client] the OpenAI client
+      # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider
+      def self.wrap_chat_completions(client, tracer_provider)
         # Create a wrapper module that intercepts chat.completions.create
         wrapper = Module.new do
           define_method(:create) do |**params|
@@ -344,8 +357,171 @@ module Braintrust
 
         # Prepend the wrapper to the completions resource
         client.chat.completions.singleton_class.prepend(wrapper)
+      end
 
-        client
+      # Wrap responses API
+      # @param client [OpenAI::Client] the OpenAI client
+      # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider
+      def self.wrap_responses(client, tracer_provider)
+        # Create a wrapper module that intercepts responses.create and responses.stream
+        wrapper = Module.new do
+          # Wrap non-streaming create method
+          define_method(:create) do |**params|
+            tracer = tracer_provider.tracer("braintrust")
+
+            tracer.in_span("openai.responses.create") do |span|
+              # Initialize metadata hash
+              metadata = {
+                "provider" => "openai",
+                "endpoint" => "/v1/responses"
+              }
+
+              # Capture request metadata fields
+              metadata_fields = %i[
+                model instructions modalities tools parallel_tool_calls
+                tool_choice temperature max_tokens top_p frequency_penalty
+                presence_penalty seed user metadata store response_format
+              ]
+
+              metadata_fields.each do |field|
+                metadata[field.to_s] = params[field] if params.key?(field)
+              end
+
+              # Set input as JSON
+              if params[:input]
+                span.set_attribute("braintrust.input_json", JSON.generate(params[:input]))
+              end
+
+              # Call the original method
+              response = super(**params)
+
+              # Set output as JSON
+              if response.respond_to?(:output) && response.output
+                span.set_attribute("braintrust.output_json", JSON.generate(response.output))
+              end
+
+              # Set metrics (token usage)
+              if response.respond_to?(:usage) && response.usage
+                metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(response.usage)
+                span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
+              end
+
+              # Add response metadata fields
+              metadata["id"] = response.id if response.respond_to?(:id) && response.id
+
+              # Set metadata ONCE at the end with complete hash
+              span.set_attribute("braintrust.metadata", JSON.generate(metadata))
+
+              response
+            end
+          end
+
+          # Wrap streaming method
+          define_method(:stream) do |**params|
+            tracer = tracer_provider.tracer("braintrust")
+            aggregated_events = []
+            metadata = {
+              "provider" => "openai",
+              "endpoint" => "/v1/responses",
+              "stream" => true
+            }
+
+            # Start span with proper context
+            span = tracer.start_span("openai.responses.create")
+
+            # Capture request metadata fields
+            metadata_fields = %i[
+              model instructions modalities tools parallel_tool_calls
+              tool_choice temperature max_tokens top_p frequency_penalty
+              presence_penalty seed user metadata store response_format
+            ]
+
+            metadata_fields.each do |field|
+              metadata[field.to_s] = params[field] if params.key?(field)
+            end
+
+            # Set input as JSON
+            if params[:input]
+              span.set_attribute("braintrust.input_json", JSON.generate(params[:input]))
+            end
+
+            # Set initial metadata
+            span.set_attribute("braintrust.metadata", JSON.generate(metadata))
+
+            # Call the original stream method with error handling
+            begin
+              stream = super(**params)
+            rescue => e
+              # Record exception if stream creation fails
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("OpenAI API error: #{e.message}")
+              span.finish
+              raise
+            end
+
+            # Wrap the stream to aggregate events
+            original_each = stream.method(:each)
+            stream.define_singleton_method(:each) do |&block|
+              original_each.call do |event|
+                # Store the actual event object (not converted to hash)
+                aggregated_events << event
+                block&.call(event)
+              end
+            rescue => e
+              # Record exception if streaming fails
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+              raise
+            ensure
+              # Always aggregate whatever events we collected and finish span
+              unless aggregated_events.empty?
+                aggregated_output = Braintrust::Trace::OpenAI.aggregate_responses_events(aggregated_events)
+                Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.output_json", aggregated_output[:output]) if aggregated_output[:output]
+
+                # Set metrics if usage is included
+                if aggregated_output[:usage]
+                  metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(aggregated_output[:usage])
+                  Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                end
+
+                # Update metadata with response fields
+                metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
+                Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.metadata", metadata)
+              end
+
+              span.finish
+            end
+
+            stream
+          end
+        end
+
+        # Prepend the wrapper to the responses resource
+        client.responses.singleton_class.prepend(wrapper)
+      end
+
+      # Aggregate responses streaming events into a single response structure
+      # Follows similar logic to Python SDK's _postprocess_streaming_results
+      # @param events [Array] array of event objects from stream
+      # @return [Hash] aggregated response with output, usage, etc.
+      def self.aggregate_responses_events(events)
+        return {} if events.empty?
+
+        # Find the response.completed event which has the final response
+        completed_event = events.find { |e| e.respond_to?(:type) && e.type == :"response.completed" }
+
+        if completed_event&.respond_to?(:response)
+          response = completed_event.response
+          # Convert the response object to a hash-like structure for logging
+          return {
+            id: response.respond_to?(:id) ? response.id : nil,
+            output: response.respond_to?(:output) ? response.output : nil,
+            usage: response.respond_to?(:usage) ? response.usage : nil
+          }
+        end
+
+        # Fallback if no completed event found
+        {}
       end
     end
   end
