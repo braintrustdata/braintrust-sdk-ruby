@@ -16,9 +16,6 @@ class BraintrustTest < Minitest::Test
   end
 
   def teardown
-    # Reset global state after each test
-    Braintrust::State.instance_variable_set(:@global_state, nil)
-
     # Reset global tracer provider to default proxy
     OpenTelemetry.tracer_provider = OpenTelemetry::Internal::ProxyTracerProvider.new
 
@@ -34,6 +31,9 @@ class BraintrustTest < Minitest::Test
     else
       ENV.delete("BRAINTRUST_DEFAULT_PROJECT")
     end
+
+    # Call parent teardown (includes global state cleanup from test_helper)
+    super
   end
 
   def test_init_sets_global_state_by_default

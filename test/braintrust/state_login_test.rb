@@ -4,14 +4,8 @@ require "test_helper"
 
 class Braintrust::StateLoginTest < Minitest::Test
   def setup
-    # Clear any global state from previous tests to ensure isolation
-    Braintrust::State.instance_variable_set(:@global_state, nil)
     @api_key = ENV["BRAINTRUST_API_KEY"]
     assert @api_key, "BRAINTRUST_API_KEY environment variable is required for login tests"
-  end
-
-  def teardown
-    Braintrust::State.instance_variable_set(:@global_state, nil)
   end
 
   def test_login_fetches_org_info

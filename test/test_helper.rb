@@ -162,4 +162,11 @@ end
 # Include helper in all test cases
 class Minitest::Test
   include TracingTestHelper
+
+  # Use Minitest hooks to clear global state after every test
+  # This ensures cleanup happens even if individual tests don't have teardown methods
+  def after_teardown
+    Braintrust::State.instance_variable_set(:@global_state, nil)
+    super
+  end
 end

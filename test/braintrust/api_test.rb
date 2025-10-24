@@ -7,10 +7,6 @@ class Braintrust::APITest < Minitest::Test
     flunk "BRAINTRUST_API_KEY not set" unless ENV["BRAINTRUST_API_KEY"]
   end
 
-  def teardown
-    Braintrust::State.instance_variable_set(:@global_state, nil)
-  end
-
   def test_api_new_with_explicit_state
     VCR.use_cassette("api/new_explicit_state") do
       state = get_non_global_state
