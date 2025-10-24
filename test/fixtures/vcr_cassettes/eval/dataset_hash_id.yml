@@ -1,0 +1,471 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '257'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-ZDU3OWQwMTAtYzQzZC00N2YxLWFjNzctNDkxMzkyYmM5YTEx''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
+        font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
+        object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors
+        ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 15:29:31 GMT
+      Etag:
+      - '"ubzjf1iqqj75"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Nonce:
+      - ZDU3OWQwMTAtYzQzZC00N2YxLWFjNzctNDkxMzkyYmM5YTEx
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::vgjfx-1761319769584-2ffc8b24e6a3
+    body:
+      encoding: UTF-8
+      string: '{"org_info":[{"id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"matt-test-org","api_url":"https://api.braintrust.dev","git_metadata":null,"is_universal_api":null,"proxy_url":"https://api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
+  recorded_at: Fri, 24 Oct 2025 15:29:31 GMT
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/dataset/register
+    body:
+      encoding: UTF-8
+      string: '{"dataset_name":"test-ruby-sdk-dataset-id","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","project_name":"ruby-sdk-test"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '551'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-ZmZmMDdjMjgtNmNkZS00MTM4LTg0MDAtYmNmNGVmZjU2NjQ0''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
+        font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
+        object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors
+        ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 15:29:32 GMT
+      Etag:
+      - '"phszpfole9fb"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/dataset/register"
+      X-Nonce:
+      - ZmZmMDdjMjgtNmNkZS00MTM4LTg0MDAtYmNmNGVmZjU2NjQ0
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::p9gw7-1761319771936-769b9ea74a18
+    body:
+      encoding: UTF-8
+      string: '{"project":{"id":"c532bc50-7094-4bbb-8704-42344c9728b9","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"ruby-sdk-test","created":"2025-10-22T02:53:49.779Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","settings":null},"dataset":{"id":"f6040259-2f57-463c-ad11-5f0976480ae0","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-dataset-id","description":null,"created":"2025-10-24T14:47:37.853Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null},"found_existing":true}'
+  recorded_at: Fri, 24 Oct 2025 15:29:32 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/v1/dataset/f6040259-2f57-463c-ad11-5f0976480ae0/insert
+    body:
+      encoding: UTF-8
+      string: '{"events":[{"input":"test","expected":"TEST"}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '52'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:29:32 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 3800ff4e-76c3-4db9-ba76-b1dfac848b52
+      X-Bt-Internal-Trace-Id:
+      - 68fb9b5c000000004e00408c3245ae99
+      X-Amz-Apigw-Id:
+      - S9U2eEN_IAMEURw=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"34-kpTdz8lS672FvIsIVFHZ8Z75loI"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb9b5c-001111f77272d9132d153b73;Parent=46b22aeb9d81f6e3;Sampled=0;Lineage=1:24be3d11:0
+      Via:
+      - 1.1 f8debc28b6c73eb3dc7540e2ac2f0e18.cloudfront.net (CloudFront), 1.1 f25b89e7ef738cb8bb7e28e041d8fe54.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - QEXg_Jf2pT3XKOlRi2HB04ROe093kcGpWh_Fbaitn7ngDXjZvFR_Jg==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"row_ids":["5dcd0c01-13dd-4bd6-842f-5478c963d4d2"]}'
+  recorded_at: Fri, 24 Oct 2025 15:29:32 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/btql
+    body:
+      encoding: UTF-8
+      string: '{"query":{"from":{"op":"function","name":{"op":"ident","name":["dataset"]},"args":[{"op":"literal","value":"f6040259-2f57-463c-ad11-5f0976480ae0"}]},"select":[{"op":"star"}],"limit":1000},"fmt":"jsonl"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '3185'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:29:32 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - a6e021fa-d559-4505-ba77-0ffbc96bcff5
+      X-Bt-Internal-Trace-Id:
+      - 68fb9b5c0000000052c56f9dddfb5706
+      X-Amz-Apigw-Id:
+      - S9U2hFzOoAMEHzA=
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb9b5c-0cbcfbc5668735d17956d33b;Parent=668dcfa397621f76;Sampled=0;Lineage=1:24be3d11:0
+      X-Bt-Cursor:
+      - aPuRis2rAAA
+      Via:
+      - 1.1 f5527f719bbc0d2932043daaeff80252.cloudfront.net (CloudFront), 1.1 d50d90bbddca57e02d6288d86c88470a.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - o7_aLL_9GHCnKNur2O73gmvcChz1LMldLQwPxhsXQ4HgZNr0wr9Jig==
+    body:
+      encoding: ASCII-8BIT
+      string: |
+        {"_pagination_key":"p07564810819080880128","_xact_id":"1000196022105546841","created":"2025-10-24T15:29:32.318Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"5dcd0c01-13dd-4bd6-842f-5478c963d4d2","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"cbe220a1-4f3c-4be0-a910-26bf87f11f59","span_id":"cbe220a1-4f3c-4be0-a910-26bf87f11f59","tags":null}
+        {"_pagination_key":"p07564802288482189312","_xact_id":"1000196021975380235","created":"2025-10-24T14:56:25.536Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"9346985b-ac19-47e4-81cf-8aa0f0f0176a","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"3816c372-b36e-4e05-88a6-5e86254050bb","span_id":"3816c372-b36e-4e05-88a6-5e86254050bb","tags":null}
+        {"_pagination_key":"p07564801958911475712","_xact_id":"1000196021970351385","created":"2025-10-24T14:55:09.030Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"91594e1e-bca7-4d82-a9a9-2d294aea954d","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"102467dc-10f4-4a17-94ba-8358587bfe80","span_id":"102467dc-10f4-4a17-94ba-8358587bfe80","tags":null}
+        {"_pagination_key":"p07564801559978508288","_xact_id":"1000196021964264151","created":"2025-10-24T14:53:36.427Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"210f2cb4-bf0a-4ae3-b7fd-53b70a5bdc4b","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"83d7412d-8dd2-41c7-9895-8a5719c86e75","span_id":"83d7412d-8dd2-41c7-9895-8a5719c86e75","tags":null}
+        {"_pagination_key":"p07564800887563288576","_xact_id":"1000196021954003909","created":"2025-10-24T14:50:59.550Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"e9c2225b-59ba-4796-98dc-61219ab4828c","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"9b630e57-d51b-4cf0-b316-19c8fb089013","span_id":"9b630e57-d51b-4cf0-b316-19c8fb089013","tags":null}
+        {"_pagination_key":"p07564800709715558400","_xact_id":"1000196021951290168","created":"2025-10-24T14:50:17.976Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"e5527e26-fe2f-4517-b8ca-0fd138d980be","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"53b1f92e-c259-4559-9e56-e31c194f922c","span_id":"53b1f92e-c259-4559-9e56-e31c194f922c","tags":null}
+        {"_pagination_key":"p07564800024440930304","_xact_id":"1000196021940833707","created":"2025-10-24T14:47:37.921Z","dataset_id":"f6040259-2f57-463c-ad11-5f0976480ae0","expected":"TEST","id":"32e3891f-69fa-4d89-be8b-b9c691f5fe2f","input":"test","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"e5e96bf1-209e-4d96-bb90-e39dd5bab4f0","span_id":"e5e96bf1-209e-4d96-bb90-e39dd5bab4f0","tags":null}
+  recorded_at: Fri, 24 Oct 2025 15:29:32 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/btql
+    body:
+      encoding: UTF-8
+      string: '{"query":{"from":{"op":"function","name":{"op":"ident","name":["dataset"]},"args":[{"op":"literal","value":"f6040259-2f57-463c-ad11-5f0976480ae0"}]},"select":[{"op":"star"}],"limit":1000,"cursor":"aPuRis2rAAA"},"fmt":"jsonl"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '0'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:29:33 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 17a8f9b4-31e9-483b-a158-de887df9f9fc
+      X-Bt-Internal-Trace-Id:
+      - 68fb9b5c0000000032a041840c2be844
+      X-Amz-Apigw-Id:
+      - S9U2lEkkIAMEiqg=
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb9b5c-46cca62608748eca550bdd58;Parent=4993f4968cf0f988;Sampled=0;Lineage=1:24be3d11:0
+      Via:
+      - 1.1 bf8d7cb6fca5d51158e1109ca40fe242.cloudfront.net (CloudFront), 1.1 8cdf4e2d4f4070992665477c4dbca0c0.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - lvvQgSq6gldMnrfwR4nOxSSEk6x2Aj48ljAzzhRH7pDYgrs3huxboA==
+    body:
+      encoding: ASCII-8BIT
+      string: ''
+  recorded_at: Fri, 24 Oct 2025 15:29:33 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/v1/project
+    body:
+      encoding: UTF-8
+      string: '{"name":"ruby-sdk-test"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '236'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:29:33 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 607955de-d262-443d-a6d3-bf72dd3c11a0
+      X-Bt-Internal-Trace-Id:
+      - 68fb9b5d000000007de0590e1ad67207
+      X-Amz-Apigw-Id:
+      - S9U2pGd1oAMEU7A=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"ec-ae+104VIsuTGSnPanxA+Dc4IyRE"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb9b5d-6e4c1c777d42427d634ccead;Parent=528fc2cd1cab4cda;Sampled=0;Lineage=1:24be3d11:0
+      X-Bt-Found-Existing:
+      - 'true'
+      Via:
+      - 1.1 6e202b767e6bdee837ba15ada7e3120e.cloudfront.net (CloudFront), 1.1 bd3e3884ce6fe1fd36336541cce9ec7e.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - Fk3lrm3cdhGym9QkfoNZSUkK1c_9bTBCxrBnqaX8OMatSGuoeuy30A==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"id":"c532bc50-7094-4bbb-8704-42344c9728b9","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"ruby-sdk-test","created":"2025-10-22T02:53:49.779Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","settings":null}'
+  recorded_at: Fri, 24 Oct 2025 15:29:33 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/v1/experiment
+    body:
+      encoding: UTF-8
+      string: '{"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-exp-id","ensure_new":true}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '391'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:29:33 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 4b6699da-8ccc-4559-83a8-b78adff6c860
+      X-Bt-Internal-Trace-Id:
+      - 68fb9b5d000000006c2affe40afd57a8
+      X-Amz-Apigw-Id:
+      - S9U2rEHEoAMEjeg=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"187-vzidsy1hbvmgrjVQ0RAXiEKH2Rc"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb9b5d-27b77f47569a33c617bb6986;Parent=453497dffe353ea7;Sampled=0;Lineage=1:24be3d11:0
+      Via:
+      - 1.1 8a9cdb228e33f8d52a4b42c56ca26590.cloudfront.net (CloudFront), 1.1 76d4de5b65bdf749a3f97445d1b9f4d2.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - RTikKucW-hlXS7I0JEkE89suRnArte11DMJxtX6vABjgKyXeQB7vVQ==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"id":"6e338119-5266-4979-abcf-9930e165bd3b","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-exp-id-975ec196","description":null,"created":"2025-10-24T15:29:33.607Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
+  recorded_at: Fri, 24 Oct 2025 15:29:33 GMT
+recorded_with: VCR 6.3.1

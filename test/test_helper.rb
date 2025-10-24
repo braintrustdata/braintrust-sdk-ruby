@@ -15,6 +15,41 @@ require "braintrust"
 
 require "minitest/autorun"
 
+# VCR for recording/replaying HTTP interactions
+require "vcr"
+require "webmock/minitest"
+
+VCR.configure do |config|
+  config.cassette_library_dir = "test/fixtures/vcr_cassettes"
+  config.hook_into :webmock
+
+  # Filter sensitive data from cassettes
+  # Note: We filter the API keys themselves, but NOT the Authorization header
+  # because VCR needs the actual header value to replay requests correctly
+  config.filter_sensitive_data("<BRAINTRUST_API_KEY>") { ENV["BRAINTRUST_API_KEY"] }
+  config.filter_sensitive_data("<OPENAI_API_KEY>") { ENV["OPENAI_API_KEY"] }
+
+  # Ignore OpenTelemetry trace exports (background async calls)
+  config.ignore_request do |request|
+    URI(request.uri).path.start_with?("/otel/")
+  end
+
+  # Allow real requests when VCR_OFF=true (for debugging)
+  config.allow_http_connections_when_no_cassette = true if ENV["VCR_OFF"]
+
+  # Recording mode: :once (default), :all (re-record), :none (no recording)
+  config.default_cassette_options = {
+    record: ENV["VCR_MODE"]&.to_sym || :once,
+    match_requests_on: [:method, :uri]  # Don't match on body (contains dynamic data)
+  }
+end
+
+# Disable VCR entirely if VCR_OFF is set
+if ENV["VCR_OFF"]
+  VCR.turn_off!(ignore_cassettes: true)
+  WebMock.allow_net_connect!
+end
+
 # Test helpers for OpenTelemetry tracing
 module TracingTestHelper
   # Wrapper for OpenTelemetry test setup

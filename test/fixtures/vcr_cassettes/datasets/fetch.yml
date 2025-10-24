@@ -1,0 +1,294 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '257'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-YzUwNTcwYWEtMzI4MS00ODQ4LWFmMzItMzA0ODRlMzkzNmRj''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
+        font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
+        object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors
+        ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 15:10:01 GMT
+      Etag:
+      - '"ubzjf1iqqj75"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Nonce:
+      - YzUwNTcwYWEtMzI4MS00ODQ4LWFmMzItMzA0ODRlMzkzNmRj
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::zz4gh-1761318601590-5e96fa65b486
+    body:
+      encoding: UTF-8
+      string: '{"org_info":[{"id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"matt-test-org","api_url":"https://api.braintrust.dev","git_metadata":null,"is_universal_api":null,"proxy_url":"https://api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
+  recorded_at: Fri, 24 Oct 2025 15:10:01 GMT
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/dataset/register
+    body:
+      encoding: UTF-8
+      string: '{"dataset_name":"test-ruby-sdk-fetch","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","project_name":"ruby-sdk-test"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '546'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-NWJkZjdjZDMtOGMzOS00NDQ5LTlhMjYtODljMjZmYzg2MWNk''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
+        font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
+        object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors
+        ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 15:10:04 GMT
+      Etag:
+      - '"m9n385l317f6"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/dataset/register"
+      X-Nonce:
+      - NWJkZjdjZDMtOGMzOS00NDQ5LTlhMjYtODljMjZmYzg2MWNk
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::9xvqt-1761318601709-6c8e97effd79
+    body:
+      encoding: UTF-8
+      string: '{"project":{"id":"c532bc50-7094-4bbb-8704-42344c9728b9","org_id":"5ba6d482-b475-4c66-8cd2-5815694764e3","name":"ruby-sdk-test","created":"2025-10-22T02:53:49.779Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","settings":null},"dataset":{"id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-fetch","description":null,"created":"2025-10-24T14:47:41.168Z","deleted_at":null,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null},"found_existing":true}'
+  recorded_at: Fri, 24 Oct 2025 15:10:04 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/v1/dataset/8919cfc5-32cf-4755-a88e-6afaef2f2033/insert
+    body:
+      encoding: UTF-8
+      string: '{"events":[{"input":"test1","expected":"TEST1"},{"input":"test2","expected":"TEST2"}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '91'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:10:04 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 0c3aa744-fb41-42df-b506-69837c705437
+      X-Bt-Internal-Trace-Id:
+      - 68fb96cc00000000354b155da575819a
+      X-Amz-Apigw-Id:
+      - S9R__FDroAMEbtA=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"5b-tctl+pmZUvvTSc2GUSQfSGrwYXo"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb96cc-2bbfab0e023c28893a374242;Parent=5e3e1c904d916245;Sampled=0;Lineage=1:24be3d11:0
+      Via:
+      - 1.1 f8debc28b6c73eb3dc7540e2ac2f0e18.cloudfront.net (CloudFront), 1.1 c1685d59e35fdb859ab8a1f97feb5652.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - JbMXfnSsU-WWgbmmKgAHwjzggsHX4lnu3CFrUXiurtYKpbXzfjoNsg==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"row_ids":["8ce6de3d-0dd7-4103-ae98-693ae6909504","b7c4c992-db2b-42b3-989c-2e28e5c7a999"]}'
+  recorded_at: Fri, 24 Oct 2025 15:10:04 GMT
+- request:
+    method: post
+    uri: https://api.braintrust.dev/btql
+    body:
+      encoding: UTF-8
+      string: '{"query":{"from":{"op":"function","name":{"op":"ident","name":["dataset"]},"args":[{"op":"literal","value":"8919cfc5-32cf-4755-a88e-6afaef2f2033"}]},"select":[{"op":"star"}],"limit":1000},"fmt":"jsonl"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '7312'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P2
+      - JFK50-P5
+      Date:
+      - Fri, 24 Oct 2025 15:10:05 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 22ec831c-97b7-40dc-9948-bbe7b7f658d0
+      X-Bt-Internal-Trace-Id:
+      - 68fb96cc000000003602b2cbd21aab23
+      X-Amz-Apigw-Id:
+      - S9SACG2zIAMEeZA=
+      Vary:
+      - Origin
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-68fb96cc-3e63fe055ad87ecf6e52a2fa;Parent=006be4cd2dbd5219;Sampled=0;Lineage=1:24be3d11:0
+      X-Bt-Cursor:
+      - aPuRjdb5AAA
+      Via:
+      - 1.1 bf8d7cb6fca5d51158e1109ca40fe242.cloudfront.net (CloudFront), 1.1 d9b04a822e1c215374729ec159356140.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - L6w_aId-BvNq-Yq08yaSimYbMrs45QVafVWrrsENtjTndM55OptEXA==
+    body:
+      encoding: ASCII-8BIT
+      string: |
+        {"_pagination_key":"p07564805802668851201","_xact_id":"1000196022029002468","created":"2025-10-24T15:10:04.329Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"b7c4c992-db2b-42b3-989c-2e28e5c7a999","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"2d5e6ec5-bcc7-4a46-8ce4-3ba53dd87ee2","span_id":"2d5e6ec5-bcc7-4a46-8ce4-3ba53dd87ee2","tags":null}
+        {"_pagination_key":"p07564805802668851200","_xact_id":"1000196022029002468","created":"2025-10-24T15:10:04.329Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"8ce6de3d-0dd7-4103-ae98-693ae6909504","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"39757846-c3c7-4736-80d8-c9fc920a1390","span_id":"39757846-c3c7-4736-80d8-c9fc920a1390","tags":null}
+        {"_pagination_key":"p07564804540345352193","_xact_id":"1000196022009740940","created":"2025-10-24T15:05:10.457Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"e97ff5b9-aa8a-4421-a28d-d7250692ba47","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"4cb56d01-bde6-4f9e-bc9f-e2e4efa1770d","span_id":"4cb56d01-bde6-4f9e-bc9f-e2e4efa1770d","tags":null}
+        {"_pagination_key":"p07564804540345352192","_xact_id":"1000196022009740940","created":"2025-10-24T15:05:10.457Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"77c10693-906e-454e-a66a-6d4860867447","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"1ff66aa6-fd08-482b-8a98-a7c6ce63762a","span_id":"1ff66aa6-fd08-482b-8a98-a7c6ce63762a","tags":null}
+        {"_pagination_key":"p07564802206065033217","_xact_id":"1000196021974122649","created":"2025-10-24T14:56:06.296Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"6ea0e9bf-6a65-4a21-b4eb-9f067b3823fb","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"5a4cd72e-48f2-445f-95ae-c6184b0839f5","span_id":"5a4cd72e-48f2-445f-95ae-c6184b0839f5","tags":null}
+        {"_pagination_key":"p07564802206065033216","_xact_id":"1000196021974122649","created":"2025-10-24T14:56:06.296Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"79e17764-f09d-4cfe-b9fb-70193859ed4b","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"270dffe2-1ecf-4100-9f76-4ec25debac20","span_id":"270dffe2-1ecf-4100-9f76-4ec25debac20","tags":null}
+        {"_pagination_key":"p07564802032629383169","_xact_id":"1000196021971476231","created":"2025-10-24T14:55:26.449Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"44e5b620-07ed-48c9-a5d7-015f68bd44c5","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"ff562b31-3816-4401-ba4d-e806bc66cee6","span_id":"ff562b31-3816-4401-ba4d-e806bc66cee6","tags":null}
+        {"_pagination_key":"p07564802032629383168","_xact_id":"1000196021971476231","created":"2025-10-24T14:55:26.449Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"1e7c216f-3bcc-4aee-9b34-10504db499a6","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"6949ece4-af51-4518-8493-01988f644d98","span_id":"6949ece4-af51-4518-8493-01988f644d98","tags":null}
+        {"_pagination_key":"p07564801520957587457","_xact_id":"1000196021963668739","created":"2025-10-24T14:53:27.148Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"218aa432-4836-4d01-b49c-7531d3e521a6","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"7ef91fa4-7afd-417c-8a7b-9dc94b553466","span_id":"7ef91fa4-7afd-417c-8a7b-9dc94b553466","tags":null}
+        {"_pagination_key":"p07564801520957587456","_xact_id":"1000196021963668739","created":"2025-10-24T14:53:27.148Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"26850914-af8f-4783-93b4-f0e2a5239d9a","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"1fcfc527-c1db-4024-a8bd-1d93bf336f30","span_id":"1fcfc527-c1db-4024-a8bd-1d93bf336f30","tags":null}
+        {"_pagination_key":"p07564800865893023745","_xact_id":"1000196021953673247","created":"2025-10-24T14:50:54.562Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"00f14660-a9f6-4959-bb36-23737dc0ffd7","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"c6b5725e-1300-4c8b-b6bc-22c5c7572e3a","span_id":"c6b5725e-1300-4c8b-b6bc-22c5c7572e3a","tags":null}
+        {"_pagination_key":"p07564800865893023744","_xact_id":"1000196021953673247","created":"2025-10-24T14:50:54.562Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"8edad6c2-0b4f-4b92-81e5-c3a287ead7a0","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"07b25d3d-d7d5-4153-a13e-5c50dc6e85dc","span_id":"07b25d3d-d7d5-4153-a13e-5c50dc6e85dc","tags":null}
+        {"_pagination_key":"p07564800675054092289","_xact_id":"1000196021950761276","created":"2025-10-24T14:50:10.472Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"0529362d-2ebb-43b0-b3e5-3bc71203767a","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"32421f15-7f84-4c53-bee1-066a29afcc38","span_id":"32421f15-7f84-4c53-bee1-066a29afcc38","tags":null}
+        {"_pagination_key":"p07564800675054092288","_xact_id":"1000196021950761276","created":"2025-10-24T14:50:10.471Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"8ef0247b-494e-4efc-86c3-8d9bf76857c7","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"0a3ec15b-7802-4d6b-add5-f38d07bdbbcc","span_id":"0a3ec15b-7802-4d6b-add5-f38d07bdbbcc","tags":null}
+        {"_pagination_key":"p07564800037481938945","_xact_id":"1000196021941032697","created":"2025-10-24T14:47:41.241Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST2","id":"d214af39-ccd3-46fe-a1c0-16fab5d52524","input":"test2","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"ac4852f8-f211-4376-8388-bc2126a32451","span_id":"ac4852f8-f211-4376-8388-bc2126a32451","tags":null}
+        {"_pagination_key":"p07564800037481938944","_xact_id":"1000196021941032697","created":"2025-10-24T14:47:41.241Z","dataset_id":"8919cfc5-32cf-4755-a88e-6afaef2f2033","expected":"TEST1","id":"3a79a514-019c-421d-861c-43e1a9e14786","input":"test1","is_root":true,"metadata":null,"origin":null,"project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","root_span_id":"3dc022c2-4fd8-4cb5-a998-02a251fc3f97","span_id":"3dc022c2-4fd8-4cb5-a998-02a251fc3f97","tags":null}
+  recorded_at: Fri, 24 Oct 2025 15:10:05 GMT
+recorded_with: VCR 6.3.1

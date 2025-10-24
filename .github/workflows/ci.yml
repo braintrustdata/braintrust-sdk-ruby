@@ -27,6 +27,7 @@ jobs:
       run: bundle exec rake ci
       env:
         BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4

@@ -14,12 +14,12 @@ task :lint do
   sh "bundle exec standardrb"
 end
 
-desc "Run Standard linter with auto-fix"
+desc "Run linter with auto-fix"
 task :"lint:fix" do
   sh "bundle exec standardrb --fix"
 end
 
-desc "Remove Ruby build artifacts (coverage, pkg, gems, etc.)"
+desc "Remove Ruby build artifacts"
 task :clean do
   FileUtils.rm_rf("pkg")
   FileUtils.rm_rf("coverage")
@@ -48,15 +48,10 @@ task build: [:clean] do
   sh "gem build braintrust.gemspec"
 end
 
-desc "Open coverage report (run 'rake test' first to generate)"
-task :coverage do
+desc "Run tests and open coverage report"
+task coverage: :test do
   coverage_file = "coverage/index.html"
-  unless File.exist?(coverage_file)
-    puts "Coverage report not found. Run 'rake test' first to generate coverage data."
-    exit 1
-  end
 
-  # Detect OS and open appropriately
   case RbConfig::CONFIG["host_os"]
   when /darwin/i
     sh "open #{coverage_file}"
@@ -74,14 +69,35 @@ task ci: [:lint, :test]
 
 task default: :ci
 
+# VCR tasks for managing HTTP cassettes
+namespace :test do
+  namespace :vcr do
+    desc "Re-record all VCR cassettes"
+    task :record_all do
+      ENV["VCR_MODE"] = "all"
+      Rake::Task["test"].invoke
+    end
+
+    desc "Record new VCR cassettes only"
+    task :record_new do
+      ENV["VCR_MODE"] = "new_episodes"
+      Rake::Task["test"].invoke
+    end
+
+    desc "Run tests without VCR"
+    task :off do
+      ENV["VCR_OFF"] = "true"
+      Rake::Task["test"].invoke
+    end
+  end
+end
+
 # Release tasks
 namespace :release do
-  desc "Validate release tag and version"
   task :validate do
     sh "bash scripts/validate-release-tag.sh"
   end
 
-  desc "Publish gem to RubyGems (requires authentication)"
   task :publish do
     gem_files = FileList["braintrust-*.gem"]
     if gem_files.empty?
@@ -95,13 +111,11 @@ namespace :release do
     sh "gem push #{gem_files.first}"
   end
 
-  desc "Generate changelog for release"
   task :changelog do
     sh "bash scripts/generate-release-notes.sh > changelog.md"
     puts "✓ Changelog generated: changelog.md"
   end
 
-  desc "Create GitHub release"
   task :github do
     unless File.exist?("changelog.md")
       puts "Error: changelog.md not found. Run 'rake release:changelog' first."
@@ -115,7 +129,6 @@ namespace :release do
     puts "✓ GitHub release created: #{tag}"
   end
 
-  desc "Build and publish prerelease (modifies version with alpha suffix)"
   task :prerelease do
     # Get current version
     require_relative "lib/braintrust/version"
@@ -151,7 +164,6 @@ namespace :release do
   end
 end
 
-desc "Full release: validate, lint, generate changelog, build, publish, and create GitHub release"
 task release: ["release:validate", :lint, "release:changelog", :build, "release:publish", "release:github"] do
   puts "✓ Release completed successfully!"
 end

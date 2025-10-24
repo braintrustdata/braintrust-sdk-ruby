@@ -28,29 +28,18 @@ rake
 
 ## Development
 
+All of our common dev tasks are in rake.
+
 ```bash
-rake test              # Run tests
-rake lint              # Check style
-rake lint:fix          # Auto-fix style
-mise run watch-test    # Watch mode
+rake -T 
 ```
 
 ## Testing
 
-- Use Minitest with plain `assert` statements
-- Test both global and explicit state
-- Aim for 80%+ coverage
+We use VCR for making http tests fast. You can run tests with these enabled,
+off, etc. If you add new tests you'll need to record new cassettes. See this
+for more details.
 
-## Pull Requests
-
-1. Create feature branch
-2. Write tests first (TDD)
-3. Ensure `rake` passes (tests + lint)
-4. Update CHANGELOG.md if user-facing
-5. Create PR
-
-## Troubleshooting
-
-**Ruby won't compile**: Run `./scripts/install-deps.sh`
-**Linter fails**: Run `rake lint:fix`
-**Tests fail**: Run `bundle install`
+```bash
+rake -T test:vcr
+```
