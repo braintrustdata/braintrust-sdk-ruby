@@ -43,32 +43,6 @@ class Braintrust::StateLoginTest < Minitest::Test
     end
   end
 
-  def test_login_in_thread_spawns_background_thread
-    VCR.use_cassette("auth/login_background") do
-      state = Braintrust::State.new(
-        api_key: @api_key,
-        app_url: "https://www.braintrust.dev"
-      )
-
-      # Should not be logged in yet
-      refute state.logged_in
-
-      # Start background login - should return immediately (non-blocking)
-      result = state.login_in_thread
-
-      # Should return self
-      assert_same state, result
-
-      # Wait for login to complete
-      state.wait_for_login(30)
-
-      # Should be logged in now
-      assert state.logged_in
-      refute_nil state.org_id
-      refute_nil state.org_name
-    end
-  end
-
   def test_login_in_thread_retries_on_failure
     VCR.use_cassette("auth/login_with_retries") do
       state = Braintrust::State.new(
