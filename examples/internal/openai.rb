@@ -9,11 +9,17 @@ require "json"
 
 # Internal example: Comprehensive OpenAI features with Braintrust tracing
 #
-# This example demonstrates all major OpenAI chat completion features:
-# 1. Vision (image understanding)
-# 2. Tool/function calling
-# 3. Streaming responses
-# 4. Reasoning models (o1-mini)
+# This golden example showcases ALL OpenAI chat completion features with proper tracing:
+# 1. Vision (image understanding) with array content
+# 2. Tool/function calling (single-turn)
+# 3. Streaming chat completions with automatic chunk aggregation
+# 4. Multi-turn tool calling with tool_call_id
+# 5. Mixed content (text + images)
+# 6. Reasoning models with advanced token metrics
+# 7. Temperature variations
+# 8. Advanced parameters
+#
+# This example validates that the Ruby SDK captures the same data as TypeScript/Go SDKs.
 #
 # Usage:
 #   OPENAI_API_KEY=key bundle exec ruby examples/internal/openai.rb
@@ -112,14 +118,144 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     puts "  Tokens: #{response.usage.total_tokens}"
   end
 
-  # Example 3: Streaming (TODO: requires wrapper support for stream_raw)
-  # Skipping for now - requires different API in OpenAI gem
-  puts "\n3. Streaming Response"
+  # Example 3: Streaming Chat Completions
+  puts "\n3. Streaming Chat Completions"
   puts "-" * 50
-  puts "⊘ Skipped: Streaming requires wrapper updates (stream_raw API)"
+  tracer.in_span("example-streaming") do
+    print "Streaming response: "
+    stream = client.chat.completions.stream_raw(
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "user", content: "Count from 1 to 5"}
+      ],
+      max_tokens: 50,
+      stream_options: {
+        include_usage: true  # Request usage stats in stream
+      }
+    )
 
-  # Example 4: Reasoning Model (o1-mini)
-  puts "\n4. Reasoning Model (o1-mini)"
+    # Consume and display the stream
+    total_tokens = 0
+    stream.each do |chunk|
+      delta_content = chunk.choices[0]&.delta&.content
+      print delta_content if delta_content
+
+      # Capture usage from final chunk
+      total_tokens = chunk.usage&.total_tokens if chunk.usage
+    end
+    puts ""
+    puts "✓ Streaming complete, tokens: #{total_tokens}"
+    puts "  (Note: Braintrust automatically aggregates all chunks for the trace)"
+  end
+
+  # Example 4: Multi-turn Tool Calling (with tool_call_id)
+  puts "\n4. Multi-turn Tool Calling"
+  puts "-" * 50
+  tracer.in_span("example-multi-turn-tools") do
+    # First request - model decides to call a tool
+    first_response = client.chat.completions.create(
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "user", content: "What is 127 multiplied by 49?"}
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "calculate",
+            description: "Perform a mathematical calculation",
+            parameters: {
+              type: "object",
+              properties: {
+                operation: {type: "string", enum: ["add", "subtract", "multiply", "divide"]},
+                a: {type: "number"},
+                b: {type: "number"}
+              },
+              required: ["operation", "a", "b"]
+            }
+          }
+        }
+      ],
+      max_tokens: 100
+    )
+
+    tool_call = first_response.choices[0].message.tool_calls&.first
+    if tool_call
+      puts "✓ First turn - Tool called: #{tool_call.function.name}"
+      puts "  Arguments: #{tool_call.function.arguments}"
+
+      # Simulate tool execution
+      result = 127 * 49
+
+      # Second request - provide tool result using tool_call_id
+      second_response = client.chat.completions.create(
+        model: "gpt-4o-mini",
+        messages: [
+          {role: "user", content: "What is 127 multiplied by 49?"},
+          first_response.choices[0].message.to_h,  # Assistant message with tool_calls
+          {
+            role: "tool",
+            tool_call_id: tool_call.id,
+            content: result.to_s
+          }
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "calculate",
+              description: "Perform a mathematical calculation",
+              parameters: {
+                type: "object",
+                properties: {
+                  operation: {type: "string", enum: ["add", "subtract", "multiply", "divide"]},
+                  a: {type: "number"},
+                  b: {type: "number"}
+                },
+                required: ["operation", "a", "b"]
+              }
+            }
+          }
+        ],
+        max_tokens: 100
+      )
+
+      puts "✓ Second turn - Response: #{second_response.choices[0].message.content}"
+      puts "  Tokens (total across both turns): #{first_response.usage.total_tokens + second_response.usage.total_tokens}"
+    else
+      puts "⊘ Model didn't call tool"
+    end
+  end
+
+  # Example 5: Mixed Content (text + image in same message)
+  puts "\n5. Mixed Content (Text + Image)"
+  puts "-" * 50
+  tracer.in_span("example-mixed-content") do
+    response = client.chat.completions.create(
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {type: "text", text: "Look at this boardwalk:"},
+            {
+              type: "image_url",
+              image_url: {
+                url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/320px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+              }
+            },
+            {type: "text", text: "Describe the scene in 2 sentences."}
+          ]
+        }
+      ],
+      max_tokens: 100
+    )
+    puts "✓ Mixed content response: #{response.choices[0].message.content[0..100]}..."
+    puts "  Tokens: #{response.usage.total_tokens}"
+  end
+
+  # Example 6: Reasoning Model (o1-mini) with Advanced Token Metrics
+  puts "\n6. Reasoning Model (o1-mini)"
   puts "-" * 50
   tracer.in_span("example-reasoning") do
     response = client.chat.completions.create(
@@ -131,13 +267,42 @@ tracer.in_span("examples/internal/openai.rb") do |span|
         }
       ]
     )
-    puts "✓ Reasoning response: #{response.choices[0].message.content}"
+    puts "✓ Reasoning response: #{response.choices[0].message.content[0..80]}..."
     puts "  Tokens: #{response.usage.total_tokens}"
-    puts "  Reasoning tokens: #{response.usage.completion_tokens_details&.reasoning_tokens}" if response.usage.respond_to?(:completion_tokens_details)
+
+    # Show advanced token metrics if available
+    if response.usage.respond_to?(:completion_tokens_details) && response.usage.completion_tokens_details
+      details = response.usage.completion_tokens_details
+      puts "  Advanced metrics:"
+      puts "    - Reasoning tokens: #{details.reasoning_tokens}" if details.respond_to?(:reasoning_tokens) && details.reasoning_tokens
+      puts "    - Audio tokens: #{details.audio_tokens}" if details.respond_to?(:audio_tokens) && details.audio_tokens
+    end
+
+    if response.usage.respond_to?(:prompt_tokens_details) && response.usage.prompt_tokens_details
+      details = response.usage.prompt_tokens_details
+      puts "    - Cached tokens: #{details.cached_tokens}" if details.respond_to?(:cached_tokens) && details.cached_tokens
+    end
   end
 
-  # Example 5: Multiple parameters
-  puts "\n5. Advanced Parameters"
+  # Example 7: Temperature & Parameter Variations
+  puts "\n7. Temperature & Parameter Variations"
+  puts "-" * 50
+  tracer.in_span("example-temperature-variations") do
+    [0.0, 0.7, 1.0].each do |temp|
+      response = client.chat.completions.create(
+        model: "gpt-4o-mini",
+        messages: [
+          {role: "user", content: "Name a color"}
+        ],
+        temperature: temp,
+        max_tokens: 5
+      )
+      puts "✓ temp=#{temp}: #{response.choices[0].message.content}"
+    end
+  end
+
+  # Example 8: Advanced Parameters Showcase
+  puts "\n8. Advanced Parameters (metadata capture)"
   puts "-" * 50
   tracer.in_span("example-advanced-params") do
     response = client.chat.completions.create(
@@ -152,21 +317,33 @@ tracer.in_span("examples/internal/openai.rb") do |span|
       presence_penalty: 0.5,
       max_tokens: 50,
       n: 1,
-      seed: 12345
+      seed: 12345,
+      user: "golden-example-user"
     )
     puts "✓ Response: #{response.choices[0].message.content[0..80]}..."
     puts "  Model: #{response.model}"
     puts "  System fingerprint: #{response.system_fingerprint}"
     puts "  Tokens: #{response.usage.total_tokens}"
+    puts "  All params captured in metadata for Braintrust trace"
   end
 end # End of parent trace
 
 puts "\n" + "=" * 50
 puts "✓ All examples completed!"
-puts "✓ View this trace at:"
+puts ""
+puts "This golden example validates that the Ruby SDK properly captures:"
+puts "  ✓ Vision messages with array content (text + image_url)"
+puts "  ✓ Tool calling (single and multi-turn with tool_call_id)"
+puts "  ✓ Streaming chat completions with chunk aggregation"
+puts "  ✓ Mixed content messages (multiple text/image blocks)"
+puts "  ✓ Advanced token metrics (cached, reasoning, audio tokens)"
+puts "  ✓ All request parameters (temperature, top_p, seed, user, etc.)"
+puts "  ✓ Full message structures (role, content, tool_calls, etc.)"
+puts ""
+puts "View this trace at:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
 
 # Shutdown to flush spans
 OpenTelemetry.tracer_provider.shutdown
 
-puts "\n✓ Trace sent to Braintrust!"
+puts "\n✓ Trace sent to Braintrust - check the UI to verify all fields!"

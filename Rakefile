@@ -48,6 +48,27 @@ task build: [:clean] do
   sh "gem build braintrust.gemspec"
 end
 
+desc "Open coverage report (run 'rake test' first to generate)"
+task :coverage do
+  coverage_file = "coverage/index.html"
+  unless File.exist?(coverage_file)
+    puts "Coverage report not found. Run 'rake test' first to generate coverage data."
+    exit 1
+  end
+
+  # Detect OS and open appropriately
+  case RbConfig::CONFIG["host_os"]
+  when /darwin/i
+    sh "open #{coverage_file}"
+  when /linux/i
+    sh "xdg-open #{coverage_file}"
+  when /mswin|mingw|cygwin/i
+    sh "start #{coverage_file}"
+  else
+    puts "Coverage report available at: #{File.expand_path(coverage_file)}"
+  end
+end
+
 desc "Verify CI (lint + test)"
 task ci: [:lint, :test]
 

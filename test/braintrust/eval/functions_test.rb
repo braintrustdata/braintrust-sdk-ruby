@@ -175,4 +175,69 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
     assert_instance_of Braintrust::Eval::Result, result
     assert result.duration > 0
   end
+
+  def test_use_remote_scorer_in_eval_run
+    # This test verifies that remote scorers can be used in Eval.run
+    # This tests the "online scorer" functionality
+    function_slug = unique_name("eval-scorer")
+
+    # Create a remote scorer function with LLM classifier
+    @api.functions.create(
+      project_name: @project_name,
+      slug: function_slug,
+      function_data: {type: "prompt"},
+      prompt_data: {
+        prompt: {
+          type: "chat",
+          messages: [
+            {role: "system", content: "You are a scorer. Evaluate if the output matches the expected value."},
+            {role: "user", content: "Does '{{output}}' match '{{expected}}'? Answer 'correct' or 'incorrect'."}
+          ]
+        },
+        options: {
+          model: "gpt-4o-mini",
+          params: {temperature: 0},
+          parser: {
+            type: "llm_classifier",
+            use_cot: true,
+            choice_scores: {
+              "correct" => 1.0,
+              "incorrect" => 0.0
+            }
+          }
+        }
+      }
+    )
+
+    # Get remote scorer
+    scorer = Braintrust::Eval::Functions.scorer(
+      project: @project_name,
+      slug: function_slug,
+      state: @state
+    )
+
+    # Simple task that uppercases
+    task = ->(input) { input.upcase }
+
+    # Use remote scorer in Eval.run
+    result = Braintrust::Eval.run(
+      project: @project_name,
+      experiment: unique_name("remote-scorer-eval"),
+      cases: [
+        {input: "hello", expected: "HELLO"},
+        {input: "world", expected: "WORLD"}
+      ],
+      task: task,
+      scorers: [scorer],
+      state: @state,
+      quiet: true
+    )
+
+    # Should complete successfully
+    assert_instance_of Braintrust::Eval::Result, result
+    assert result.duration > 0
+
+    # Verify no errors occurred
+    assert_equal 0, result.errors.length, "Remote scorer should not error"
+  end
 end

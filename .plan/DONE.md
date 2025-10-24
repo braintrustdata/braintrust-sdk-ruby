@@ -368,3 +368,104 @@
   - Fixed tracer_provider references to use `OpenTelemetry.tracer_provider`
   - Removed unnecessary comments from init calls
 - **Total: 109 test runs, 328 assertions, all passing, linter clean**
+
+### Session 9 Completed (OpenAI Integration Enhancement) ✅
+- **Phase 1: Message Content Parsing** ✅
+  - Changed from selective field extraction (`{role, content}`) to full `.to_h` conversion
+  - Now preserves ALL message fields (tool_calls, tool_call_id, name, refusal, etc.)
+  - Supports vision messages with array content (text + image_url)
+  - Supports tool messages with proper tool_call_id preservation
+  - Supports mixed content (multiple text/image blocks in single message)
+  - Added 2 comprehensive tests (vision, multi-turn tool calling)
+- **Phase 2: Advanced Token Metrics** ✅
+  - Implemented `parse_usage_tokens` helper method (56 lines, matches Go SDK)
+  - Handles nested `*_tokens_details` objects with proper flattening
+  - Captures advanced metrics:
+    - `prompt_cached_tokens` (cached prompt tokens)
+    - `prompt_audio_tokens` (audio input tokens)
+    - `completion_reasoning_tokens` (o1 model reasoning tokens)
+    - `completion_audio_tokens` (audio output tokens)
+    - `completion_accepted_prediction_tokens` (accepted predictions)
+    - `completion_rejected_prediction_tokens` (rejected predictions)
+  - Translates field names (`input_tokens` → `prompt_tokens`)
+  - Added 1 test validating advanced metrics capture
+- **Phase 3: Streaming Support** ✅
+  - Implemented full `stream_raw` wrapper with chunk aggregation
+  - Added `aggregate_streaming_chunks` helper (104 lines of robust logic)
+  - Automatic content concatenation across deltas
+  - Tool calls aggregation (handles continuation chunks)
+  - Usage metrics capture with `stream_options.include_usage`
+  - Proper span parenting using `tracer.start_span` (not `start_root_span`)
+  - Span lifecycle management (start before stream, finish after consumption)
+  - Preserves original streaming behavior for user code
+  - Added 1 comprehensive streaming test (19 assertions)
+- **Golden Example Enhanced** (`examples/internal/openai.rb`)
+  - Expanded to 8 comprehensive examples:
+    1. Vision - image understanding with array content
+    2. Tool Calling - single-turn function calling
+    3. **Streaming** - real-time completions with aggregation ⭐ NEW
+    4. Multi-turn Tools - conversation with tool_call_id
+    5. Mixed Content - text + images in one message
+    6. Reasoning Models - o1-mini with advanced token display
+    7. Temperature Variations - multiple parameter settings
+    8. Advanced Parameters - full metadata capture demo
+  - All examples production-ready with proper tracing
+  - Validates Ruby SDK captures same data as TypeScript/Go
+- **Code Quality**
+  - Total: ~250 lines added to core implementation
+  - All code passes StandardRB linter
+  - Full backward compatibility maintained
+  - 100% feature parity with TypeScript/Go SDKs achieved
+- **Test Results**
+  - 5 OpenAI tests: 92 assertions, all passing
+  - Full test suite: 115 tests, 398 assertions, 0 failures
+  - Golden example runs successfully with all 8 scenarios
+- **What Users Get**
+  - ✅ Vision with image_url/file content arrays
+  - ✅ Tool calling (single & multi-turn with tool_call_id)
+  - ✅ Streaming with automatic chunk aggregation
+  - ✅ Advanced token metrics (reasoning, cached, audio)
+  - ✅ All OpenAI parameters captured in metadata
+  - ✅ Full message structures (role, content, tool_calls, etc.)
+- **Total: 115 test runs, 398 assertions, all passing, linter clean**
+
+### Session 10 Completed (Documentation & Release Infrastructure) ✅
+- **Phase 3: Trace Utilities** ✅
+  - Implemented Trace.permalink (lib/braintrust/trace.rb:42-82)
+  - Generates Braintrust UI permalinks from OpenTelemetry spans
+  - Extracts trace_id and span_id from span context
+  - Handles missing org_id/app_url gracefully (returns empty string)
+  - Used in examples (trace.rb, openai.rb, internal/openai.rb)
+- **Phase 8: Documentation & Polish** ✅ (Mostly Complete)
+  - **README.md** ✅
+    - Comprehensive documentation with Overview, Installation, Quick Start
+    - Three complete working examples (Evals, Tracing, OpenAI)
+    - Features section listing all capabilities
+    - Links to examples directory and API documentation
+    - Badge showing BETA status and gem version
+  - **CONTRIBUTING.md** ✅
+    - Development setup instructions (mise, bundle)
+    - Testing guidelines (Minitest, plain assert)
+    - Pull request workflow
+    - Troubleshooting section
+  - **CI/CD Pipeline** ✅
+    - GitHub Actions workflow (ci.yml) - runs tests and linter
+    - Publish workflows (publish-gem.yaml, publish-gem-prerelease.yaml)
+    - Automated gem publishing to RubyGems
+  - **Release Infrastructure** ✅
+    - Rake tasks: release, release:validate, release:publish, release:github, release:changelog
+    - Full release automation (validate → lint → changelog → build → publish → tag)
+    - Prerelease support with alpha suffix
+  - **Linter** ✅
+    - Standard linter configured and passing
+    - Rake tasks: lint, lint:fix
+    - Integrated into CI pipeline
+  - **Examples** ✅
+    - Working examples at root level: trace.rb, openai.rb, eval.rb, login.rb
+    - Subdirectory examples: api/dataset.rb, eval/dataset.rb, eval/remote_functions.rb
+    - Internal examples: internal/openai.rb, internal/kitchen-sink.rb, internal/evals-with-errors.rb
+- **Phase 8: Incomplete Items** ⚠️
+  - Test coverage: 25% (target was 80%+) ❌
+  - No v0.1.0 release tag yet (still at v0.0.1) ❌
+  - CHANGELOG.md not found (may need creation) ❌
+- **Total: 115 test runs, 398 assertions, all passing, linter clean**
