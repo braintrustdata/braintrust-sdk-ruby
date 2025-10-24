@@ -4,6 +4,9 @@ require "test_helper"
 
 class Braintrust::Trace::OpenAITest < Minitest::Test
   def setup
+    # Skip all OpenAI tests if the gem is not available
+    skip "OpenAI gem not available" unless defined?(OpenAI)
+
     @api_key = ENV["OPENAI_API_KEY"]
     @original_api_key = ENV["OPENAI_API_KEY"]
   end

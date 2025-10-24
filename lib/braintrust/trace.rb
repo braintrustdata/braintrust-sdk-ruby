@@ -3,8 +3,15 @@
 require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
-require_relative "trace/openai"
 require_relative "logger"
+
+# OpenAI integration is optional - automatically loaded if openai gem is available
+begin
+  require "openai"
+  require_relative "trace/contrib/openai"
+rescue LoadError
+  # OpenAI gem not installed - integration will not be available
+end
 
 module Braintrust
   module Trace

@@ -23,7 +23,6 @@ Gem::Specification.new do |spec|
     lib/**/*.rb
     README.md
     LICENSE
-    CHANGELOG.md
   ])
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
@@ -44,7 +43,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "standard", "~> 1.0"
   spec.add_development_dependency "simplecov", "~> 0.22"
-  spec.add_development_dependency "openai", "~> 0.34"
   spec.add_development_dependency "vcr", "~> 6.0"
   spec.add_development_dependency "webmock", "~> 3.0"
+  spec.add_development_dependency "appraisal", "~> 2.5"
 end
