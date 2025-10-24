@@ -5,8 +5,6 @@ require "test_helper"
 class Braintrust::Trace::OpenAITest < Minitest::Test
   def setup
     @api_key = ENV["OPENAI_API_KEY"]
-    skip "OPENAI_API_KEY environment variable is required for OpenAI tests" unless @api_key
-
     @original_api_key = ENV["OPENAI_API_KEY"]
   end
 

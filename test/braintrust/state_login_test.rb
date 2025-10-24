@@ -90,18 +90,20 @@ class Braintrust::StateLoginTest < Minitest::Test
         end
       end
 
-      # Start background login
-      state.login_in_thread
+      begin
+        # Start background login
+        state.login_in_thread
 
-      # Wait for it to complete (should retry and eventually succeed)
-      state.wait_for_login(30)
+        # Wait for it to complete (should retry and eventually succeed)
+        state.wait_for_login(30)
 
-      # Should have retried and succeeded
-      assert state.logged_in
-      assert call_count >= 3, "Expected at least 3 login attempts, got #{call_count}"
-    ensure
-      # Restore original method
-      Braintrust::API::Internal::Auth.define_singleton_method(:login, original_login)
+        # Should have retried and succeeded
+        assert state.logged_in, "State should be logged in after wait_for_login, but logged_in=#{state.logged_in}, call_count=#{call_count}"
+        assert call_count >= 3, "Expected at least 3 login attempts, got #{call_count}"
+      ensure
+        # Restore original method
+        Braintrust::API::Internal::Auth.define_singleton_method(:login, original_login)
+      end
     end
   end
 

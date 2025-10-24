@@ -5,8 +5,6 @@ require "braintrust/internal/experiments"
 
 class Braintrust::Internal::ExperimentsTest < Minitest::Test
   def test_get_or_create_basic
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("experiments/get_or_create_basic") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -25,8 +23,6 @@ class Braintrust::Internal::ExperimentsTest < Minitest::Test
   end
 
   def test_get_or_create_with_tags_and_metadata
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("experiments/get_or_create_with_tags") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -45,8 +41,6 @@ class Braintrust::Internal::ExperimentsTest < Minitest::Test
   end
 
   def test_get_or_create_with_update_flag
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("experiments/get_or_create_with_update") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state

@@ -15,8 +15,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_basic
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_basic") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -47,8 +45,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_with_task_error
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_task_error") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -82,8 +78,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_with_scorer_error
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_scorer_error") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -157,8 +151,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_with_multiple_scorers
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_multiple_scorers") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -190,8 +182,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_with_callable_task
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_callable_task") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -252,8 +242,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_with_method_scorer
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_method_scorer") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -321,8 +309,6 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_run_with_tracing
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_with_tracing") do
       # Set up test rig for capturing spans (includes Braintrust processor)
       rig = setup_otel_test_rig
@@ -379,8 +365,6 @@ class Braintrust::EvalTest < Minitest::Test
 
   # Test dataset integration: dataset as string (same project as experiment)
   def test_eval_run_with_dataset_string
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/dataset_string") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -432,8 +416,6 @@ class Braintrust::EvalTest < Minitest::Test
 
   # Test dataset integration: dataset as hash with name + project
   def test_eval_run_with_dataset_hash_name_project
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/dataset_hash_name_project") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -475,8 +457,6 @@ class Braintrust::EvalTest < Minitest::Test
 
   # Test dataset integration: dataset as hash with id
   def test_eval_run_with_dataset_hash_id
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/dataset_hash_id") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -518,8 +498,6 @@ class Braintrust::EvalTest < Minitest::Test
 
   # Test dataset integration: dataset with limit option
   def test_eval_run_with_dataset_limit
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/dataset_limit") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
@@ -573,8 +551,6 @@ class Braintrust::EvalTest < Minitest::Test
 
   # Test dataset integration: error when both dataset and cases provided
   def test_eval_run_with_both_dataset_and_cases_errors
-    skip "Requires BRAINTRUST_API_KEY" unless ENV["BRAINTRUST_API_KEY"]
-
     VCR.use_cassette("eval/run_both_dataset_and_cases_error") do
       Braintrust.init(blocking_login: true)
       state = Braintrust.current_state
