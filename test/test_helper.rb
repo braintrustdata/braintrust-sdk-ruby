@@ -109,6 +109,15 @@ module TracingTestHelper
     state
   end
 
+  # Creates a non-global State by calling Braintrust.init with set_global: false and blocking_login: true
+  # This performs login (via VCR cassettes in tests) without polluting global state
+  # Use this for tests that need to interact with the API (eval, experiments, datasets, etc.)
+  # @param options [Hash] Options to pass to Braintrust.init (set_global and blocking_login are fixed)
+  # @return [Braintrust::State]
+  def get_non_global_state(**options)
+    Braintrust.init(set_global: false, blocking_login: true, **options)
+  end
+
   # Sets up OpenTelemetry with an in-memory exporter for testing
   # Returns an OtelTestRig with tracer_provider, exporter, state, and drain() method
   # The exporter can be passed to Braintrust::Trace.enable to replace OTLP exporter

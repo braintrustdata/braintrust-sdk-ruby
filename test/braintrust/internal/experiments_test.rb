@@ -6,8 +6,7 @@ require "braintrust/internal/experiments"
 class Braintrust::Internal::ExperimentsTest < Minitest::Test
   def test_get_or_create_basic
     VCR.use_cassette("experiments/get_or_create_basic") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       result = Braintrust::Internal::Experiments.get_or_create(
         "test-ruby-sdk-experiment-basic",
@@ -24,8 +23,7 @@ class Braintrust::Internal::ExperimentsTest < Minitest::Test
 
   def test_get_or_create_with_tags_and_metadata
     VCR.use_cassette("experiments/get_or_create_with_tags") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       result = Braintrust::Internal::Experiments.get_or_create(
         "test-ruby-sdk-experiment-tags",
@@ -42,8 +40,7 @@ class Braintrust::Internal::ExperimentsTest < Minitest::Test
 
   def test_get_or_create_with_update_flag
     VCR.use_cassette("experiments/get_or_create_with_update") do
-      Braintrust.init(blocking_login: true)
-      state = Braintrust.current_state
+      state = get_non_global_state
 
       # First create with update: false (new experiment)
       result1 = Braintrust::Internal::Experiments.get_or_create(
