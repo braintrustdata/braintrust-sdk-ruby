@@ -24,23 +24,13 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-# Initialize Braintrust with blocking login
-Braintrust.init(blocking_login: true)
-
-# Create OpenTelemetry TracerProvider
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-# Enable Braintrust tracing
-Braintrust::Trace.enable(tracer_provider)
-
-# Set as global provider
-OpenTelemetry.tracer_provider = tracer_provider
+Braintrust.init
 
 # Create OpenAI client
 openai_client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
 # Wrap the client with Braintrust tracing
-Braintrust::Trace::OpenAI.wrap(openai_client, tracer_provider: tracer_provider)
+Braintrust::Trace::OpenAI.wrap(openai_client)
 
 puts "Kitchen Sink Eval Example"
 puts "=" * 60
@@ -363,10 +353,10 @@ if result.failed?
   result.errors.each_with_index do |error, i|
     puts "  #{i + 1}. #{error}"
   end
-  exit 1
+  puts "\nNote: Some errors are intentional to demonstrate error handling."
+else
+  puts "\n✓ All test cases completed successfully!"
 end
 
-puts "\n✓ All test cases completed successfully!"
-
 # Shutdown to flush spans
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown

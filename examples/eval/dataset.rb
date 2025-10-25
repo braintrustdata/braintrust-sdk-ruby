@@ -14,16 +14,9 @@
 require "bundler/setup"
 require "braintrust"
 
-# Initialize Braintrust with login (sets global state)
-Braintrust.init(blocking_login: true)
+Braintrust.init
 api = Braintrust::API.new  # Uses global state
-
-# Enable tracing to send spans to Braintrust
-require "opentelemetry/sdk"
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-Braintrust::Trace.enable(tracer_provider)
-OpenTelemetry.tracer_provider = tracer_provider
-at_exit { tracer_provider.shutdown }
+at_exit { OpenTelemetry.tracer_provider.shutdown }
 
 # Project name
 project_name = "ruby-sdk-examples"

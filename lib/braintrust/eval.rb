@@ -137,6 +137,7 @@ module Braintrust
           experiment_id: experiment_id,
           experiment_name: experiment_name,
           project_id: project_id,
+          project_name: project_name,
           permalink: permalink,
           errors: errors,
           duration: duration
@@ -146,6 +147,7 @@ module Braintrust
       # Print result summary to stdout
       # @param result [Result] The evaluation result
       def print_result(result)
+        puts "=" * 60
         puts result
       end
 

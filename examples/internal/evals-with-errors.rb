@@ -17,17 +17,7 @@ require "opentelemetry/sdk"
 # Usage:
 #   bundle exec ruby examples/internal/evals-with-errors.rb
 
-# Initialize Braintrust with blocking login
-Braintrust.init(blocking_login: true)
-
-# Create OpenTelemetry TracerProvider
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-# Enable Braintrust tracing
-Braintrust::Trace.enable(tracer_provider)
-
-# Set as global provider
-OpenTelemetry.tracer_provider = tracer_provider
+Braintrust.init
 
 puts "Evals with Errors Example"
 puts "=" * 60
@@ -217,4 +207,4 @@ if result.success?
 end
 
 # Shutdown to flush spans to Braintrust
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown
