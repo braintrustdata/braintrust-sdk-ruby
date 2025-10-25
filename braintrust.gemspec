@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ["info@braintrust.dev"]
 
   spec.summary = "Ruby SDK for Braintrust"
-  spec.description = "OpenTelemetry-based SDK for Braintrust with tracing, OpenAI integration, and evals"
+  spec.description = "Braintrust Ruby SDK for evals, tracing and more. "
   spec.homepage = "https://github.com/braintrustdata/braintrust-sdk-ruby"
   spec.license = "Apache-2.0"
   spec.required_ruby_version = ">= 3.2.0"
