@@ -94,14 +94,8 @@ module Braintrust
 
       # Build the permalink URL based on parent type
       if parent_type == "experiment_id"
-        # For experiments: {app_url}/app/{org}/p/{project}/experiments/{experiment_id}?r={trace_id}&s={span_id}
-        project_name, experiment_id = parent_id.split("/", 2)
-        unless project_name && experiment_id
-          Log.error("Invalid experiment parent format: #{parent_id}")
-          return ""
-        end
-
-        "#{app_url}/app/#{org_name}/p/#{project_name}/experiments/#{experiment_id}?r=#{trace_id}&s=#{span_id}"
+        # For experiments: {app_url}/app/{org}/object?object_type=experiment&object_id={experiment_id}&r={trace_id}&s={span_id}
+        "#{app_url}/app/#{org_name}/object?object_type=experiment&object_id=#{parent_id}&r=#{trace_id}&s=#{span_id}"
       else
         # For projects: {app_url}/app/{org}/p/{project}/logs?r={trace_id}&s={span_id}
         # parent_type is typically "project_name"

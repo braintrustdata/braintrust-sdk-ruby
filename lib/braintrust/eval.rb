@@ -295,7 +295,7 @@ module Braintrust
       # @param scorers [Array<Scorer>] The scorers
       # @param errors [Array<String>] Error collection array
       # @param tracer [Tracer] OpenTelemetry tracer
-      # @param parent_attr [String] Parent attribute (experiment_id:project/exp_id)
+      # @param parent_attr [String] Parent attribute (experiment_id:exp_id)
       def run_case(test_case, task, scorers, errors, tracer, parent_attr)
         # Create eval span (parent)
         tracer.in_span("eval") do |eval_span|

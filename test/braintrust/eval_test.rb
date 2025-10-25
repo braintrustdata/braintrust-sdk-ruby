@@ -353,6 +353,14 @@ class Braintrust::EvalTest < Minitest::Test
       # Verify score span
       assert score_span.attributes["braintrust.scores"]
       assert_includes score_span.attributes["braintrust.scores"], "exact"
+
+      # Verify experiment result has permalink in correct format
+      assert result.permalink.include?("object_type=experiment"), "Result permalink should be experiment URL"
+      assert result.permalink.include?("object_id="), "Result permalink should have experiment ID"
+
+      # Verify eval span has correct parent for experiment
+      parent_attr = eval_span.attributes["braintrust.parent"]
+      assert parent_attr.start_with?("experiment_id:"), "Eval span should have experiment_id parent"
     end
   end
 

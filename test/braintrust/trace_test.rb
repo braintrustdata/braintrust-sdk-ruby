@@ -114,7 +114,7 @@ class Braintrust::TraceTest < Minitest::Test
     # Experiment parents come from evals, not from default_project
     otel_span = nil
     rig.tracer.in_span("test-operation") do |span|
-      span.set_attribute("braintrust.parent", "experiment_id:test-project/exp-123")
+      span.set_attribute("braintrust.parent", "experiment_id:exp-123")
       otel_span = span
     end
 
@@ -127,7 +127,7 @@ class Braintrust::TraceTest < Minitest::Test
     span_id = span_data.hex_span_id
 
     # Verify URL format for experiment parent
-    expected = "https://app.example.com/app/test-org/p/test-project/experiments/exp-123?r=#{trace_id}&s=#{span_id}"
+    expected = "https://app.example.com/app/test-org/object?object_type=experiment&object_id=exp-123&r=#{trace_id}&s=#{span_id}"
     assert_equal expected, link
   end
 
@@ -136,7 +136,7 @@ class Braintrust::TraceTest < Minitest::Test
     assert_equal "", link
   end
 
-  def test_permalink_with_invalid_parent_formats
+  def test_permalink_with_invalid_parent_format
     original_level = Braintrust::Log.logger.level
     Braintrust::Log.logger.level = Logger::FATAL
 
@@ -149,19 +149,8 @@ class Braintrust::TraceTest < Minitest::Test
         span_invalid_parent = span
       end
 
-      span_invalid_experiment = nil
-      rig.tracer.in_span("test-operation") do |span|
-        span.set_attribute("braintrust.parent", "experiment_id:no-slash")
-        span_invalid_experiment = span
-      end
-
-      [
-        ["invalid parent format", span_invalid_parent],
-        ["invalid experiment parent", span_invalid_experiment]
-      ].each do |description, span|
-        link = Braintrust::Trace.permalink(span)
-        assert_equal "", link, "Expected empty string for: #{description}"
-      end
+      link = Braintrust::Trace.permalink(span_invalid_parent)
+      assert_equal "", link
     ensure
       Braintrust::Log.logger.level = original_level
     end
