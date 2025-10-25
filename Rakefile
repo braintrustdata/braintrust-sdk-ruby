@@ -174,17 +174,18 @@ namespace :release do
     sh "bash scripts/validate-release-tag.sh"
   end
 
-  task :publish do
+  task publish: ["release:validate", :lint, :build] do
     gem_files = FileList["braintrust-*.gem"]
     if gem_files.empty?
-      puts "Error: No gem file found. Run 'rake build' first."
+      puts "Error: No gem file found. Build task should have created it."
       exit 1
     elsif gem_files.length > 1
-      puts "Error: Multiple gem files found. Run 'rake clean' first."
+      puts "Error: Multiple gem files found. Clean task should have removed them."
       puts "Found: #{gem_files.join(", ")}"
       exit 1
     end
     sh "gem push #{gem_files.first}"
+    puts "✓ Gem pushed to RubyGems"
   end
 
   task :changelog do
@@ -192,17 +193,18 @@ namespace :release do
     puts "✓ Changelog generated: changelog.md"
   end
 
-  task :github do
-    unless File.exist?("changelog.md")
-      puts "Error: changelog.md not found. Run 'rake release:changelog' first."
-      exit 1
-    end
-
+  task github: [:changelog] do
     require_relative "lib/braintrust/version"
     tag = "v#{Braintrust::VERSION}"
 
-    sh "gh release create #{tag} --title 'Release #{tag}' --notes-file changelog.md"
+    sh "gh release create #{tag} --title '#{tag}' --notes-file changelog.md"
+
+    # Get the repository URL
+    repo = `gh repo view --json nameWithOwner -q .nameWithOwner`.strip
+    release_url = "https://github.com/#{repo}/releases/tag/#{tag}"
+
     puts "✓ GitHub release created: #{tag}"
+    puts "  #{release_url}"
   end
 
   task :prerelease do
@@ -240,6 +242,6 @@ namespace :release do
   end
 end
 
-task release: ["release:validate", :lint, "release:changelog", :build, "release:publish", "release:github"] do
+task release: ["release:publish", "release:github"] do
   puts "✓ Release completed successfully!"
 end
