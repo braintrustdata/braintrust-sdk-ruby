@@ -131,42 +131,39 @@ class Braintrust::TraceTest < Minitest::Test
     assert_equal expected, link
   end
 
-  def test_permalink_with_missing_attributes
-    # Set up OpenTelemetry WITHOUT Braintrust processor (to test missing attributes)
-    require "opentelemetry/sdk"
+  def test_permalink_with_nil_span
+    link = Braintrust::Trace.permalink(nil)
+    assert_equal "", link
+  end
 
-    exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
-    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-    # Add only a simple processor (no Braintrust processor)
-    span_processor = OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
-    tracer_provider.add_span_processor(span_processor)
-
-    tracer = tracer_provider.tracer("test")
-
-    # Create a span WITHOUT Braintrust attributes
-    otel_span = nil
-    tracer.in_span("test-operation") do |span|
-      otel_span = span
-    end
-
-    # Suppress error logs for this test (we're intentionally testing missing attributes)
+  def test_permalink_with_invalid_parent_formats
     original_level = Braintrust::Log.logger.level
     Braintrust::Log.logger.level = Logger::FATAL
 
     begin
-      # Should return empty string for missing attributes instead of raising
-      link = Braintrust::Trace.permalink(otel_span)
-      assert_equal "", link
+      rig = setup_otel_test_rig
+
+      span_invalid_parent = nil
+      rig.tracer.in_span("test-operation") do |span|
+        span.set_attribute("braintrust.parent", "invalid-no-colon")
+        span_invalid_parent = span
+      end
+
+      span_invalid_experiment = nil
+      rig.tracer.in_span("test-operation") do |span|
+        span.set_attribute("braintrust.parent", "experiment_id:no-slash")
+        span_invalid_experiment = span
+      end
+
+      [
+        ["invalid parent format", span_invalid_parent],
+        ["invalid experiment parent", span_invalid_experiment]
+      ].each do |description, span|
+        link = Braintrust::Trace.permalink(span)
+        assert_equal "", link, "Expected empty string for: #{description}"
+      end
     ensure
-      # Restore original log level
       Braintrust::Log.logger.level = original_level
     end
-  end
-
-  def test_permalink_with_nil_span
-    # Should return empty string for nil span instead of raising
-    link = Braintrust::Trace.permalink(nil)
-    assert_equal "", link
   end
 end
