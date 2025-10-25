@@ -197,8 +197,14 @@ namespace :release do
     require_relative "lib/braintrust/version"
     tag = "v#{Braintrust::VERSION}"
 
-    sh "gh release create #{tag} --title 'Release #{tag}' --notes-file changelog.md"
+    sh "gh release create #{tag} --title '#{tag}' --notes-file changelog.md"
+
+    # Get the repository URL
+    repo = `gh repo view --json nameWithOwner -q .nameWithOwner`.strip
+    release_url = "https://github.com/#{repo}/releases/tag/#{tag}"
+
     puts "✓ GitHub release created: #{tag}"
+    puts "  #{release_url}"
   end
 
   task :prerelease do
