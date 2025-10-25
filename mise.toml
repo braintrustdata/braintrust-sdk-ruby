@@ -24,7 +24,20 @@ run = "watchexec --exts rb --watch lib --watch test --restart --clear -- rake te
 
 [tasks.precommit]
 description = "Run linter before commit (full CI runs on push)"
-run = "bundle exec rake lint"
+run = """
+bundle check > /dev/null 2>&1 || bundle install --quiet
+if ! git diff --quiet --exit-code Gemfile.lock; then
+  echo ""
+  echo "Gemfile.lock is out of sync with gemspec"
+  echo ""
+  echo "Changes detected:"
+  git diff Gemfile.lock | head -20
+  echo ""
+  echo "Fix: git add Gemfile.lock"
+  exit 1
+fi
+bundle exec rake lint
+"""
 
 [hooks]
 postinstall = """

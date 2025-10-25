@@ -2,6 +2,8 @@
 *.rbc
 /.config
 /coverage/
+/doc/
+/.yardoc
 /InstalledFiles
 /pkg/
 /spec/reports/

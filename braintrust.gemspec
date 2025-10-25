@@ -9,14 +9,14 @@ Gem::Specification.new do |spec|
   spec.email = ["info@braintrust.dev"]
 
   spec.summary = "Ruby SDK for Braintrust"
-  spec.description = "OpenTelemetry-based SDK for Braintrust with tracing, OpenAI integration, and evals"
+  spec.description = "Braintrust Ruby SDK for evals, tracing and more. "
   spec.homepage = "https://github.com/braintrustdata/braintrust-sdk-ruby"
   spec.license = "Apache-2.0"
   spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
-  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/releases"
 
   # Specify which files should be added to the gem when it is released.
   spec.files = Dir.glob(%w[
@@ -46,4 +46,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "vcr", "~> 6.0"
   spec.add_development_dependency "webmock", "~> 3.0"
   spec.add_development_dependency "appraisal", "~> 2.5"
+  spec.add_development_dependency "yard", "~> 0.9"
+  spec.add_development_dependency "kramdown", "~> 2.0"
 end
