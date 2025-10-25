@@ -207,4 +207,4 @@ if result.success?
 end
 
 # Shutdown to flush spans to Braintrust
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown

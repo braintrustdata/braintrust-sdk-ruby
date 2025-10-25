@@ -28,6 +28,26 @@ task :clean do
   FileUtils.rm_f("changelog.md")
 end
 
+def run_example(example)
+  prefix = case example
+  when /openai/, /kitchen-sink/
+    "bundle exec appraisal openai-latest"
+  else
+    "bundle exec"
+  end
+
+  sh "#{prefix} ruby #{example}"
+end
+
+desc "Run a single example with the correct gemfile"
+task :example, [:path] do |t, args|
+  example = args[:path]
+  raise "Usage: rake example[path/to/example.rb]" unless example
+
+  puts "Running #{example}..."
+  run_example(example)
+end
+
 desc "Run all examples"
 task :examples do
   examples = FileList["examples/**/*.rb"].exclude("examples/**/README.md")
@@ -36,10 +56,7 @@ task :examples do
 
   examples.each do |example|
     puts "\n=== Running #{example} ==="
-    sh "bundle exec ruby #{example}" do |ok, res|
-      puts "✓ #{example} completed" if ok
-      puts "✗ #{example} failed (#{res.exitstatus})" unless ok
-    end
+    run_example(example)
   end
 end
 
