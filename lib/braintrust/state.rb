@@ -11,7 +11,38 @@ module Braintrust
     @mutex = Mutex.new
     @global_state = nil
 
-    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, logged_in: false)
+    # Create a State from environment variables with option overrides
+    # @param api_key [String, nil] Braintrust API key (overrides BRAINTRUST_API_KEY env var)
+    # @param org_name [String, nil] Organization name (overrides BRAINTRUST_ORG_NAME env var)
+    # @param default_project [String, nil] Default project (overrides BRAINTRUST_DEFAULT_PROJECT env var)
+    # @param app_url [String, nil] App URL (overrides BRAINTRUST_APP_URL env var)
+    # @param api_url [String, nil] API URL (overrides BRAINTRUST_API_URL env var)
+    # @param blocking_login [Boolean] whether to block and login synchronously (default: false)
+    # @param enable_tracing [Boolean] whether to enable OpenTelemetry tracing (default: true)
+    # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use
+    # @return [State] the created state
+    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+      require_relative "config"
+      config = Config.from_env(
+        api_key: api_key,
+        org_name: org_name,
+        default_project: default_project,
+        app_url: app_url,
+        api_url: api_url
+      )
+      new(
+        api_key: config.api_key,
+        org_name: config.org_name,
+        default_project: config.default_project,
+        app_url: config.app_url,
+        api_url: config.api_url,
+        blocking_login: blocking_login,
+        enable_tracing: enable_tracing,
+        tracer_provider: tracer_provider
+      )
+    end
+
+    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
       raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
@@ -23,7 +54,17 @@ module Braintrust
       @app_url = app_url || "https://www.braintrust.dev"
       @api_url = api_url
       @proxy_url = proxy_url
-      @logged_in = logged_in
+      @logged_in = false
+
+      # Perform login after state setup
+      if blocking_login
+        login
+      else
+        login_in_thread
+      end
+
+      # Setup tracing if requested
+      setup_tracing(tracer_provider) if enable_tracing
     end
 
     # Thread-safe global state getter
@@ -116,6 +157,40 @@ module Braintrust
       end
 
       self
+    end
+
+    private
+
+    # Set up OpenTelemetry tracing with Braintrust
+    # @param explicit_provider [TracerProvider, nil] Optional explicit tracer provider
+    # @return [void]
+    def setup_tracing(explicit_provider = nil)
+      require "opentelemetry/sdk"
+
+      if explicit_provider
+        # Use the explicitly provided tracer provider
+        # DO NOT set as global - user is managing it themselves
+        Log.debug("Using explicitly provided OpenTelemetry tracer provider")
+        tracer_provider = explicit_provider
+      else
+        # Check if global tracer provider is already a real TracerProvider
+        current_provider = OpenTelemetry.tracer_provider
+
+        if current_provider.is_a?(OpenTelemetry::SDK::Trace::TracerProvider)
+          # Use existing provider
+          Log.debug("Using existing OpenTelemetry tracer provider")
+          tracer_provider = current_provider
+        else
+          # Create new provider and set as global
+          tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+          OpenTelemetry.tracer_provider = tracer_provider
+          Log.debug("Created OpenTelemetry tracer provider")
+        end
+      end
+
+      # Enable Braintrust tracing (adds span processor)
+      require_relative "trace"
+      Trace.enable(tracer_provider, state: self)
     end
   end
 end

@@ -10,6 +10,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       experiment_id: "exp_123",
       experiment_name: "my-experiment",
       project_id: "proj_456",
+      project_name: "my-project",
       permalink: "https://braintrust.dev/link",
       errors: [],
       duration: 1.5
@@ -18,6 +19,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
     assert_equal "exp_123", result.experiment_id
     assert_equal "my-experiment", result.experiment_name
     assert_equal "proj_456", result.project_id
+    assert_equal "my-project", result.project_name
     assert_equal "https://braintrust.dev/link", result.permalink
     assert_equal [], result.errors
     assert_equal 1.5, result.duration
@@ -32,6 +34,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       experiment_id: "exp_123",
       experiment_name: "my-experiment",
       project_id: "proj_456",
+      project_name: "my-project",
       permalink: "https://braintrust.dev/link",
       errors: ["Task failed for input 'apple'", "Scorer 'exact_match' failed"],
       duration: 2.3
@@ -48,6 +51,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       experiment_id: "exp_123",
       experiment_name: "food-classifier",
       project_id: "proj_456",
+      project_name: "my-project",
       permalink: "https://braintrust.dev/link",
       errors: [],
       duration: 1.234
@@ -56,9 +60,10 @@ class Braintrust::Eval::ResultTest < Minitest::Test
     output = result.to_s
 
     assert_match(/Experiment: food-classifier/, output)
+    assert_match(/Project: my-project/, output)
     assert_match(/ID: exp_123/, output)
     assert_match(/Link: https:\/\/braintrust.dev\/link/, output)
-    assert_match(/Duration: 1.23s/, output)  # Rounded to 2 decimals
+    assert_match(/Duration: 1.234/, output)  # Rounded to 4 decimals
     assert_match(/Errors: 0/, output)
   end
 
@@ -68,6 +73,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       experiment_id: "exp_123",
       experiment_name: "food-classifier",
       project_id: "proj_456",
+      project_name: "my-project",
       permalink: "https://braintrust.dev/link",
       errors: ["Error 1", "Error 2"],
       duration: 1.234
@@ -76,6 +82,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
     output = result.to_s
 
     assert_match(/Experiment: food-classifier/, output)
+    assert_match(/Project: my-project/, output)
     assert_match(/ID: exp_123/, output)
     assert_match(/Errors: 2/, output)  # Shows count, not details
   end

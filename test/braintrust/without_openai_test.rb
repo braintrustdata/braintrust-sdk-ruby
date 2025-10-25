@@ -20,7 +20,7 @@ class WithoutOpenAITest < Minitest::Test
       api_key: "test-key",
       set_global: false,
       blocking_login: false,
-      tracing: false
+      enable_tracing: false
     )
 
     assert_instance_of Braintrust::State, state

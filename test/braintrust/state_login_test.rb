@@ -87,13 +87,14 @@ class Braintrust::StateLoginTest < Minitest::Test
 
   def test_login_in_thread_returns_early_if_already_logged_in
     VCR.use_cassette("auth/login_idempotent") do
+      # Create state with blocking_login to get logged-in state
       state = Braintrust::State.new(
         api_key: @api_key,
-        app_url: "https://www.braintrust.dev"
+        app_url: "https://www.braintrust.dev",
+        blocking_login: true,
+        enable_tracing: false
       )
 
-      # Log in first (blocking)
-      state.login
       assert state.logged_in
 
       # Track if Auth.login is called again

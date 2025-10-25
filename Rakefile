@@ -94,6 +94,9 @@ namespace :test do
     sh "bundle exec appraisal rake test"
   end
 
+  desc "Run tests against all dependency scenarios (alias for test:appraisal)"
+  task all: :appraisal
+
   namespace :appraisal do
     desc "Show help for appraisal scenarios and usage"
     task :help do

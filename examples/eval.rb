@@ -17,17 +17,8 @@ require "opentelemetry/sdk"
 # Usage:
 #   bundle exec ruby examples/eval.rb
 
-# Initialize Braintrust with blocking login
-Braintrust.init(blocking_login: true)
-
-# Create OpenTelemetry TracerProvider
-tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-# Enable Braintrust tracing
-Braintrust::Trace.enable(tracer_provider)
-
-# Set as global provider
-OpenTelemetry.tracer_provider = tracer_provider
+# Initialize Braintrust (automatically sets up tracing)
+Braintrust.init
 
 # Simple food classifier (the code being evaluated)
 # In a real scenario, this would call your model/API
@@ -71,8 +62,7 @@ length_match = ->(input, expected, output) {
 }
 
 # Run the evaluation
-puts "\nRunning evaluation..."
-result = Braintrust::Eval.run(
+Braintrust::Eval.run(
   # Required: Project and experiment
   project: "ruby-sdk-examples",
   experiment: "food-classifier-eval",
@@ -130,30 +120,5 @@ result = Braintrust::Eval.run(
   }
 )
 
-# Inspect the results
-puts "\n" + "=" * 50
-puts "Evaluation Complete!"
-puts "=" * 50
-
-puts "\nExperiment: #{result.experiment_name}"
-puts "Project ID: #{result.project_id}"
-puts "Duration: #{result.duration.round(2)}s"
-puts "Status: #{result.success? ? "✓ Success" : "✗ Failed"}"
-
-# Show the permalink to view in Braintrust UI
-puts "\nView results at:"
-puts "  #{result.permalink}"
-
-# Show errors if any
-if result.failed?
-  puts "\nErrors (#{result.errors.length}):"
-  result.errors.each do |error|
-    puts "  - #{error}"
-  end
-  exit 1
-end
-
-puts "\n✓ All test cases passed!"
-
 # Shutdown to flush spans to Braintrust
-tracer_provider.shutdown
+OpenTelemetry.tracer_provider.shutdown

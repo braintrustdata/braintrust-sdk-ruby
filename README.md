@@ -46,46 +46,24 @@ export BRAINTRUST_API_KEY="your-api-key"
 ```ruby
 require "braintrust"
 
-# Initialize Braintrust
 Braintrust.init
 
-# Simple food classifier (the code being evaluated)
-def classify_food(input)
-  fruit = %w[apple banana strawberry orange grape mango]
-  vegetable = %w[carrot broccoli spinach potato tomato cucumber]
+# Define task to evaluate
+task = ->(input) { input.include?("a") ? "fruit" : "vegetable" }
 
-  input_lower = input.downcase
-  return "fruit" if fruit.any? { |f| input_lower.include?(f) }
-  return "vegetable" if vegetable.any? { |v| input_lower.include?(v) }
-  "unknown"
-end
-
-# Run an evaluation
-result = Braintrust::Eval.run(
+# Run evaluation
+Braintrust::Eval.run(
   project: "my-project",
-  experiment: "food-classifier-eval",
-
-  # Test cases
+  experiment: "food-classifier",
   cases: [
     {input: "apple", expected: "fruit"},
-    {input: "carrot", expected: "vegetable"},
-    {input: "banana", expected: "fruit"},
-    {input: "broccoli", expected: "vegetable"}
+    {input: "carrot", expected: "vegetable"}
   ],
-
-  # Task to evaluate
-  task: ->(input) { classify_food(input) },
-
-  # Scorers to judge output quality
+  task: task,
   scorers: [
-    Braintrust::Eval.scorer("exact_match") { |input, expected, output|
-      (output == expected) ? 1.0 : 0.0
-    }
+    ->(input, expected, output) { output == expected ? 1.0 : 0.0 }
   ]
 )
-
-# View results
-puts "View results at: #{result.permalink}"
 ```
 
 ### Tracing
@@ -128,20 +106,15 @@ puts "View trace in Braintrust!"
 require "braintrust"
 require "openai"
 
-# Initialize Braintrust
 Braintrust.init
 
-# Create OpenAI client
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
-# Wrap the client with Braintrust tracing
 Braintrust::Trace::OpenAI.wrap(client)
 
-# Create a root span to capture the operation
 tracer = OpenTelemetry.tracer_provider.tracer("openai-app")
 root_span = nil
 
-# Make a chat completion request (automatically traced!)
 response = tracer.in_span("chat-completion") do |span|
   root_span = span
 
@@ -157,10 +130,8 @@ end
 
 puts "Response: #{response.choices[0].message.content}"
 
-# View the trace
 puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 
-# Shutdown to flush spans
 OpenTelemetry.tracer_provider.shutdown
 ```
 
