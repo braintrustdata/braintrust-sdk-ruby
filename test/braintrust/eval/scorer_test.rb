@@ -162,4 +162,19 @@ class Braintrust::Eval::ScorerTest < Minitest::Test
     # Should auto-detect name from object
     assert_equal "auto_name", scorer.name
   end
+
+  def test_scorer_with_method_object
+    # Test Method object name detection (is_a?(Method) branch)
+    obj = Object.new
+    def obj.my_scorer(input, expected, output)
+      (output == expected) ? 1.0 : 0.0
+    end
+
+    method_obj = obj.method(:my_scorer)
+    scorer = Braintrust::Eval::Scorer.new(method_obj)
+
+    assert_equal "my_scorer", scorer.name
+    assert_equal 1.0, scorer.call("i", "match", "match")
+    assert_equal 0.0, scorer.call("i", "match", "no_match")
+  end
 end

@@ -15,6 +15,9 @@ run = "bundle exec rake lint"
 [tasks."lint:fix"]
 run = "bundle exec rake lint:fix"
 
+[tasks."verify"]
+run = "bundle exec rake lint test"
+
 [tasks.watch-test]
 description = "Runs tests when files change"
 run = "watchexec --exts rb --watch lib --watch test --restart --clear -- rake test"

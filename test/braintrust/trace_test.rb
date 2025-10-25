@@ -114,7 +114,7 @@ class Braintrust::TraceTest < Minitest::Test
     # Experiment parents come from evals, not from default_project
     otel_span = nil
     rig.tracer.in_span("test-operation") do |span|
-      span.set_attribute("braintrust.parent", "experiment_id:test-project/exp-123")
+      span.set_attribute("braintrust.parent", "experiment_id:exp-123")
       otel_span = span
     end
 
@@ -127,46 +127,32 @@ class Braintrust::TraceTest < Minitest::Test
     span_id = span_data.hex_span_id
 
     # Verify URL format for experiment parent
-    expected = "https://app.example.com/app/test-org/p/test-project/experiments/exp-123?r=#{trace_id}&s=#{span_id}"
+    expected = "https://app.example.com/app/test-org/object?object_type=experiment&object_id=exp-123&r=#{trace_id}&s=#{span_id}"
     assert_equal expected, link
   end
 
-  def test_permalink_with_missing_attributes
-    # Set up OpenTelemetry WITHOUT Braintrust processor (to test missing attributes)
-    require "opentelemetry/sdk"
+  def test_permalink_with_nil_span
+    link = Braintrust::Trace.permalink(nil)
+    assert_equal "", link
+  end
 
-    exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
-    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-
-    # Add only a simple processor (no Braintrust processor)
-    span_processor = OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
-    tracer_provider.add_span_processor(span_processor)
-
-    tracer = tracer_provider.tracer("test")
-
-    # Create a span WITHOUT Braintrust attributes
-    otel_span = nil
-    tracer.in_span("test-operation") do |span|
-      otel_span = span
-    end
-
-    # Suppress error logs for this test (we're intentionally testing missing attributes)
+  def test_permalink_with_invalid_parent_format
     original_level = Braintrust::Log.logger.level
     Braintrust::Log.logger.level = Logger::FATAL
 
     begin
-      # Should return empty string for missing attributes instead of raising
-      link = Braintrust::Trace.permalink(otel_span)
+      rig = setup_otel_test_rig
+
+      span_invalid_parent = nil
+      rig.tracer.in_span("test-operation") do |span|
+        span.set_attribute("braintrust.parent", "invalid-no-colon")
+        span_invalid_parent = span
+      end
+
+      link = Braintrust::Trace.permalink(span_invalid_parent)
       assert_equal "", link
     ensure
-      # Restore original log level
       Braintrust::Log.logger.level = original_level
     end
-  end
-
-  def test_permalink_with_nil_span
-    # Should return empty string for nil span instead of raising
-    link = Braintrust::Trace.permalink(nil)
-    assert_equal "", link
   end
 end
