@@ -64,7 +64,10 @@ module Braintrust
       end
 
       # Setup tracing if requested
-      setup_tracing(tracer_provider) if enable_tracing
+      if enable_tracing
+        require_relative "trace"
+        Trace.setup(self, tracer_provider)
+      end
     end
 
     # Thread-safe global state getter
@@ -157,40 +160,6 @@ module Braintrust
       end
 
       self
-    end
-
-    private
-
-    # Set up OpenTelemetry tracing with Braintrust
-    # @param explicit_provider [TracerProvider, nil] Optional explicit tracer provider
-    # @return [void]
-    def setup_tracing(explicit_provider = nil)
-      require "opentelemetry/sdk"
-
-      if explicit_provider
-        # Use the explicitly provided tracer provider
-        # DO NOT set as global - user is managing it themselves
-        Log.debug("Using explicitly provided OpenTelemetry tracer provider")
-        tracer_provider = explicit_provider
-      else
-        # Check if global tracer provider is already a real TracerProvider
-        current_provider = OpenTelemetry.tracer_provider
-
-        if current_provider.is_a?(OpenTelemetry::SDK::Trace::TracerProvider)
-          # Use existing provider
-          Log.debug("Using existing OpenTelemetry tracer provider")
-          tracer_provider = current_provider
-        else
-          # Create new provider and set as global
-          tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-          OpenTelemetry.tracer_provider = tracer_provider
-          Log.debug("Created OpenTelemetry tracer provider")
-        end
-      end
-
-      # Enable Braintrust tracing (adds span processor)
-      require_relative "trace"
-      Trace.enable(tracer_provider, state: self)
     end
   end
 end

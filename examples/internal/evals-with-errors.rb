@@ -17,7 +17,6 @@ require "opentelemetry/sdk"
 # Usage:
 #   bundle exec ruby examples/internal/evals-with-errors.rb
 
-# Initialize Braintrust (automatically sets up tracing)
 Braintrust.init
 
 puts "Evals with Errors Example"

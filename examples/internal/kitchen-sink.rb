@@ -24,7 +24,6 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-# Initialize Braintrust (automatically sets up tracing)
 Braintrust.init
 
 # Create OpenAI client

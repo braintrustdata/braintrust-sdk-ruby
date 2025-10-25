@@ -17,7 +17,6 @@ require "opentelemetry/sdk"
 # Usage:
 #   bundle exec ruby examples/eval.rb
 
-# Initialize Braintrust (automatically sets up tracing)
 Braintrust.init
 
 # Simple food classifier (the code being evaluated)

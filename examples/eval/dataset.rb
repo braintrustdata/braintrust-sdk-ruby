@@ -14,7 +14,6 @@
 require "bundler/setup"
 require "braintrust"
 
-# Initialize Braintrust (automatically sets up tracing)
 Braintrust.init
 api = Braintrust::API.new  # Uses global state
 at_exit { OpenTelemetry.tracer_provider.shutdown }

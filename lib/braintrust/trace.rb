@@ -15,6 +15,35 @@ end
 
 module Braintrust
   module Trace
+    # Set up OpenTelemetry tracing with Braintrust
+    # @param state [State] Braintrust state
+    # @param tracer_provider [TracerProvider, nil] Optional tracer provider
+    # @return [void]
+    def self.setup(state, tracer_provider = nil)
+      if tracer_provider
+        # Use the explicitly provided tracer provider
+        # DO NOT set as global - user is managing it themselves
+        Log.debug("Using explicitly provided OpenTelemetry tracer provider")
+      else
+        # Check if global tracer provider is already a real TracerProvider
+        current_provider = OpenTelemetry.tracer_provider
+
+        if current_provider.is_a?(OpenTelemetry::SDK::Trace::TracerProvider)
+          # Use existing provider
+          Log.debug("Using existing OpenTelemetry tracer provider")
+          tracer_provider = current_provider
+        else
+          # Create new provider and set as global
+          tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+          OpenTelemetry.tracer_provider = tracer_provider
+          Log.debug("Created OpenTelemetry tracer provider")
+        end
+      end
+
+      # Enable Braintrust tracing (adds span processor)
+      enable(tracer_provider, state: state)
+    end
+
     def self.enable(tracer_provider, state: nil, exporter: nil)
       state ||= Braintrust.current_state
       raise Error, "No state available" unless state
