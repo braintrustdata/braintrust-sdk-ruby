@@ -23,6 +23,8 @@ desc "Remove Ruby build artifacts"
 task :clean do
   FileUtils.rm_rf("pkg")
   FileUtils.rm_rf("coverage")
+  FileUtils.rm_rf("doc")
+  FileUtils.rm_rf(".yardoc")
   FileUtils.rm_rf("tmp")
   FileUtils.rm_f(Dir.glob("*.gem"))
   FileUtils.rm_f("changelog.md")
@@ -63,6 +65,11 @@ end
 desc "Build the gem"
 task build: [:clean] do
   sh "gem build braintrust.gemspec"
+end
+
+desc "Generate YARD documentation"
+task :yard do
+  sh "bundle exec yard doc"
 end
 
 desc "Run tests and open coverage report"

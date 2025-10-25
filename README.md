@@ -1,6 +1,7 @@
 # Braintrust Ruby SDK
 
 [![Gem Version](https://badge.fury.io/rb/braintrust.svg)](https://badge.fury.io/rb/braintrust)
+[![Documentation](https://img.shields.io/badge/docs-rubydoc.info-blue.svg)](https://rubydoc.info/gems/braintrust)
 ![Beta](https://img.shields.io/badge/status-beta-yellow)
 
 ## Overview
