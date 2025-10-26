@@ -1,7 +1,7 @@
 # Braintrust Ruby SDK
 
 [![Gem Version](https://img.shields.io/gem/v/braintrust.svg)](https://rubygems.org/gems/braintrust)
-[![Documentation](https://img.shields.io/badge/docs-rubydoc.info-blue.svg)](https://rubydoc.info/gems/braintrust)
+[![Documentation](https://img.shields.io/badge/docs-gemdocs.org-blue.svg)](https://gemdocs.org/gems/braintrust/)
 ![Beta](https://img.shields.io/badge/status-beta-yellow)
 
 ## Overview
@@ -193,7 +193,7 @@ Check out the [`examples/`](./examples/) directory for complete working examples
 ## Documentation
 
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
-- [API Documentation](https://rubydoc.info/gems/braintrust)
+- [API Documentation](https://gemdocs.org/gems/braintrust/)
 
 ## Contributing
 

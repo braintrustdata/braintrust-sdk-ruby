@@ -9,6 +9,170 @@ require "opentelemetry/sdk"
 require "json"
 
 module Braintrust
+  # Evaluation framework for testing AI systems with custom test cases and scoring functions.
+  #
+  # The Eval module provides tools for running systematic evaluations of your AI systems. An
+  # evaluation consists of:
+  # - **Cases**: Test inputs with optional expected outputs
+  # - **Task**: The code/model being evaluated
+  # - **Scorers**: Functions that judge the quality of outputs
+  #
+  # @example Basic evaluation with inline cases
+  #   require "braintrust"
+  #
+  #   Braintrust.init
+  #
+  #   # Define a simple task (the code being evaluated)
+  #   task = ->(input) { input.include?("a") ? "fruit" : "vegetable" }
+  #
+  #   # Run evaluation with inline cases
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "food-classifier",
+  #     cases: [
+  #       {input: "apple", expected: "fruit"},
+  #       {input: "carrot", expected: "vegetable"},
+  #       {input: "banana", expected: "fruit"}
+  #     ],
+  #     task: task,
+  #     scorers: [
+  #       # Named scorer with Eval.scorer
+  #       Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+  #         output == expected ? 1.0 : 0.0
+  #       end
+  #     ]
+  #   )
+  #
+  # @example Different ways to define scorers (recommended patterns)
+  #   # Method reference (auto-uses method name as scorer name)
+  #   def exact_match(input, expected, output)
+  #     output == expected ? 1.0 : 0.0
+  #   end
+  #
+  #   # Named scorer with Eval.scorer
+  #   case_insensitive = Braintrust::Eval.scorer("case_insensitive") do |input, expected, output|
+  #     output.downcase == expected.downcase ? 1.0 : 0.0
+  #   end
+  #
+  #   # Callable class with name method
+  #   class FuzzyMatch
+  #     def name
+  #       "fuzzy_match"
+  #     end
+  #
+  #     def call(input, expected, output, metadata = {})
+  #       threshold = metadata[:threshold] || 0.8
+  #       # scoring logic here
+  #       1.0
+  #     end
+  #   end
+  #
+  #   # Anonymous lambda that returns named score object
+  #   multi_score = ->(input, expected, output) {
+  #     [
+  #       {name: "exact_match", score: output == expected ? 1.0 : 0.0},
+  #       {name: "length_match", score: output.length == expected.length ? 1.0 : 0.0}
+  #     ]
+  #   }
+  #
+  #   # All can be used together
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "scorer-examples",
+  #     cases: [{input: "test", expected: "test"}],
+  #     task: ->(input) { input },
+  #     scorers: [method(:exact_match), case_insensitive, FuzzyMatch.new, multi_score]
+  #   )
+  #
+  # @example Different ways to define tasks
+  #   # Lambda
+  #   task_lambda = ->(input) { "result" }
+  #
+  #   # Proc
+  #   task_proc = proc { |input| "result" }
+  #
+  #   # Method reference
+  #   def my_task(input)
+  #     "result"
+  #   end
+  #   task_method = method(:my_task)
+  #
+  #   # Callable class
+  #   class MyTask
+  #     def call(input)
+  #       "result"
+  #     end
+  #   end
+  #   task_class = MyTask.new
+  #
+  #   # All of these can be used as the task parameter
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "task-examples",
+  #     cases: [{input: "test"}],
+  #     task: task_lambda, # or task_proc, task_method, task_class
+  #     scorers: [
+  #       Braintrust::Eval.scorer("my_scorer") { |input, expected, output| 1.0 }
+  #     ]
+  #   )
+  #
+  # @example Using datasets instead of inline cases
+  #   # Fetch cases from a dataset stored in Braintrust
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "with-dataset",
+  #     dataset: "my-dataset-name", # fetches from same project
+  #     task: ->(input) { "result" },
+  #     scorers: [
+  #       Braintrust::Eval.scorer("my_scorer") { |input, expected, output| 1.0 }
+  #     ]
+  #   )
+  #
+  #   # Or with more options
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "with-dataset-options",
+  #     dataset: {
+  #       name: "my-dataset",
+  #       project: "other-project",
+  #       version: "1.0",
+  #       limit: 100
+  #     },
+  #     task: ->(input) { "result" },
+  #     scorers: [
+  #       Braintrust::Eval.scorer("my_scorer") { |input, expected, output| 1.0 }
+  #     ]
+  #   )
+  #
+  # @example Using metadata and tags
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "with-metadata",
+  #     cases: [
+  #       {
+  #         input: "apple",
+  #         expected: "fruit",
+  #         tags: ["tropical", "sweet"],
+  #         metadata: {threshold: 0.9, category: "produce"}
+  #       }
+  #     ],
+  #     task: ->(input) { "fruit" },
+  #     scorers: [
+  #       # Scorer can access case metadata
+  #       Braintrust::Eval.scorer("threshold_match") do |input, expected, output, metadata|
+  #         threshold = metadata[:threshold] || 0.5
+  #         # scoring logic using threshold
+  #         1.0
+  #       end
+  #     ],
+  #     # Experiment-level tags and metadata
+  #     tags: ["v1", "production"],
+  #     metadata: {
+  #       model: "gpt-4",
+  #       temperature: 0.7,
+  #       version: "1.0.0"
+  #     }
+  #   )
   module Eval
     class << self
       # Create a scorer with a name and callable

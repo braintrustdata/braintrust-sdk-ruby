@@ -537,9 +537,9 @@
   - Added `/doc/` and `/.yardoc` to `.gitignore`
   - Updated `rake clean` to remove generated documentation
   - Documentation currently at 87.5% coverage
-  - Ready for auto-publishing to RubyDoc.info on gem release
+  - Ready for auto-publishing to gemdocs.org on gem release
 - **README Badges** ✅
-  - Added RubyDoc.info badge with link to https://rubydoc.info/gems/braintrust
+  - Added gemdocs.org badge with link to https://gemdocs.org/gems/braintrust/
   - Switched Gem Version badge from badge.fury.io to shields.io (more reliable)
 - **Release Script Improvements** ✅
   - `scripts/generate-release-notes.sh`:

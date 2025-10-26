@@ -64,7 +64,7 @@ all contrib wrappers.
 
 ### Documentation for v0.1.0
 - [x] YARD documentation scaffolding (rake yard task, .yardopts, badges) ✅
-  - Current: 87.5% documented (auto-published to rubydoc.info)
+  - Current: 87.5% documented (auto-published to gemdocs.org)
 - [ ] Complete YARD documentation for remaining undocumented APIs
   - 4 undocumented modules
   - 5 undocumented methods
