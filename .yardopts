@@ -5,7 +5,6 @@
 --title "Braintrust Ruby SDK Documentation"
 --protected
 --no-private
---hide-warnings
 lib/**/*.rb
 -
 README.md
