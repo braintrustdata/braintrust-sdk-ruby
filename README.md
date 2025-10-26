@@ -171,10 +171,45 @@ puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 OpenTelemetry.tracer_provider.shutdown
 ```
 
+### RubyLLM Tracing
+
+```ruby
+require "braintrust"
+require "ruby_llm"
+
+Braintrust.init
+
+# Configure RubyLLM for your provider (OpenAI, Anthropic, etc.)
+RubyLLM.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+end
+
+# Create chat and wrap with Braintrust tracing
+chat = RubyLLM.chat.with_model("gpt-4o-mini")
+Braintrust::Trace::RubyLLM.wrap(chat)
+
+tracer = OpenTelemetry.tracer_provider.tracer("ruby-llm-app")
+root_span = nil
+
+response = tracer.in_span("chat-completion") do |span|
+  root_span = span
+  chat.ask "Say hello!"
+end
+
+puts "Response: #{response.content}"
+puts "Tokens used: #{response.input_tokens + response.output_tokens}"
+
+puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
+
+OpenTelemetry.tracer_provider.shutdown
+```
+
+RubyLLM provides a unified interface for multiple LLM providers. The Braintrust integration automatically traces all providers (OpenAI, Anthropic, Gemini, etc.), including streaming responses and tool/function calls.
+
 ## Features
 
 - **Evaluations**: Run systematic evaluations of your AI systems with custom scoring functions
-- **Tracing**: Automatic instrumentation for OpenAI and Anthropic API calls with OpenTelemetry
+- **Tracing**: Automatic instrumentation for OpenAI, Anthropic, and RubyLLM API calls with OpenTelemetry
 - **Datasets**: Manage and version your evaluation datasets
 - **Experiments**: Track different versions and configurations of your AI systems
 - **Observability**: Monitor your AI applications in production
@@ -187,6 +222,7 @@ Check out the [`examples/`](./examples/) directory for complete working examples
 - [trace.rb](./examples/trace.rb) - Manual span creation and tracing
 - [openai.rb](./examples/openai.rb) - Automatically trace OpenAI API calls
 - [anthropic.rb](./examples/anthropic.rb) - Automatically trace Anthropic API calls
+- [internal/ruby_llm.rb](./examples/internal/ruby_llm.rb) - Trace RubyLLM with multiple providers, streaming, and tools
 - [eval/dataset.rb](./examples/eval/dataset.rb) - Run evaluations using datasets stored in Braintrust
 - [eval/remote_functions.rb](./examples/eval/remote_functions.rb) - Use remote scoring functions
 

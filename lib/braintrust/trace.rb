@@ -21,6 +21,14 @@ rescue LoadError
   # Anthropic gem not installed - integration will not be available
 end
 
+# RubyLLM integration is optional - automatically loaded if ruby_llm gem is available
+begin
+  require "ruby_llm"
+  require_relative "trace/contrib/ruby_llm"
+rescue LoadError
+  # RubyLLM gem not installed - integration will not be available
+end
+
 module Braintrust
   module Trace
     # Set up OpenTelemetry tracing with Braintrust

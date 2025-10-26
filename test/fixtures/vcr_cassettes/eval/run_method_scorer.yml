@@ -205,4 +205,85 @@ http_interactions:
       encoding: ASCII-8BIT
       string: '{"id":"9b8e0f85-441f-49c7-94d6-9936e467dbef","project_id":"c532bc50-7094-4bbb-8704-42344c9728b9","name":"test-ruby-sdk-method-scorer-912f9b8f","description":null,"created":"2025-10-24T15:29:17.789Z","repo_info":{},"commit":null,"base_exp_id":null,"deleted_at":null,"dataset_id":null,"dataset_version":null,"public":false,"user_id":"855483c6-68f0-4df4-a147-df9b4ea32e0c","metadata":null,"tags":null}'
   recorded_at: Fri, 24 Oct 2025 15:29:17 GMT
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer test-key
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '193'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-MTcxZDllNTItMGMzNC00ZmI5LWI5MDQtY2VkYjc3YmI4NGJm''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com;
+        font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com;
+        object-src ''none''; base-uri ''self''; form-action ''self''; frame-ancestors
+        ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - text/plain; charset=utf-8
+      Date:
+      - Sun, 26 Oct 2025 02:50:45 GMT
+      Etag:
+      - '"jm2hq5zxij5d"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=14"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Nonce:
+      - MTcxZDllNTItMGMzNC00ZmI5LWI5MDQtY2VkYjc3YmI4NGJm
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::2bc2p-1761447045192-643982c14de3
+    body:
+      encoding: UTF-8
+      string: 'Failed to validate Cognito JWT: Error: JWT string does not consist
+        of exactly 3 parts (header, payload, signature) [timestamp=1761447045.258]
+        [request_id=iad1::2bc2p-1761447045192-643982c14de3]'
+  recorded_at: Sun, 26 Oct 2025 02:50:45 GMT
 recorded_with: VCR 6.3.1

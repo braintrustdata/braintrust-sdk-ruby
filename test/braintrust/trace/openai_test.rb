@@ -12,11 +12,16 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
   end
 
   def teardown
+    puts "\n[DEBUG] OpenAI teardown - @original_api_key: #{@original_api_key.inspect}, ENV before: #{ENV["OPENAI_API_KEY"]&.slice(0, 10)}" if ENV["DEBUG_TESTS"]
+
     if @original_api_key
       ENV["OPENAI_API_KEY"] = @original_api_key
     else
-      ENV.delete("OPENAI_API_KEY")
+      # DON'T delete if we never had it - this stomps on the environment!
+      # ENV.delete("OPENAI_API_KEY")
     end
+
+    puts "[DEBUG] OpenAI teardown - ENV after: #{ENV["OPENAI_API_KEY"]&.slice(0, 10)}" if ENV["DEBUG_TESTS"]
   end
 
   def test_wrap_creates_span_for_chat_completions

@@ -39,3 +39,13 @@ end
 appraise "anthropic-uninstalled" do
   remove_gem "anthropic"
 end
+
+# Test with latest RubyLLM gem version
+appraise "ruby_llm" do
+  gem "ruby_llm", ">= 1.0"
+end
+
+# Test without RubyLLM gem (verify SDK works without optional dependency)
+appraise "ruby_llm-uninstalled" do
+  remove_gem "ruby_llm"
+end

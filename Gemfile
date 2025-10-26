@@ -12,3 +12,6 @@ gem "standard", "~> 1.0"
 gem "simplecov", "~> 0.22"
 gem "vcr", "~> 6.0"
 gem "webmock", "~> 3.0"
+
+gem "openai", "~> 0.34.1"
+gem "ruby_llm", "~> 1.8"

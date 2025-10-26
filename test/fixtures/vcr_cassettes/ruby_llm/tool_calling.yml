@@ -1,0 +1,215 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"What''s
+        the weather in Tokyo?"}],"stream":false,"tools":[{"type":"function","function":{"name":"braintrust--trace--ruby_llm_test--test_weather","description":"Get
+        weather for a location","parameters":{"type":"object","properties":{"location":{"type":"string"}},"required":["location"]}}}]}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.0
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 26 Oct 2025 02:52:00 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Expose-Headers:
+      - X-Request-ID
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '681'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      X-Envoy-Upstream-Service-Time:
+      - '694'
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999990'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      X-Request-Id:
+      - req_2f1d70adb1be4405b1beec22059bf902
+      X-Openai-Proxy-Wasm:
+      - v0.1
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=1l8E.0fBkD0ZJEbwz7PbG.6.oYO7exklfm_1pyx5Aqg-1761447120-1.0.1.1-pIe_AZ2hD.etZXZWjLkxMTL4NAR7mj0IL1x9mZ.O.LUlq2y7WYDT_gT1HyVqyFCwbl5DjPpqrwJHYxYwP9hUP75Bu7eXF1R7K.k.CnGwfos;
+        path=/; expires=Sun, 26-Oct-25 03:22:00 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=tkHTSlVqtsPg3yHJzoA.VTxsv_3Q8Fj4lByBHFDSGPI-1761447120252-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9946a7b09a1ec54a-EWR
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |
+        {
+          "id": "chatcmpl-CUl9LjclM2P6w2eeybST0cc6LQri8",
+          "object": "chat.completion",
+          "created": 1761447119,
+          "model": "gpt-4o-mini-2024-07-18",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_CjrsfHKcFaPSsTQGuXtUiPEf",
+                    "type": "function",
+                    "function": {
+                      "name": "braintrust--trace--ruby_llm_test--test_weather",
+                      "arguments": "{\"location\":\"Tokyo\"}"
+                    }
+                  }
+                ],
+                "refusal": null,
+                "annotations": []
+              },
+              "logprobs": null,
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 59,
+            "completion_tokens": 25,
+            "total_tokens": 84,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": "fp_51db84afab"
+        }
+  recorded_at: Sun, 26 Oct 2025 02:52:00 GMT
+- request:
+    method: post
+    uri: https://api.openai.com/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"What''s
+        the weather in Tokyo?"},{"role":"assistant","tool_calls":[{"id":"call_CjrsfHKcFaPSsTQGuXtUiPEf","type":"function","function":{"name":"braintrust--trace--ruby_llm_test--test_weather","arguments":"{\"location\":\"Tokyo\"}"}}]},{"role":"tool","content":"{:temperature=>72,
+        :condition=>\"sunny\", :location=>\"Tokyo\"}","tool_call_id":"call_CjrsfHKcFaPSsTQGuXtUiPEf"}],"stream":false,"tools":[{"type":"function","function":{"name":"braintrust--trace--ruby_llm_test--test_weather","description":"Get
+        weather for a location","parameters":{"type":"object","properties":{"location":{"type":"string"}},"required":["location"]}}}]}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.0
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 26 Oct 2025 02:52:01 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Expose-Headers:
+      - X-Request-ID
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '715'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      X-Envoy-Upstream-Service-Time:
+      - '728'
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999972'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      X-Request-Id:
+      - req_071e9d42b90a411a9e5c37aa2bf7c6d7
+      X-Openai-Proxy-Wasm:
+      - v0.1
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=NX4RASX0h1WBhZa2v6CAYXbIS_c0baK2oH8sRJdpKc4-1761447121-1.0.1.1-WjDbzcu7N4Bb04V9Fft9_Wkx4ofkCXF5FLLXfuw.8lHHoRZOBtRrFQaWd2nJGSRGmemAVGTn727h128PokcCT43RdppYaUjYyhkCP68oG4I;
+        path=/; expires=Sun, 26-Oct-25 03:22:01 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=Gxw0mosb1_g8fRDV45Ozg5jswk61zEkERj8gmPruDE4-1761447121142-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9946a7b60c0aae70-EWR
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        ewogICJpZCI6ICJjaGF0Y21wbC1DVWw5TVpGZG5CZVNYOVQ4Tkw0NEd6OGdRbmdhMyIsCiAgIm9iamVjdCI6ICJjaGF0LmNvbXBsZXRpb24iLAogICJjcmVhdGVkIjogMTc2MTQ0NzEyMCwKICAibW9kZWwiOiAiZ3B0LTRvLW1pbmktMjAyNC0wNy0xOCIsCiAgImNob2ljZXMiOiBbCiAgICB7CiAgICAgICJpbmRleCI6IDAsCiAgICAgICJtZXNzYWdlIjogewogICAgICAgICJyb2xlIjogImFzc2lzdGFudCIsCiAgICAgICAgImNvbnRlbnQiOiAiVGhlIHdlYXRoZXIgaW4gVG9reW8gaXMgc3Vubnkgd2l0aCBhIHRlbXBlcmF0dXJlIG9mIDcywrBGLiIsCiAgICAgICAgInJlZnVzYWwiOiBudWxsLAogICAgICAgICJhbm5vdGF0aW9ucyI6IFtdCiAgICAgIH0sCiAgICAgICJsb2dwcm9icyI6IG51bGwsCiAgICAgICJmaW5pc2hfcmVhc29uIjogInN0b3AiCiAgICB9CiAgXSwKICAidXNhZ2UiOiB7CiAgICAicHJvbXB0X3Rva2VucyI6IDExOCwKICAgICJjb21wbGV0aW9uX3Rva2VucyI6IDE1LAogICAgInRvdGFsX3Rva2VucyI6IDEzMywKICAgICJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOiB7CiAgICAgICJjYWNoZWRfdG9rZW5zIjogMCwKICAgICAgImF1ZGlvX3Rva2VucyI6IDAKICAgIH0sCiAgICAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsKICAgICAgInJlYXNvbmluZ190b2tlbnMiOiAwLAogICAgICAiYXVkaW9fdG9rZW5zIjogMCwKICAgICAgImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwKICAgICAgInJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMAogICAgfQogIH0sCiAgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0IiwKICAic3lzdGVtX2ZpbmdlcnByaW50IjogImZwXzUxZGI4NGFmYWIiCn0K
+  recorded_at: Sun, 26 Oct 2025 02:52:01 GMT
+recorded_with: VCR 6.3.1

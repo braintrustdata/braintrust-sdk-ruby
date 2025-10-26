@@ -15,7 +15,8 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     if @original_api_key
       ENV["ANTHROPIC_API_KEY"] = @original_api_key
     else
-      ENV.delete("ANTHROPIC_API_KEY")
+      # DON'T delete if we never had it - this stomps on the environment!
+      # ENV.delete("ANTHROPIC_API_KEY")
     end
   end
 
