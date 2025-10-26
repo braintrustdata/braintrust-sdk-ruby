@@ -136,10 +136,45 @@ puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 OpenTelemetry.tracer_provider.shutdown
 ```
 
+### Anthropic Tracing
+
+```ruby
+require "braintrust"
+require "anthropic"
+
+Braintrust.init
+
+client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+
+Braintrust::Trace::Anthropic.wrap(client)
+
+tracer = OpenTelemetry.tracer_provider.tracer("anthropic-app")
+root_span = nil
+
+message = tracer.in_span("chat-message") do |span|
+  root_span = span
+
+  client.messages.create(
+    model: "claude-3-5-sonnet-20241022",
+    max_tokens: 100,
+    system: "You are a helpful assistant.",
+    messages: [
+      {role: "user", content: "Say hello!"}
+    ]
+  )
+end
+
+puts "Response: #{message.content[0].text}"
+
+puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
+
+OpenTelemetry.tracer_provider.shutdown
+```
+
 ## Features
 
 - **Evaluations**: Run systematic evaluations of your AI systems with custom scoring functions
-- **Tracing**: Automatic instrumentation for OpenAI API calls with OpenTelemetry
+- **Tracing**: Automatic instrumentation for OpenAI and Anthropic API calls with OpenTelemetry
 - **Datasets**: Manage and version your evaluation datasets
 - **Experiments**: Track different versions and configurations of your AI systems
 - **Observability**: Monitor your AI applications in production
@@ -151,6 +186,7 @@ Check out the [`examples/`](./examples/) directory for complete working examples
 - [eval.rb](./examples/eval.rb) - Create and run evaluations with custom test cases and scoring functions
 - [trace.rb](./examples/trace.rb) - Manual span creation and tracing
 - [openai.rb](./examples/openai.rb) - Automatically trace OpenAI API calls
+- [anthropic.rb](./examples/anthropic.rb) - Automatically trace Anthropic API calls
 - [eval/dataset.rb](./examples/eval/dataset.rb) - Run evaluations using datasets stored in Braintrust
 - [eval/remote_functions.rb](./examples/eval/remote_functions.rb) - Use remote scoring functions
 
