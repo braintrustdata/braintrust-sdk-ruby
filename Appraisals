@@ -11,11 +11,31 @@ appraise "openai-0.34" do
 end
 
 # Test with latest OpenAI gem version (allows newer patch/minor versions)
-appraise "openai-latest" do
+appraise "openai" do
   gem "openai", ">= 0.34"
 end
 
 # Test without OpenAI gem (verify SDK works without optional dependency)
 appraise "openai-uninstalled" do
   remove_gem "openai"
+end
+
+# Test with Anthropic gem 1.11.x (recent stable version)
+appraise "anthropic-1.11" do
+  gem "anthropic", "~> 1.11.0"
+end
+
+# Test with Anthropic gem 1.12.x (latest stable version)
+appraise "anthropic-1.12" do
+  gem "anthropic", "~> 1.12.0"
+end
+
+# Test with latest Anthropic gem version (allows newer versions)
+appraise "anthropic" do
+  gem "anthropic", ">= 1.11"
+end
+
+# Test without Anthropic gem (verify SDK works without optional dependency)
+appraise "anthropic-uninstalled" do
+  remove_gem "anthropic"
 end

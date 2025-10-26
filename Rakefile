@@ -89,7 +89,7 @@ task coverage: :test do
 end
 
 desc "Verify CI (lint + test all appraisal scenarios)"
-task ci: [:lint, :"test:appraisal:install", :"test:appraisal"]
+task ci: [:lint, :"test:appraisal"]
 
 task default: :ci
 
@@ -113,13 +113,15 @@ namespace :test do
   # Appraisal tasks for testing with/without optional dependencies
   # Run directly: bundle exec appraisal [scenario] rake test
   # List scenarios: bundle exec appraisal list
-  desc "Run tests against different dependencies"
-  task :appraisal do
+  desc "Run tests against different dependencies (with install)"
+  task appraisal: :"appraisal:install" do
     sh "bundle exec appraisal rake test"
   end
 
-  desc "Run tests against all dependency scenarios (alias for test:appraisal)"
-  task all: :appraisal
+  desc "Run tests against all dependency scenarios (without install)"
+  task :all do
+    sh "bundle exec appraisal rake test"
+  end
 
   namespace :appraisal do
     desc "Show help for appraisal scenarios and usage"

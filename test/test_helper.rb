@@ -1,13 +1,16 @@
 # frozen_string_literal: true
 
 # Start SimpleCov BEFORE loading any code to track
-require "simplecov"
+# Skip coverage when running under appraisal (different dependency scenarios)
+unless ENV["BUNDLE_GEMFILE"]&.include?("gemfiles/")
+  require "simplecov"
 
-SimpleCov.start do
-  add_filter "/test/"
-  enable_coverage :branch
-  # TODO: Re-enable minimum coverage requirement once we reach 80%
-  # minimum_coverage line: 80, branch: 80
+  SimpleCov.start do
+    add_filter "/test/"
+    enable_coverage :branch
+    # TODO: Re-enable minimum coverage requirement once we reach 80%
+    # minimum_coverage line: 80, branch: 80
+  end
 end
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
@@ -34,6 +37,7 @@ VCR.configure do |config|
   # because VCR needs the actual header value to replay requests correctly
   config.filter_sensitive_data("<BRAINTRUST_API_KEY>") { ENV["BRAINTRUST_API_KEY"] }
   config.filter_sensitive_data("<OPENAI_API_KEY>") { ENV["OPENAI_API_KEY"] }
+  config.filter_sensitive_data("<ANTHROPIC_API_KEY>") { ENV["ANTHROPIC_API_KEY"] }
 
   # Ignore OpenTelemetry trace exports (background async calls)
   config.ignore_request do |request|

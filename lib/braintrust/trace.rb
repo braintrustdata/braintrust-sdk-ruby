@@ -13,6 +13,14 @@ rescue LoadError
   # OpenAI gem not installed - integration will not be available
 end
 
+# Anthropic integration is optional - automatically loaded if anthropic gem is available
+begin
+  require "anthropic"
+  require_relative "trace/contrib/anthropic"
+rescue LoadError
+  # Anthropic gem not installed - integration will not be available
+end
+
 module Braintrust
   module Trace
     # Set up OpenTelemetry tracing with Braintrust
