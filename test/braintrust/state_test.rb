@@ -70,4 +70,135 @@ class Braintrust::StateTest < Minitest::Test
     final_state = Braintrust::State.global
     assert_includes ["key1", "key2"], final_state.api_key
   end
+
+  def test_init_accepts_autoinstrument_parameter
+    # Test that Braintrust.init accepts autoinstrument parameter and passes it through
+    state = Braintrust.init(
+      api_key: "test-key",
+      set_global: false,
+      enable_tracing: false,  # Disable tracing to avoid setup overhead
+      autoinstrument: {enabled: true}
+    )
+
+    # Verify state was created successfully with autoinstrument config
+    assert_instance_of Braintrust::State, state
+    assert_equal({enabled: true, include: nil, exclude: nil}, state.autoinstrument_config)
+  end
+
+  def test_autoinstrument_defaults_to_disabled
+    # Test that when autoinstrument is nil, it defaults to disabled
+    state = Braintrust.init(
+      api_key: "test-key",
+      set_global: false,
+      enable_tracing: false
+    )
+
+    assert_equal({enabled: false}, state.autoinstrument_config)
+  end
+
+  def test_autoinstrument_enabled_false_explicit
+    # Test that { enabled: false } is stored correctly
+    state = Braintrust.init(
+      api_key: "test-key",
+      set_global: false,
+      enable_tracing: false,
+      autoinstrument: {enabled: false}
+    )
+
+    assert_equal({enabled: false}, state.autoinstrument_config)
+  end
+
+  def test_autoinstrument_with_include_list
+    # Test that include list is validated and stored
+    state = Braintrust.init(
+      api_key: "test-key",
+      set_global: false,
+      enable_tracing: false,
+      autoinstrument: {enabled: true, include: [:openai, :anthropic]}
+    )
+
+    assert_equal({enabled: true, include: [:openai, :anthropic], exclude: nil}, state.autoinstrument_config)
+  end
+
+  def test_autoinstrument_with_exclude_list
+    # Test that exclude list is validated and stored
+    state = Braintrust.init(
+      api_key: "test-key",
+      set_global: false,
+      enable_tracing: false,
+      autoinstrument: {enabled: true, exclude: [:anthropic]}
+    )
+
+    assert_equal({enabled: true, include: nil, exclude: [:anthropic]}, state.autoinstrument_config)
+  end
+
+  def test_autoinstrument_rejects_both_include_and_exclude
+    # Test that both include and exclude raises error
+    error = assert_raises(ArgumentError) do
+      Braintrust.init(
+        api_key: "test-key",
+        set_global: false,
+        enable_tracing: false,
+        autoinstrument: {enabled: true, include: [:openai], exclude: [:anthropic]}
+      )
+    end
+
+    assert_match(/cannot specify both.*include.*exclude/i, error.message)
+  end
+
+  def test_autoinstrument_rejects_include_without_enabled
+    # Test that include without enabled: true raises error
+    error = assert_raises(ArgumentError) do
+      Braintrust.init(
+        api_key: "test-key",
+        set_global: false,
+        enable_tracing: false,
+        autoinstrument: {include: [:openai]}
+      )
+    end
+
+    assert_match(/include.*requires.*enabled.*true/i, error.message)
+  end
+
+  def test_autoinstrument_rejects_exclude_without_enabled
+    # Test that exclude without enabled: true raises error
+    error = assert_raises(ArgumentError) do
+      Braintrust.init(
+        api_key: "test-key",
+        set_global: false,
+        enable_tracing: false,
+        autoinstrument: {exclude: [:anthropic]}
+      )
+    end
+
+    assert_match(/exclude.*requires.*enabled.*true/i, error.message)
+  end
+
+  def test_autoinstrument_rejects_non_array_include
+    # Test that non-array include raises error
+    error = assert_raises(ArgumentError) do
+      Braintrust.init(
+        api_key: "test-key",
+        set_global: false,
+        enable_tracing: false,
+        autoinstrument: {enabled: true, include: :openai}
+      )
+    end
+
+    assert_match(/include.*must be an array/i, error.message)
+  end
+
+  def test_autoinstrument_rejects_non_symbol_include
+    # Test that non-symbol values in include raises error
+    error = assert_raises(ArgumentError) do
+      Braintrust.init(
+        api_key: "test-key",
+        set_global: false,
+        enable_tracing: false,
+        autoinstrument: {enabled: true, include: ["openai"]}
+      )
+    end
+
+    assert_match(/include.*must contain.*symbols/i, error.message)
+  end
 end

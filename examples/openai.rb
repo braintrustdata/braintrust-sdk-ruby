@@ -24,13 +24,11 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-Braintrust.init(blocking_login: true)
+# Enable auto-instrumentation to automatically trace all OpenAI clients
+Braintrust.init(blocking_login: true, autoinstrument: {enabled: true})
 
-# Create OpenAI client
+# Create OpenAI client (automatically instrumented - no wrap() needed!)
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
-
-# Wrap the client with Braintrust tracing
-Braintrust::Trace::OpenAI.wrap(client)
 
 # Create a root span to capture the entire operation
 tracer = OpenTelemetry.tracer_provider.tracer("openai-example")

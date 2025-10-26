@@ -249,4 +249,33 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       # The streaming wrapper is implemented and works with real API calls
     end
   end
+
+  def test_wrap_prevents_double_wrapping
+    # Test that calling wrap twice doesn't wrap the client twice
+    VCR.use_cassette("anthropic/messages_simple") do
+      require "anthropic"
+
+      rig = setup_otel_test_rig
+      client = Anthropic::Client.new(api_key: @api_key)
+
+      # Wrap once
+      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Wrap again (should be a no-op)
+      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a request
+      response = client.messages.create(
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 10,
+        messages: [{role: "user", content: "Say 'test'"}]
+      )
+
+      refute_nil response
+
+      # Should only have ONE span (not two)
+      spans = rig.drain
+      assert_equal 1, spans.length
+    end
+  end
 end

@@ -101,7 +101,53 @@ OpenTelemetry.tracer_provider.shutdown
 puts "View trace in Braintrust!"
 ```
 
-### OpenAI Tracing
+### Auto-Instrumentation
+
+The simplest way to trace LLM calls is with auto-instrumentation, which automatically wraps supported libraries when you initialize Braintrust:
+
+```ruby
+require "braintrust"
+require "openai"
+
+# Enable auto-instrumentation for all supported libraries
+Braintrust.init(autoinstrument: { enabled: true })
+
+# All OpenAI clients created after init are automatically traced!
+client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
+
+response = client.chat.completions.create(
+  messages: [{role: "user", content: "Hello!"}],
+  model: "gpt-4o-mini"
+)
+
+# Spans are automatically created and sent to Braintrust
+```
+
+You can control which libraries are instrumented:
+
+```ruby
+# Only instrument specific libraries (allowlist)
+Braintrust.init(autoinstrument: {
+  enabled: true,
+  include: [:openai, :anthropic]
+})
+
+# Instrument all except specific libraries (denylist)
+Braintrust.init(autoinstrument: {
+  enabled: true,
+  exclude: [:anthropic]
+})
+```
+
+**Supported libraries:** `:openai`, `:anthropic`
+
+**Important notes:**
+- Auto-instrumentation is **off by default** - you must explicitly enable it
+- Only clients created **after** `Braintrust.init` are auto-instrumented
+- Auto-instrumentation only affects new client instances, not existing ones
+- You can still use manual wrapping alongside auto-instrumentation
+
+### OpenAI Tracing (Manual)
 
 ```ruby
 require "braintrust"
@@ -136,7 +182,7 @@ puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 OpenTelemetry.tracer_provider.shutdown
 ```
 
-### Anthropic Tracing
+### Anthropic Tracing (Manual)
 
 ```ruby
 require "braintrust"

@@ -195,7 +195,13 @@ module Braintrust
       # @param client [OpenAI::Client] the OpenAI client to wrap
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
       def self.wrap(client, tracer_provider: nil)
+        # Check if already wrapped - prevent double-wrapping
+        return client if client.instance_variable_get(:@braintrust_wrapped)
+
         tracer_provider ||= ::OpenTelemetry.tracer_provider
+
+        # Mark as wrapped before wrapping to prevent re-entrance
+        client.instance_variable_set(:@braintrust_wrapped, true)
 
         # Wrap chat completions
         wrap_chat_completions(client, tracer_provider)

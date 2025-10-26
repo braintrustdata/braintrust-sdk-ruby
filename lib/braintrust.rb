@@ -37,8 +37,9 @@ module Braintrust
   # @param blocking_login [Boolean] Whether to block and login synchronously (default: false - async background login)
   # @param enable_tracing [Boolean] Whether to enable OpenTelemetry tracing (default: true)
   # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use instead of creating one
+  # @param autoinstrument [Hash, nil] Auto-instrumentation configuration (default: nil - disabled)
   # @return [State] the created state
-  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil, autoinstrument: nil)
     state = State.from_env(
       api_key: api_key,
       org_name: org_name,
@@ -47,7 +48,8 @@ module Braintrust
       api_url: api_url,
       blocking_login: blocking_login,
       enable_tracing: enable_tracing,
-      tracer_provider: tracer_provider
+      tracer_provider: tracer_provider,
+      autoinstrument: autoinstrument
     )
 
     State.global = state if set_global

@@ -79,7 +79,13 @@ module Braintrust
       # @param client [Anthropic::Client] the Anthropic client to wrap
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
       def self.wrap(client, tracer_provider: nil)
+        # Check if already wrapped - prevent double-wrapping
+        return client if client.instance_variable_get(:@braintrust_wrapped)
+
         tracer_provider ||= ::OpenTelemetry.tracer_provider
+
+        # Mark as wrapped before wrapping to prevent re-entrance
+        client.instance_variable_set(:@braintrust_wrapped, true)
 
         # Wrap messages.create
         wrap_messages_create(client, tracer_provider)
