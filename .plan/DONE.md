@@ -528,3 +528,47 @@
   - Event objects have accessor methods (`.type`, `.response`, `.output`, `.usage`)
   - Wrapper stores actual event objects (not converted to hashes) for aggregation
 - **Total: 11 OpenAI tests (135 assertions), 122 total tests (441 assertions), all passing, linter clean**
+
+### Session 13 Completed (YARD Documentation & Release Infrastructure) ✅
+- **YARD Documentation Setup** ✅
+  - Added `yard ~> 0.9` and `kramdown ~> 2.0` as dev dependencies
+  - Created `.yardopts` configuration (markdown markup, output to doc/, includes README)
+  - Added `rake yard` task for generating documentation
+  - Added `/doc/` and `/.yardoc` to `.gitignore`
+  - Updated `rake clean` to remove generated documentation
+  - Documentation currently at 87.5% coverage
+  - Ready for auto-publishing to RubyDoc.info on gem release
+- **README Badges** ✅
+  - Added RubyDoc.info badge with link to https://rubydoc.info/gems/braintrust
+  - Switched Gem Version badge from badge.fury.io to shields.io (more reliable)
+- **Release Script Improvements** ✅
+  - `scripts/generate-release-notes.sh`:
+    - Defaults to HEAD for local testing (shows unreleased changes)
+    - Accepts optional tag argument for testing specific releases
+    - Added tag format validation (must be `v0.0.x`)
+    - Compares against previous tag using `"${END}^"` parent commit
+    - Always uses "## Changelog" header (matches v0.0.1 format)
+  - Rake task improvements:
+    - `release:github` explicitly depends on `release:changelog`
+    - `release:publish` explicitly depends on `release:validate`, `lint`, `build`
+    - Simplified main `release` task to just call `publish` and `github`
+    - Changed release title from "Release v0.0.x" to just "v0.0.x"
+    - Added release URL printing after GitHub release creation
+- **Pre-commit Hook** ✅
+  - Added Gemfile.lock sync check to `mise.toml` precommit task
+  - Runs `bundle check || bundle install --quiet` before lint
+  - Fails if Gemfile.lock changes (requires staging updated lock file)
+  - Silenced bundle check output for clean UX
+- **CI Improvements** ✅
+  - Confirmed `bundler-cache: true` enforces frozen mode automatically
+  - Catches Gemfile.lock sync issues in CI without additional checks
+- **v0.0.2 Release** ✅
+  - Released gem to RubyGems with yard/kramdown dependencies
+  - Manually created GitHub release for v0.0.2
+  - Updated release titles for v0.0.1 and v0.0.2 to simple format
+- **Appraisal Dependency Testing** ✅ (Previously completed, now validated)
+  - Configured 4 test scenarios: openai-0.33, openai-0.34, openai-latest, openai-uninstalled
+  - Validates SDK works without OpenAI gem (optional dependency)
+  - Tests pass across multiple OpenAI versions
+  - Integrated into CI via `rake test:appraisal`
+- **Total: Same test count (122 tests, 441 assertions), all passing, linter clean**

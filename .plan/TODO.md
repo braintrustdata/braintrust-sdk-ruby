@@ -5,10 +5,11 @@
 ## High Priority - Next Steps
 
 ### 1. Validate Optional Dependencies & Version Support
-- [ ] **Validate OpenAI gem is NOT a runtime dependency** ✅ (currently dev-only)
-  - Ensure SDK works without openai gem installed
+- [x] **Validate OpenAI gem is NOT a runtime dependency** ✅ COMPLETE
+  - SDK works without openai gem installed (appraisal "openai-uninstalled")
   - OpenAI integration is opt-in via `require "braintrust/trace/openai"`
-  - Add test that verifies SDK loads without openai gem
+  - Tests pass with multiple OpenAI versions: 0.33.x, 0.34.x, latest
+  - Appraisals configured in CI pipeline
 - [ ] **Validate oldest sane OpenTelemetry version**
   - Current: `opentelemetry-sdk ~> 1.0`, `opentelemetry-exporter-otlp ~> 0.28`
   - Research oldest stable versions (1.0+ for SDK, 0.28+ for exporter?)
@@ -42,13 +43,15 @@
   - Integration with span processor
 
 ### Documentation for v0.1.0
-- [ ] Document all public APIs (RDoc/YARD documentation)
-  - Some inline docs exist but not comprehensive
-- [ ] Add inline code comments
-  - Core files have basic comments, needs expansion
+- [x] YARD documentation scaffolding (rake yard task, .yardopts, badges) ✅
+  - Current: 87.5% documented (auto-published to rubydoc.info)
+- [ ] Complete YARD documentation for remaining undocumented APIs
+  - 4 undocumented modules
+  - 5 undocumented methods
+  - Add more @example tags for better usage examples
 - [ ] Tag v0.1.0 release
-  - Still at v0.0.1 in lib/braintrust/version.rb
-  - Waiting on coverage and dependency validation
+  - Currently at v0.0.2 in lib/braintrust/version.rb
+  - Waiting on dependency validation and testing
 
 ## Low Priority
 
