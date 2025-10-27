@@ -3,6 +3,7 @@
 require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
+require_relative "trace/auto_instrument"
 require_relative "logger"
 
 # OpenAI integration is optional - automatically loaded if openai gem is available
@@ -50,6 +51,9 @@ module Braintrust
 
       # Enable Braintrust tracing (adds span processor)
       enable(tracer_provider, state: state)
+
+      # Setup auto-instrumentation if configured
+      AutoInstrument.setup(state.autoinstrument_config, tracer_provider)
     end
 
     def self.enable(tracer_provider, state: nil, exporter: nil)

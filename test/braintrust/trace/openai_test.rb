@@ -699,4 +699,33 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert span.attributes.key?("braintrust.input_json")
     end
   end
+
+  def test_wrap_prevents_double_wrapping
+    # Test that calling wrap twice doesn't wrap the client twice
+    VCR.use_cassette("openai/chat_completions") do
+      require "openai"
+
+      rig = setup_otel_test_rig
+      client = OpenAI::Client.new(api_key: @api_key)
+
+      # Wrap once
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Wrap again (should be a no-op)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a request
+      response = client.chat.completions.create(
+        messages: [{role: "user", content: "Say 'test'"}],
+        model: "gpt-4o-mini",
+        max_tokens: 10
+      )
+
+      refute_nil response
+
+      # Should only have ONE span (not two)
+      spans = rig.drain
+      assert_equal 1, spans.length
+    end
+  end
 end

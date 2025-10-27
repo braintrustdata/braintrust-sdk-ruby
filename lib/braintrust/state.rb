@@ -6,7 +6,7 @@ module Braintrust
   # State object that holds Braintrust configuration
   # Thread-safe global state management
   class State
-    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in
+    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :autoinstrument_config
 
     @mutex = Mutex.new
     @global_state = nil
@@ -20,8 +20,9 @@ module Braintrust
     # @param blocking_login [Boolean] whether to block and login synchronously (default: false)
     # @param enable_tracing [Boolean] whether to enable OpenTelemetry tracing (default: true)
     # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use
+    # @param autoinstrument [Hash, nil] Auto-instrumentation configuration (default: nil)
     # @return [State] the created state
-    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, autoinstrument: nil)
       require_relative "config"
       config = Config.from_env(
         api_key: api_key,
@@ -38,11 +39,12 @@ module Braintrust
         api_url: config.api_url,
         blocking_login: blocking_login,
         enable_tracing: enable_tracing,
-        tracer_provider: tracer_provider
+        tracer_provider: tracer_provider,
+        autoinstrument: autoinstrument
       )
     end
 
-    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, autoinstrument: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
       raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
@@ -55,6 +57,9 @@ module Braintrust
       @api_url = api_url
       @proxy_url = proxy_url
       @logged_in = false
+
+      # Parse and validate autoinstrument config
+      @autoinstrument_config = parse_autoinstrument_config(autoinstrument)
 
       # Perform login after state setup
       if blocking_login
@@ -160,6 +165,60 @@ module Braintrust
       end
 
       self
+    end
+
+    private
+
+    # Parse and validate autoinstrument configuration
+    # @param config [Hash, nil] Raw autoinstrument config from user
+    # @return [Hash] Normalized and validated config
+    def parse_autoinstrument_config(config)
+      # Default: disabled
+      return {enabled: false} if config.nil?
+
+      # Explicit disabled
+      return {enabled: false} if config[:enabled] == false
+
+      # Validation: include and exclude cannot both be present
+      if config[:include] && config[:exclude]
+        raise ArgumentError, "Cannot specify both :include and :exclude in autoinstrument config"
+      end
+
+      # Validation: include/exclude require enabled: true
+      if config[:include] && config[:enabled] != true
+        raise ArgumentError, ":include requires :enabled to be true in autoinstrument config"
+      end
+
+      if config[:exclude] && config[:enabled] != true
+        raise ArgumentError, ":exclude requires :enabled to be true in autoinstrument config"
+      end
+
+      # Validation: include must be an array
+      if config[:include] && !config[:include].is_a?(Array)
+        raise ArgumentError, ":include must be an array in autoinstrument config"
+      end
+
+      # Validation: exclude must be an array
+      if config[:exclude] && !config[:exclude].is_a?(Array)
+        raise ArgumentError, ":exclude must be an array in autoinstrument config"
+      end
+
+      # Validation: include values must be symbols
+      if config[:include] && !config[:include].all? { |v| v.is_a?(Symbol) }
+        raise ArgumentError, ":include must contain only symbols in autoinstrument config"
+      end
+
+      # Validation: exclude values must be symbols
+      if config[:exclude] && !config[:exclude].all? { |v| v.is_a?(Symbol) }
+        raise ArgumentError, ":exclude must contain only symbols in autoinstrument config"
+      end
+
+      # Normalize enabled: true case
+      {
+        enabled: config[:enabled] == true,
+        include: config[:include],
+        exclude: config[:exclude]
+      }
     end
   end
 end

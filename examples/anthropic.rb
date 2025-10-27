@@ -20,13 +20,11 @@ unless ENV["ANTHROPIC_API_KEY"]
   exit 1
 end
 
-Braintrust.init(blocking_login: true)
+# Enable auto-instrumentation to automatically trace all Anthropic clients
+Braintrust.init(blocking_login: true, autoinstrument: {enabled: true})
 
-# Create Anthropic client
+# Create Anthropic client (automatically instrumented - no wrap() needed!)
 client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
-
-# Wrap the client with Braintrust tracing
-Braintrust::Trace::Anthropic.wrap(client)
 
 # Create a root span to capture the entire operation
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-example")
