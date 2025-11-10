@@ -171,6 +171,56 @@ puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 OpenTelemetry.tracer_provider.shutdown
 ```
 
+### Attachments
+
+Attachments allow you to log binary data (images, PDFs, audio, etc.) as part of your traces. This is particularly useful for multimodal AI applications like vision models.
+
+```ruby
+require "braintrust"
+require "braintrust/trace/attachment"
+
+Braintrust.init
+
+tracer = OpenTelemetry.tracer_provider.tracer("vision-app")
+
+tracer.in_span("analyze-image") do |span|
+  # Create attachment from file
+  att = Braintrust::Trace::Attachment.from_file(
+    Braintrust::Trace::Attachment::IMAGE_PNG,
+    "./photo.png"
+  )
+
+  # Build message with attachment (OpenAI/Anthropic format)
+  messages = [
+    {
+      role: "user",
+      content: [
+        {type: "text", text: "What's in this image?"},
+        att.to_h  # Converts to {"type" => "base64_attachment", "content" => "data:..."}
+      ]
+    }
+  ]
+
+  # Log to trace
+  span.set_attribute("braintrust.input_json", JSON.generate(messages))
+end
+
+OpenTelemetry.tracer_provider.shutdown
+```
+
+You can create attachments from bytes, files, or URLs:
+
+```ruby
+# From bytes
+att = Braintrust::Trace::Attachment.from_bytes("image/jpeg", image_data)
+
+# From file
+att = Braintrust::Trace::Attachment.from_file("application/pdf", "./doc.pdf")
+
+# From URL
+att = Braintrust::Trace::Attachment.from_url("https://example.com/image.png")
+```
+
 ## Features
 
 - **Evaluations**: Run systematic evaluations of your AI systems with custom scoring functions
@@ -187,6 +237,7 @@ Check out the [`examples/`](./examples/) directory for complete working examples
 - [trace.rb](./examples/trace.rb) - Manual span creation and tracing
 - [openai.rb](./examples/openai.rb) - Automatically trace OpenAI API calls
 - [anthropic.rb](./examples/anthropic.rb) - Automatically trace Anthropic API calls
+- [trace/trace_attachments.rb](./examples/trace/trace_attachments.rb) - Log attachments (images, PDFs) in traces
 - [eval/dataset.rb](./examples/eval/dataset.rb) - Run evaluations using datasets stored in Braintrust
 - [eval/remote_functions.rb](./examples/eval/remote_functions.rb) - Use remote scoring functions
 

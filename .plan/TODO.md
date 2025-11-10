@@ -19,6 +19,15 @@
   - Examples: basic usage + kitchen sink (6 scenarios)
   - CI configured with ANTHROPIC_API_KEY
   - Coverage: 88.79% line, 61.05% branch
+- [x] **Attachments** ✅ COMPLETE
+  - Manual attachment API for logging binary data (images, PDFs, audio, etc.)
+  - Factory methods: `from_bytes`, `from_file`, `from_url`
+  - Ruby-idiomatic conversion: `to_data_url`, `to_message`, `to_h`
+  - Reusable attachments (no single-use restriction)
+  - Module: `Braintrust::Trace::Attachment`
+  - Full test coverage (11 tests, all passing)
+  - Example: `examples/trace/trace_attachments.rb`
+  - Documentation: YARD docs + README section
 
 ### 2. Validate Optional Dependencies & Version Support
 - [ ] **Validate oldest sane OpenTelemetry version**
