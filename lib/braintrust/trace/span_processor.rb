@@ -5,14 +5,16 @@ require "opentelemetry/sdk"
 module Braintrust
   module Trace
     # Custom span processor that adds Braintrust-specific attributes to spans
+    # and optionally filters spans based on custom filter functions.
     class SpanProcessor
       PARENT_ATTR_KEY = "braintrust.parent"
       ORG_ATTR_KEY = "braintrust.org"
       APP_URL_ATTR_KEY = "braintrust.app_url"
 
-      def initialize(wrapped_processor, state)
+      def initialize(wrapped_processor, state, filters = [])
         @wrapped = wrapped_processor
         @state = state
+        @filters = filters || []
       end
 
       def on_start(span, parent_context)
@@ -33,9 +35,10 @@ module Braintrust
         @wrapped.on_start(span, parent_context)
       end
 
-      # Called when a span ends
+      # Called when a span ends - apply filters before forwarding
       def on_finish(span)
-        @wrapped.on_finish(span)
+        # Only forward span if it passes filters
+        @wrapped.on_finish(span) if should_forward_span?(span)
       end
 
       # Shutdown the processor
@@ -72,6 +75,29 @@ module Braintrust
 
         # Return the parent attribute from the parent span
         parent_span.attributes&.[](PARENT_ATTR_KEY)
+      end
+
+      # Determine if a span should be forwarded to the wrapped processor
+      # based on configured filters
+      def should_forward_span?(span)
+        # Always keep root spans (spans with no parent)
+        # Check if parent_span_id is the invalid/zero span ID
+        is_root = span.parent_span_id == OpenTelemetry::Trace::INVALID_SPAN_ID
+        return true if is_root
+
+        # If no filters, keep everything
+        return true if @filters.empty?
+
+        # Apply filters in order - first non-zero result wins
+        @filters.each do |filter|
+          result = filter.call(span)
+          return true if result > 0  # Keep span
+          return false if result < 0 # Drop span
+          # result == 0: no influence, continue to next filter
+        end
+
+        # All filters returned 0 (no influence), default to keep
+        true
       end
     end
   end

@@ -54,10 +54,10 @@ one method call braintrust.init(:autoinstrument=true) will automatically patch
 all contrib wrappers.
 
 ### Test Coverage Improvement
-- [ ] Increase coverage from 88.79% → 95%+ target
-  - Current: 88.79% line (1014/1142), 61.05% branch (301/493)
-  - Decreased from 91.48% due to new Anthropic integration code
-  - 143 tests, 550 assertions, all passing
+- [ ] Increase coverage from 93.81% → 95%+ target
+  - Current: 93.81% line (742/791), 72.16% branch (210/291)
+  - Increased from 88.79% due to AI span filtering implementation
+  - 157 tests, 393 assertions, all passing
 - [ ] Focus on under-tested areas:
   - API client edge cases (error responses, pagination)
   - Error handling paths
@@ -65,11 +65,6 @@ all contrib wrappers.
   - Anthropic streaming aggregation edge cases (VCR limitations)
   - OpenAI wrapper edge cases
 
-### Span Filtering Logic
-- [ ] Implement span filtering (AI spans filter)
-  - Filter spans based on type (e.g., only export AI-related spans)
-  - Configurable filtering rules
-  - Integration with span processor
 
 ### Documentation for v0.1.0
 - [x] YARD documentation scaffolding (rake yard task, .yardopts, badges) ✅
