@@ -3,6 +3,7 @@
 require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
+require_relative "trace/span_filter"
 require_relative "logger"
 
 # OpenAI integration is optional - automatically loaded if openai gem is available
@@ -26,8 +27,9 @@ module Braintrust
     # Set up OpenTelemetry tracing with Braintrust
     # @param state [State] Braintrust state
     # @param tracer_provider [TracerProvider, nil] Optional tracer provider
+    # @param exporter [Exporter, nil] Optional exporter override (for testing)
     # @return [void]
-    def self.setup(state, tracer_provider = nil)
+    def self.setup(state, tracer_provider = nil, exporter: nil)
       if tracer_provider
         # Use the explicitly provided tracer provider
         # DO NOT set as global - user is managing it themselves
@@ -49,12 +51,16 @@ module Braintrust
       end
 
       # Enable Braintrust tracing (adds span processor)
-      enable(tracer_provider, state: state)
+      config = state.config
+      enable(tracer_provider, state: state, config: config, exporter: exporter)
     end
 
-    def self.enable(tracer_provider, state: nil, exporter: nil)
+    def self.enable(tracer_provider, state: nil, exporter: nil, config: nil)
       state ||= Braintrust.current_state
       raise Error, "No state available" unless state
+
+      # Get config from state if available
+      config ||= state.respond_to?(:config) ? state.config : nil
 
       # Create OTLP HTTP exporter unless override provided
       exporter ||= OpenTelemetry::Exporter::OTLP::Exporter.new(
@@ -64,11 +70,18 @@ module Braintrust
         }
       )
 
-      # Wrap in batch processor
-      batch_processor = OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(exporter)
+      # Use SimpleSpanProcessor for InMemorySpanExporter (testing), BatchSpanProcessor for production
+      span_processor = if exporter.is_a?(OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter)
+        OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
+      else
+        OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(exporter)
+      end
 
-      # Wrap batch processor in our custom span processor to add Braintrust attributes
-      processor = SpanProcessor.new(batch_processor, state)
+      # Build filters array from config
+      filters = build_filters(config)
+
+      # Wrap span processor in our custom span processor to add Braintrust attributes and filters
+      processor = SpanProcessor.new(span_processor, state, filters)
 
       # Register with tracer provider
       tracer_provider.add_span_processor(processor)
@@ -81,6 +94,25 @@ module Braintrust
       end
 
       self
+    end
+
+    # Build filters array from config
+    # @param config [Config, nil] Configuration object
+    # @return [Array<Proc>] Array of filter functions
+    def self.build_filters(config)
+      filters = []
+
+      # Add custom filters first (they have priority)
+      if config&.span_filter_funcs&.any?
+        filters.concat(config.span_filter_funcs)
+      end
+
+      # Add AI filter if enabled
+      if config&.filter_ai_spans
+        filters << SpanFilter.method(:ai_filter)
+      end
+
+      filters
     end
 
     # Generate a permalink URL for a span to view in the Braintrust UI

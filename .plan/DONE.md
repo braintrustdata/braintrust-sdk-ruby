@@ -572,3 +572,54 @@
   - Tests pass across multiple OpenAI versions
   - Integrated into CI via `rake test:appraisal`
 - **Total: Same test count (122 tests, 441 assertions), all passing, linter clean**
+
+### Session 14 Completed (AI Span Filtering) ✅
+- **SpanFilter Module** (`lib/braintrust/trace/span_filter.rb`) ✅
+  - Implemented `SpanFilter.ai_filter` method
+  - Checks span name and attributes for AI prefixes: `gen_ai.`, `braintrust.`, `llm.`, `ai.`, `traceloop.`
+  - Skips system attributes: `braintrust.parent`, `braintrust.org`, `braintrust.app_url`
+  - Returns 1 (keep), -1 (drop), or 0 (no influence)
+- **SpanProcessor Updates** (`lib/braintrust/trace/span_processor.rb`) ✅
+  - Added filters parameter to initialize
+  - Implemented `should_forward_span?` method
+  - Always keeps root spans (no parent)
+  - Applies filters in order, first non-zero result wins
+  - Updated `on_finish` to call `should_forward_span?` before forwarding
+- **Config Updates** (`lib/braintrust/config.rb`) ✅
+  - Added `filter_ai_spans` attribute (default: false)
+  - Added `span_filter_funcs` attribute (array of custom filter procs)
+  - Support for `BRAINTRUST_OTEL_FILTER_AI_SPANS` environment variable
+- **Braintrust.init Updates** (`lib/braintrust.rb`) ✅
+  - Added `filter_ai_spans` parameter
+  - Added `span_filter_funcs` parameter
+  - Added `exporter` parameter (for testing)
+  - Passes all parameters through to State.from_env
+- **State Updates** (`lib/braintrust/state.rb`) ✅
+  - Added config storage as instance variable
+  - Updated from_env to accept filter_ai_spans, span_filter_funcs, exporter
+  - Passes config and exporter to Trace.setup
+- **Trace Updates** (`lib/braintrust/trace.rb`) ✅
+  - Updated setup and enable to accept exporter parameter
+  - Implemented `build_filters` method to construct filters array
+  - Custom filters added first (priority), then AI filter if enabled
+  - Detects InMemorySpanExporter and uses SimpleSpanProcessor (for tests)
+  - Uses BatchSpanProcessor for production OTLP exporter
+- **Test Coverage** ✅
+  - 14 comprehensive tests in `test/braintrust/trace/span_filter_test.rb`
+  - All tests use Braintrust.init with InMemorySpanExporter
+  - Tests cover: AI prefixes, attributes, root spans, custom filters, priority, combinations
+  - All 157 tests pass (393 assertions)
+  - Line coverage: 93.81%, Branch coverage: 72.16%
+- **Example** (`examples/trace/span_filtering.rb`) ✅
+  - Demonstrates AI span filtering + custom filter
+  - Shows span hierarchy (root → child → grandchildren)
+  - Custom filter keeps spans with "important" in name
+  - Includes permalink generation
+  - Clean example without unnecessary output
+- **Key Features** ✅
+  - Root spans always exported (even if they don't match filters)
+  - AI-related spans: `gen_ai.*`, `braintrust.*`, `llm.*`, `ai.*`, `traceloop.*`
+  - Custom filters have priority over AI filter
+  - Filter return values: 1 (keep), -1 (drop), 0 (no influence)
+  - First non-zero result wins when multiple filters applied
+- **Total: 157 test runs, 393 assertions, all passing, linter clean**

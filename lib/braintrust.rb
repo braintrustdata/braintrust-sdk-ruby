@@ -37,8 +37,11 @@ module Braintrust
   # @param blocking_login [Boolean] Whether to block and login synchronously (default: false - async background login)
   # @param enable_tracing [Boolean] Whether to enable OpenTelemetry tracing (default: true)
   # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use instead of creating one
+  # @param filter_ai_spans [Boolean, nil] Enable AI span filtering (overrides BRAINTRUST_OTEL_FILTER_AI_SPANS env var)
+  # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
+  # @param exporter [Exporter, nil] Optional exporter override (for testing)
   # @return [State] the created state
-  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
     state = State.from_env(
       api_key: api_key,
       org_name: org_name,
@@ -47,7 +50,10 @@ module Braintrust
       api_url: api_url,
       blocking_login: blocking_login,
       enable_tracing: enable_tracing,
-      tracer_provider: tracer_provider
+      tracer_provider: tracer_provider,
+      filter_ai_spans: filter_ai_spans,
+      span_filter_funcs: span_filter_funcs,
+      exporter: exporter
     )
 
     State.global = state if set_global

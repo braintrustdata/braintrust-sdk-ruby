@@ -6,7 +6,7 @@ module Braintrust
   # State object that holds Braintrust configuration
   # Thread-safe global state management
   class State
-    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in
+    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config
 
     @mutex = Mutex.new
     @global_state = nil
@@ -20,15 +20,20 @@ module Braintrust
     # @param blocking_login [Boolean] whether to block and login synchronously (default: false)
     # @param enable_tracing [Boolean] whether to enable OpenTelemetry tracing (default: true)
     # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use
+    # @param filter_ai_spans [Boolean, nil] Enable AI span filtering
+    # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
+    # @param exporter [Exporter, nil] Optional exporter override (for testing)
     # @return [State] the created state
-    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
       require_relative "config"
       config = Config.from_env(
         api_key: api_key,
         org_name: org_name,
         default_project: default_project,
         app_url: app_url,
-        api_url: api_url
+        api_url: api_url,
+        filter_ai_spans: filter_ai_spans,
+        span_filter_funcs: span_filter_funcs
       )
       new(
         api_key: config.api_key,
@@ -38,11 +43,13 @@ module Braintrust
         api_url: config.api_url,
         blocking_login: blocking_login,
         enable_tracing: enable_tracing,
-        tracer_provider: tracer_provider
+        tracer_provider: tracer_provider,
+        config: config,
+        exporter: exporter
       )
     end
 
-    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil)
+    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
       raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
@@ -55,6 +62,7 @@ module Braintrust
       @api_url = api_url
       @proxy_url = proxy_url
       @logged_in = false
+      @config = config
 
       # Perform login after state setup
       if blocking_login
@@ -66,7 +74,7 @@ module Braintrust
       # Setup tracing if requested
       if enable_tracing
         require_relative "trace"
-        Trace.setup(self, tracer_provider)
+        Trace.setup(self, tracer_provider, exporter: exporter)
       end
     end
 
