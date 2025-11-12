@@ -30,12 +30,15 @@
   - Documentation: YARD docs + README section
 
 ### 2. Validate Optional Dependencies & Version Support
-- [ ] **Validate oldest sane OpenTelemetry version**
-  - Current: `opentelemetry-sdk ~> 1.0`, `opentelemetry-exporter-otlp ~> 0.28`
-  - Research oldest stable versions (1.0+ for SDK, 0.28+ for exporter?)
-  - Test with minimum versions to ensure compatibility
-  - Consider widening version constraints if safe (e.g., `>= 1.0, < 2.0`)
-  - Document minimum supported versions in README
+- [x] **Validate oldest sane OpenTelemetry version** ✅ COMPLETE
+  - Updated gemspec: `opentelemetry-sdk ~> 1.3`, `opentelemetry-exporter-otlp ~> 0.28`
+  - Minimum versions (due to dependency constraints):
+    - opentelemetry-sdk 1.3.0 (June 2023, ~2.4 years old)
+    - opentelemetry-exporter-otlp 0.28.0 (June 2024, ~1.5 years old)
+  - Added appraisals: `opentelemetry-min` and `opentelemetry-latest`
+  - All 168 tests pass with minimum versions (sdk 1.3.2, exporter 0.28.1)
+  - All 168 tests pass with latest versions (sdk 1.10.0, exporter 0.31.1)
+  - CI automatically tests all appraisals including both min and latest versions
 - [ ] **Test SDK behavior with/without tracing**
   - Add tests with `tracing: false` parameter
   - Verify API client works without tracing (datasets, functions)

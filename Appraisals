@@ -1,41 +1,41 @@
 # frozen_string_literal: true
 
-# Test with OpenAI gem 0.33.x (previous stable version)
-appraise "openai-0.33" do
-  gem "openai", "~> 0.33.0"
+# Optional dependencies to test
+OPTIONAL_GEMS = {
+  "openai" => {
+    "0.33" => "~> 0.33.0",
+    "0.34" => "~> 0.34.0",
+    "latest" => ">= 0.34"
+  },
+  "anthropic" => {
+    "1.11" => "~> 1.11.0",
+    "1.12" => "~> 1.12.0",
+    "latest" => ">= 1.11"
+  }
+}
+
+# Generate appraisals for each optional gem
+OPTIONAL_GEMS.each do |gem_name, versions|
+  versions.each do |name, constraint|
+    suffix = (name == "latest") ? "" : "-#{name.tr(".", "-")}"
+    appraise "#{gem_name}#{suffix}" do
+      gem gem_name, constraint
+    end
+  end
+
+  # Always test without gem installed
+  appraise "#{gem_name}-uninstalled" do
+    remove_gem gem_name
+  end
 end
 
-# Test with current stable OpenAI gem version
-appraise "openai-0.34" do
-  gem "openai", "~> 0.34.0"
+# OpenTelemetry - test minimum and latest versions together
+appraise "opentelemetry-min" do
+  gem "opentelemetry-sdk", "~> 1.3.0"
+  gem "opentelemetry-exporter-otlp", "~> 0.28.0"
 end
 
-# Test with latest OpenAI gem version (allows newer patch/minor versions)
-appraise "openai" do
-  gem "openai", ">= 0.34"
-end
-
-# Test without OpenAI gem (verify SDK works without optional dependency)
-appraise "openai-uninstalled" do
-  remove_gem "openai"
-end
-
-# Test with Anthropic gem 1.11.x (recent stable version)
-appraise "anthropic-1.11" do
-  gem "anthropic", "~> 1.11.0"
-end
-
-# Test with Anthropic gem 1.12.x (latest stable version)
-appraise "anthropic-1.12" do
-  gem "anthropic", "~> 1.12.0"
-end
-
-# Test with latest Anthropic gem version (allows newer versions)
-appraise "anthropic" do
-  gem "anthropic", ">= 1.11"
-end
-
-# Test without Anthropic gem (verify SDK works without optional dependency)
-appraise "anthropic-uninstalled" do
-  remove_gem "anthropic"
+appraise "opentelemetry-latest" do
+  gem "opentelemetry-sdk", ">= 1.10"
+  gem "opentelemetry-exporter-otlp", ">= 0.31"
 end
