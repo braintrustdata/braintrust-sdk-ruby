@@ -589,6 +589,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert span.attributes.key?("braintrust.metadata")
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal "openai", metadata["provider"]
+      assert_equal "/v1/responses", metadata["endpoint"]
       assert_equal "gpt-4o-mini", metadata["model"]
       assert_equal "You are a helpful assistant.", metadata["instructions"]
 
@@ -648,6 +649,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert span.attributes.key?("braintrust.metadata")
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal "openai", metadata["provider"]
+      assert_equal "/v1/responses", metadata["endpoint"]
       assert_equal true, metadata["stream"]
 
       # Verify metrics were captured if available
@@ -697,6 +699,350 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
+    end
+  end
+
+  def test_chat_and_responses_do_not_interfere
+    require "openai"
+
+    # This test verifies that chat completions and responses API can coexist
+    # without interfering with each other when both wrappers are active
+    VCR.use_cassette("openai_chat_and_responses_no_interference") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it (wraps BOTH chat and responses)
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
+
+      # First, make a chat completion request
+      chat_response = client.chat.completions.create(
+        messages: [{role: "user", content: "Say hello"}],
+        model: "gpt-4o-mini",
+        max_tokens: 10
+      )
+      refute_nil chat_response
+
+      # Then, make a responses API request
+      # This is where the bug would manifest if the wrappers interfere
+      responses_response = client.responses.create(
+        model: "gpt-4o-mini",
+        instructions: "You are a helpful assistant.",
+        input: "Say goodbye"
+      )
+      refute_nil responses_response
+      refute_nil responses_response.output
+
+      # Drain both spans
+      spans = rig.drain
+      assert_equal 2, spans.length, "Should have 2 spans (chat + responses)"
+
+      # Verify first span is for chat completions
+      chat_span = spans[0]
+      assert_equal "openai.chat.completions.create", chat_span.name
+      chat_metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
+      assert_equal "/v1/chat/completions", chat_metadata["endpoint"]
+      assert_equal "gpt-4o-mini", chat_metadata["model"]
+
+      # Verify input is messages array (chat API structure)
+      chat_input = JSON.parse(chat_span.attributes["braintrust.input_json"])
+      assert_instance_of Array, chat_input
+      assert_equal "user", chat_input[0]["role"]
+      assert_equal "Say hello", chat_input[0]["content"]
+
+      responses_span = spans[1]
+      assert_equal "openai.responses.create", responses_span.name
+
+      responses_metadata = JSON.parse(responses_span.attributes["braintrust.metadata"])
+      assert_equal "/v1/responses", responses_metadata["endpoint"]
+      assert_equal "gpt-4o-mini", responses_metadata["model"]
+      assert_equal "You are a helpful assistant.", responses_metadata["instructions"]
+
+      responses_input = JSON.parse(responses_span.attributes["braintrust.input_json"])
+      assert_equal "Say goodbye", responses_input
+    end
+  end
+
+  def test_streaming_chat_and_responses_do_not_interfere
+    require "openai"
+
+    # This test verifies that streaming for both chat completions and responses API
+    # work correctly without interfering when both streaming wrappers are active.
+    # This is critical because streaming uses different aggregation mechanisms.
+    VCR.use_cassette("openai_streaming_chat_and_responses_no_interference") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it (wraps BOTH chat and responses)
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
+
+      # First, make a STREAMING chat completion request
+      chat_content = ""
+      stream = client.chat.completions.stream_raw(
+        messages: [{role: "user", content: "Count from 1 to 3"}],
+        model: "gpt-4o-mini",
+        max_tokens: 50,
+        stream_options: {include_usage: true}
+      )
+      stream.each do |chunk|
+        delta_content = chunk.choices[0]&.delta&.content
+        chat_content += delta_content if delta_content
+      end
+      refute_empty chat_content
+
+      # Then, make a STREAMING responses API request
+      # This is where the bug would manifest if streaming wrappers interfere
+      responses_event_count = 0
+      responses_stream = client.responses.stream(
+        model: "gpt-4o-mini",
+        instructions: "You are a helpful assistant.",
+        input: "Say hello"
+      )
+      responses_stream.each do |event|
+        responses_event_count += 1
+      end
+      assert responses_event_count > 0, "Should have received streaming events from responses API"
+
+      # Drain both spans
+      spans = rig.drain
+      assert_equal 2, spans.length, "Should have 2 spans (chat streaming + responses streaming)"
+
+      # Verify first span is for STREAMING chat completions
+      chat_span = spans[0]
+      assert_equal "openai.chat.completions.create", chat_span.name
+      chat_metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
+      assert_equal "/v1/chat/completions", chat_metadata["endpoint"]
+      assert_equal true, chat_metadata["stream"], "Chat span should have stream flag"
+      assert_match(/gpt-4o-mini/, chat_metadata["model"])
+
+      # Verify chat input is messages array (chat API structure)
+      chat_input = JSON.parse(chat_span.attributes["braintrust.input_json"])
+      assert_instance_of Array, chat_input
+      assert_equal "user", chat_input[0]["role"]
+      assert_equal "Count from 1 to 3", chat_input[0]["content"]
+
+      # Verify chat output was aggregated from stream chunks
+      chat_output = JSON.parse(chat_span.attributes["braintrust.output_json"])
+      assert_equal 1, chat_output.length
+      assert_equal "assistant", chat_output[0]["message"]["role"]
+      refute_nil chat_output[0]["message"]["content"]
+      assert chat_output[0]["message"]["content"].length > 0, "Chat content should be aggregated"
+
+      responses_span = spans[1]
+      assert_equal "openai.responses.create", responses_span.name
+
+      responses_metadata = JSON.parse(responses_span.attributes["braintrust.metadata"])
+      assert_equal "/v1/responses", responses_metadata["endpoint"]
+      assert_equal true, responses_metadata["stream"]
+      assert_match(/gpt-4o-mini/, responses_metadata["model"])
+      assert_equal "You are a helpful assistant.", responses_metadata["instructions"]
+
+      responses_input = JSON.parse(responses_span.attributes["braintrust.input_json"])
+      assert_equal "Say hello", responses_input
+
+      assert responses_span.attributes.key?("braintrust.output_json")
+      responses_output = JSON.parse(responses_span.attributes["braintrust.output_json"])
+      refute_nil responses_output
+    end
+  end
+
+  def test_traced_vs_raw_chat_completions_non_streaming
+    require "openai"
+
+    # This test verifies that tracing doesn't mutate the response
+    # by comparing output from a raw client vs a traced client
+    VCR.use_cassette("openai_traced_vs_raw_chat_non_streaming") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create two clients: one raw, one traced
+      raw_client = OpenAI::Client.new(api_key: @api_key)
+      traced_client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
+
+      # Make identical requests
+      params = {
+        messages: [{role: "user", content: "Say hello"}],
+        model: "gpt-4o-mini",
+        max_tokens: 10
+      }
+
+      raw_response = raw_client.chat.completions.create(**params)
+      traced_response = traced_client.chat.completions.create(**params)
+
+      assert_match(/gpt-4o-mini/, raw_response.model)
+      assert_match(/gpt-4o-mini/, traced_response.model)
+      assert_equal raw_response.choices.length, traced_response.choices.length
+      assert_equal raw_response.choices[0].message.role, traced_response.choices[0].message.role
+      refute_nil raw_response.choices[0].message.content
+      refute_nil traced_response.choices[0].message.content
+      assert_equal raw_response.choices[0].finish_reason, traced_response.choices[0].finish_reason
+      assert_operator raw_response.usage.total_tokens, :>, 0
+      assert_operator traced_response.usage.total_tokens, :>, 0
+
+      spans = rig.drain
+      assert_equal 1, spans.length
+      assert_equal "openai.chat.completions.create", spans[0].name
+    end
+  end
+
+  def test_traced_vs_raw_chat_completions_streaming
+    require "openai"
+
+    # This test verifies that tracing doesn't mutate streaming responses
+    VCR.use_cassette("openai_traced_vs_raw_chat_streaming") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create two clients: one raw, one traced
+      raw_client = OpenAI::Client.new(api_key: @api_key)
+      traced_client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
+
+      # Make identical streaming requests
+      params = {
+        messages: [{role: "user", content: "Count from 1 to 3"}],
+        model: "gpt-4o-mini",
+        max_tokens: 50,
+        stream_options: {include_usage: true}
+      }
+
+      raw_chunks = []
+      raw_stream = raw_client.chat.completions.stream_raw(**params)
+      raw_stream.each do |chunk|
+        raw_chunks << chunk
+      end
+
+      traced_chunks = []
+      traced_stream = traced_client.chat.completions.stream_raw(**params)
+      traced_stream.each do |chunk|
+        traced_chunks << chunk
+      end
+
+      assert_operator (raw_chunks.length - traced_chunks.length).abs, :<=, 2
+      if raw_chunks[0].respond_to?(:model) && traced_chunks[0].respond_to?(:model)
+        assert_match(/gpt-4o-mini/, raw_chunks[0].model)
+        assert_match(/gpt-4o-mini/, traced_chunks[0].model)
+      end
+
+      raw_content = raw_chunks.map { |c| c.choices[0]&.delta&.content }.compact.join
+      traced_content = traced_chunks.map { |c| c.choices[0]&.delta&.content }.compact.join
+      refute_empty raw_content
+      refute_empty traced_content
+
+      spans = rig.drain
+      assert_equal 1, spans.length
+      assert_equal "openai.chat.completions.create", spans[0].name
+    end
+  end
+
+  def test_traced_vs_raw_responses_non_streaming
+    require "openai"
+
+    # This test verifies that tracing doesn't mutate responses API output
+    VCR.use_cassette("openai_traced_vs_raw_responses_non_streaming") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create two clients: one raw, one traced
+      raw_client = OpenAI::Client.new(api_key: @api_key)
+      traced_client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless raw_client.respond_to?(:responses)
+
+      # Make identical requests
+      params = {
+        model: "gpt-4o-mini",
+        instructions: "You are a helpful assistant.",
+        input: "Say hello"
+      }
+
+      raw_response = raw_client.responses.create(**params)
+      traced_response = traced_client.responses.create(**params)
+
+      assert_match(/gpt-4o-mini/, raw_response.model)
+      assert_match(/gpt-4o-mini/, traced_response.model)
+      assert_equal raw_response.output.length, traced_response.output.length
+
+      raw_output = raw_response.output.first.content.first
+      traced_output = traced_response.output.first.content.first
+      assert_equal raw_output[:type], traced_output[:type]
+      refute_nil raw_output[:text]
+      refute_nil traced_output[:text]
+      assert_operator raw_output[:text].length, :>, 0
+      assert_operator traced_output[:text].length, :>, 0
+
+      assert_operator raw_response.usage.total_tokens, :>, 0
+      assert_operator traced_response.usage.total_tokens, :>, 0
+
+      spans = rig.drain
+      assert_equal 1, spans.length
+      assert_equal "openai.responses.create", spans[0].name
+    end
+  end
+
+  def test_traced_vs_raw_responses_streaming
+    require "openai"
+
+    # This test verifies that tracing doesn't mutate responses API streaming
+    VCR.use_cassette("openai_traced_vs_raw_responses_streaming") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create two clients: one raw, one traced
+      raw_client = OpenAI::Client.new(api_key: @api_key)
+      traced_client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this OpenAI gem version" unless raw_client.respond_to?(:responses)
+
+      params = {
+        model: "gpt-4o-mini",
+        instructions: "You are a helpful assistant.",
+        input: "Count from 1 to 3"
+      }
+
+      raw_events = []
+      raw_stream = raw_client.responses.stream(**params)
+      raw_stream.each do |event|
+        raw_events << event
+      end
+
+      traced_events = []
+      traced_stream = traced_client.responses.stream(**params)
+      traced_stream.each do |event|
+        traced_events << event
+      end
+
+      assert_equal raw_events.length, traced_events.length
+
+      raw_event_types = raw_events.map(&:type)
+      traced_event_types = traced_events.map(&:type)
+      assert_equal raw_event_types, traced_event_types
+
+      raw_completed = raw_events.find { |e| e.type == "response.completed" }
+      traced_completed = traced_events.find { |e| e.type == "response.completed" }
+
+      if raw_completed && traced_completed
+        assert_match(/gpt-4o-mini/, raw_completed.response.model)
+        assert_match(/gpt-4o-mini/, traced_completed.response.model)
+        assert_operator raw_completed.response.usage.total_tokens, :>, 0
+        assert_operator traced_completed.response.usage.total_tokens, :>, 0
+      end
+
+      spans = rig.drain
+      assert_equal 1, spans.length
+      assert_equal "openai.responses.create", spans[0].name
     end
   end
 end

@@ -1,0 +1,333 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","instructions":"You are a helpful assistant.","input":"Say
+        hello"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.openai.com
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.34.1
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.0
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '89'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 14 Nov 2025 16:54:57 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999962'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      Openai-Version:
+      - '2020-10-01'
+      Openai-Organization:
+      - braintrust-data
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      X-Request-Id:
+      - req_d657342f51b34f14851dea64fa65afc2
+      Openai-Processing-Ms:
+      - '617'
+      X-Envoy-Upstream-Service-Time:
+      - '619'
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=HojacaZZagXb6t3E9UDKhXQUa9Cq7iKolNb25zJ91GM-1763139297-1.0.1.1-TK3wMmER43kFXdqil3PY2uO79psd6BoclufaTXHhMnVswZerzOmiGmIPXLArNmrpiK7GCReTsRGPF0M7GxjPYgORI9aMhXJ9QgiM_9hi.3s;
+        path=/; expires=Fri, 14-Nov-25 17:24:57 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=73HX2CmS4YWL5sUJ8x9QHfpT1bnou5D4l9wgCdHb.To-1763139297702-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 99e8089e38830f88-EWR
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_00afc0201ec7cfd00069175ee10f748195b26abb3f29dc5c1a",
+          "object": "response",
+          "created_at": 1763139297,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "error": null,
+          "incomplete_details": null,
+          "instructions": "You are a helpful assistant.",
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "output": [
+            {
+              "id": "msg_00afc0201ec7cfd00069175ee1642081958ddcd20ecd7cb731",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "Hello! How can I assist you today?"
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 19,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 10,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 29
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Fri, 14 Nov 2025 16:54:57 GMT
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","instructions":"You are a helpful assistant.","input":"Say
+        hello"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.openai.com
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.34.1
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.0
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '89'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 14 Nov 2025 16:54:58 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999962'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      Openai-Version:
+      - '2020-10-01'
+      Openai-Organization:
+      - braintrust-data
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      X-Request-Id:
+      - req_578d52fc63094898b729afa163d110a3
+      Openai-Processing-Ms:
+      - '946'
+      X-Envoy-Upstream-Service-Time:
+      - '951'
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=fRWWS4eKOcTKo59LBxucMEaRB9jBtsrX4jSHApF30t8-1763139298-1.0.1.1-3uTBTmrT7FUK0Sy66iWnrCT8SVRTUsr8YVYSY1fNZ3Ch33TaKTbemnzbimitkFyw5jqP_Tj9J_SXxawiYtGOK7_7nnq_H3F8UtaF7FeIwW0;
+        path=/; expires=Fri, 14-Nov-25 17:24:58 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=Zx2uyO5_oBY5kYe78PJsd.RkhILq1Q7fZRhYb3Btey4-1763139298786-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 99e808a31c1ccc62-EWR
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_080cb66fe6486f970069175ee1d3a48197a6455c9197a5af72",
+          "object": "response",
+          "created_at": 1763139297,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "error": null,
+          "incomplete_details": null,
+          "instructions": "You are a helpful assistant.",
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "output": [
+            {
+              "id": "msg_080cb66fe6486f970069175ee28464819786b8c7d302237ec3",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "Hello! How can I assist you today?"
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 19,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 10,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 29
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Fri, 14 Nov 2025 16:54:58 GMT
+recorded_with: VCR 6.3.1
