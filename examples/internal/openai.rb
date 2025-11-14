@@ -9,7 +9,7 @@ require "json"
 
 # Internal example: Comprehensive OpenAI features with Braintrust tracing
 #
-# This golden example showcases ALL OpenAI chat completion features with proper tracing:
+# This example showcases ALL OpenAI features with proper tracing:
 # 1. Vision (image understanding) with array content
 # 2. Tool/function calling (single-turn)
 # 3. Streaming chat completions with automatic chunk aggregation
@@ -18,6 +18,8 @@ require "json"
 # 6. Reasoning models with advanced token metrics
 # 7. Temperature variations
 # 8. Advanced parameters
+# 9. Responses API (non-streaming)
+# 10. Responses API (streaming)
 #
 # This example validates that the Ruby SDK captures the same data as TypeScript/Go SDKs.
 #
@@ -29,7 +31,10 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-Braintrust.init(blocking_login: true)
+Braintrust.init(
+  default_project: "ruby-sdk-internal-examples",
+  blocking_login: true
+)
 
 # Get a tracer for this example
 tracer = OpenTelemetry.tracer_provider.tracer("openai-comprehensive-example")
@@ -352,13 +357,13 @@ tracer.in_span("examples/internal/openai.rb") do |span|
         input: "Count from 1 to 5"
       )
 
-      event_count = 0
       stream.each do |event|
-        event_count += 1
-        # Events are streamed and automatically aggregated by Braintrust
+        if event.type == :"response.output_text.delta"
+          print event.delta
+        end
       end
       puts ""
-      puts "✓ Streaming complete, received #{event_count} events"
+      puts "✓ Streaming complete"
       puts "  (Note: Braintrust automatically aggregates all events for the trace)"
     end
   else
