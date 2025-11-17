@@ -269,8 +269,10 @@ module Braintrust
 
               begin
                 original_each.call do |event|
-                  # Store event data for aggregation
-                  events << event.to_h if event.respond_to?(:to_h)
+                  # Store event data for aggregation - must deeply convert to hash
+                  if event.respond_to?(:to_h)
+                    events << Braintrust::Trace::Anthropic.deep_to_hash(event.to_h)
+                  end
                   # Call user's block if provided
                   user_block&.call(event)
                 end
@@ -321,6 +323,26 @@ module Braintrust
         client.messages.singleton_class.prepend(wrapper)
       end
 
+      # Recursively convert Anthropic objects to pure hashes
+      # Anthropic gem returns nested objects in to_h that need deep conversion
+      # @param obj [Object] the object to convert
+      # @return [Object] the deeply converted object
+      def self.deep_to_hash(obj)
+        case obj
+        when Hash
+          obj.transform_values { |v| deep_to_hash(v) }
+        when Array
+          obj.map { |v| deep_to_hash(v) }
+        else
+          # Try to convert objects that respond to to_h
+          if obj.respond_to?(:to_h) && !obj.is_a?(Symbol) && !obj.is_a?(Numeric) && !obj.is_a?(String) && !obj.is_a?(TrueClass) && !obj.is_a?(FalseClass) && !obj.is_a?(NilClass)
+            deep_to_hash(obj.to_h)
+          else
+            obj
+          end
+        end
+      end
+
       # Aggregate streaming events into a single response structure
       # @param events [Array<Hash>] array of event hashes from stream
       # @return [Hash] aggregated response with content, usage, etc.
@@ -339,11 +361,14 @@ module Braintrust
         content_builders = {}
 
         events.each do |event|
+          # Events may have string or symbol keys depending on how they were converted
           event_type = event[:type] || event["type"]
+          # Convert to symbol for consistent comparison
+          event_type = event_type.to_sym if event_type.respond_to?(:to_sym)
           next unless event_type
 
           case event_type
-          when "message_start"
+          when :message_start, "message_start"
             # Extract model and initial usage (input tokens, cache tokens)
             message = event[:message] || event["message"]
             if message
@@ -354,44 +379,43 @@ module Braintrust
               end
             end
 
-          when "content_block_start"
+          when :content_block_start, "content_block_start"
             # Initialize a new content block
             index = event[:index] || event["index"]
             content_block = event[:content_block] || event["content_block"]
             content_blocks[index] = content_block if index && content_block
 
-          when "content_block_delta"
+          when :content_block_delta, "content_block_delta"
             # Accumulate deltas for content blocks
             index = event[:index] || event["index"]
             delta = event[:delta] || event["delta"]
             next unless index && delta
 
             delta_type = delta[:type] || delta["type"]
+            delta_type = delta_type.to_sym if delta_type.respond_to?(:to_sym)
             content_blocks[index] ||= {}
 
             case delta_type
-            when "text_delta"
+            when :text_delta, "text_delta"
               # Accumulate text
               text = delta[:text] || delta["text"]
               if text
                 content_builders[index] ||= ""
                 content_builders[index] += text
-                content_blocks[index][:type] = "text"
-                content_blocks[index]["type"] = "text"
+                content_blocks[index][:type] = :text
               end
 
-            when "input_json_delta"
+            when :input_json_delta, "input_json_delta"
               # Accumulate JSON for tool_use blocks
               partial_json = delta[:partial_json] || delta["partial_json"]
               if partial_json
                 content_builders[index] ||= ""
                 content_builders[index] += partial_json
-                content_blocks[index][:type] = "tool_use"
-                content_blocks[index]["type"] = "tool_use"
+                content_blocks[index][:type] = :tool_use
               end
             end
 
-          when "message_delta"
+          when :message_delta, "message_delta"
             # Get final stop reason and cumulative usage (output tokens)
             delta = event[:delta] || event["delta"]
             if delta
@@ -410,19 +434,17 @@ module Braintrust
           next unless block
 
           block_type = block[:type] || block["type"]
+          block_type = block_type.to_sym if block_type.respond_to?(:to_sym)
           case block_type
-          when "text"
+          when :text, "text"
             block[:text] = text
-            block["text"] = text
-          when "tool_use"
+          when :tool_use, "tool_use"
             # Parse the accumulated JSON string
             begin
               parsed = JSON.parse(text)
               block[:input] = parsed
-              block["input"] = parsed
             rescue JSON::ParserError
               block[:input] = text
-              block["input"] = text
             end
           end
         end

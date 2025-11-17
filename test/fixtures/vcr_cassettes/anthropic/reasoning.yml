@@ -1,0 +1,102 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-3-7-sonnet-latest","max_tokens":2000,"thinking":{"type":"enabled","budget_tokens":1024},"messages":[{"role":"user","content":"What
+        is 2+2? Think step by step."}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 1.12.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.0
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2023-06-01'
+      X-Api-Key:
+      - "<ANTHROPIC_API_KEY>"
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '179'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 14 Nov 2025 18:43:53 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '1000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '1000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2025-11-14T18:43:51Z'
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '400000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '400000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2025-11-14T18:43:53Z'
+      Retry-After:
+      - '9'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '1400000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '1400000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2025-11-14T18:43:51Z'
+      Request-Id:
+      - req_011CV8GvpccecChDW3FD1GUy
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      X-Envoy-Upstream-Service-Time:
+      - '2834'
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 99e8a8235fed7a02-EWR
+    body:
+      encoding: ASCII-8BIT
+      string: '{"model":"claude-3-7-sonnet-20250219","id":"msg_01D8eCX3K6u28gN7sQHAPsaA","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"This
+        is a straightforward arithmetic question asking what 2+2 equals.\n\nStep 1:
+        I need to add the number 2 to itself.\nStep 2: 2+2 = 4\n\nSo the answer is
+        4.","signature":"ErUBCkYICRgCIkAZzEUGuYdbNd6S/lmQynupO0Z3PsGqnhddDZSgDloLQHAN9raxv5Q2InUce9rVa0zBugmerwGPHGpqaA1fQT4gEgzdVl9Xr4ysiMSMFl4aDJ+JPn2VbXFOpZWt+yIwH1/kfwlEHrLkqrZU2LCrncTEbB8K7yWrmo83SeEKPu9HLJQryLu2/WCieFHwnPctKh1GvHCmD3JPeySd2uCfZHRxIZ6RAbLqm0DwdEv9LBgC"},{"type":"text","text":"To
+        find the value of 2+2, I''ll solve this step by step.\n\nStep 1: I need to
+        add the two numbers together.\nStep 2: 2+2 means combining 2 units with another
+        2 units.\nStep 3: This gives me a total of 4 units.\n\nTherefore, 2+2 = 4."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":48,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":148,"service_tier":"standard"}}'
+  recorded_at: Fri, 14 Nov 2025 18:43:53 GMT
+recorded_with: VCR 6.3.1
