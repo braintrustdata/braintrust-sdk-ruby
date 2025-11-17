@@ -1,0 +1,98 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":100,"messages":[{"role":"user","content":"My
+        name is Alice."},{"role":"assistant","content":"Hello Alice! Nice to meet
+        you."},{"role":"user","content":"What''s my name?"}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 1.12.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.0
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2023-06-01'
+      X-Api-Key:
+      - "<ANTHROPIC_API_KEY>"
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '220'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 14 Nov 2025 18:44:01 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '600000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '600000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2025-11-14T18:44:01Z'
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2025-11-14T18:44:00Z'
+      Retry-After:
+      - '63'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '3600000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '3600000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2025-11-14T18:44:00Z'
+      Request-Id:
+      - req_011CV8GwQ6WQV7eFJDKhgco4
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      X-Envoy-Upstream-Service-Time:
+      - '2405'
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 99e8a8546b04c3fd-EWR
+    body:
+      encoding: ASCII-8BIT
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01QDNQixWJaqA8ft99tVhxrZ","type":"message","role":"assistant","content":[{"type":"text","text":"Your
+        name is Alice."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":31,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":8,"service_tier":"standard"}}'
+  recorded_at: Fri, 14 Nov 2025 18:44:01 GMT
+recorded_with: VCR 6.3.1
