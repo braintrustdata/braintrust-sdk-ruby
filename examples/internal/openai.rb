@@ -74,6 +74,10 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     )
     puts "✓ Vision response: #{response.choices[0].message.content[0..100]}..."
     puts "  Tokens: #{response.usage.total_tokens}"
+  rescue OpenAI::Errors::BadRequestError => e
+    puts "⊘ Skipped - Image URL error (#{e.message.split("\n").first[0..80]}...)"
+  rescue => e
+    puts "⊘ Error: #{e.class}"
   end
 
   # Example 2: Tool/Function Calling
@@ -257,6 +261,10 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     )
     puts "✓ Mixed content response: #{response.choices[0].message.content[0..100]}..."
     puts "  Tokens: #{response.usage.total_tokens}"
+  rescue OpenAI::Errors::BadRequestError
+    puts "⊘ Skipped - Image URL error (same as Example 1)"
+  rescue => e
+    puts "⊘ Error: #{e.class}"
   end
 
   # Example 6: Reasoning Model (o1-mini) with Advanced Token Metrics
@@ -287,6 +295,10 @@ tracer.in_span("examples/internal/openai.rb") do |span|
       details = response.usage.prompt_tokens_details
       puts "    - Cached tokens: #{details.cached_tokens}" if details.respond_to?(:cached_tokens) && details.cached_tokens
     end
+  rescue OpenAI::Errors::NotFoundError
+    puts "⊘ Skipped - o1-mini model not available (404)"
+  rescue => e
+    puts "⊘ Error: #{e.class}"
   end
 
   # Example 7: Temperature & Parameter Variations
