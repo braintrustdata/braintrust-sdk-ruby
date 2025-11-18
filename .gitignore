@@ -46,7 +46,7 @@
 
 # Ignore mise local settings
 .mise.local.toml
-.claude
+.claude/*local.json
 
 # Release artifacts
 changelog.md

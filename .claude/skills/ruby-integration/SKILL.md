@@ -1,0 +1,268 @@
+---
+name: ruby-integration
+description: This skill is for writing integrations to the Ruby SDK. Claude acts as the engineer implementing LLM provider or agentic framework integrations. Use when adding support for OpenAI-like providers, Anthropic-like providers, or agent frameworks. Covers TDD workflow, comprehensive testing (streaming/non-streaming/tokens/multimodal), defensive coding, MCP validation, and StandardRB compliance.
+---
+
+# Writing Ruby SDK Integrations
+
+**This skill is for writing integrations.** Claude acts as the Braintrust engineer implementing new integrations to the Ruby SDK.
+
+## Reference Integrations
+
+Study existing integrations as examples:
+- **OpenAI**: `lib/braintrust/trace/contrib/openai.rb` (tests: `test/braintrust/trace/openai_test.rb`, example: `examples/openai.rb`)
+- **Anthropic**: `lib/braintrust/trace/contrib/anthropic.rb` (tests: `test/braintrust/trace/anthropic_test.rb`, example: `examples/anthropic.rb`)
+
+## Core Pattern: Module Prepending
+
+```ruby
+# frozen_string_literal: true
+
+module Braintrust
+  module Trace
+    module YourProvider
+      def self.wrap(client, tracer_provider: nil)
+        tracer_provider ||= ::OpenTelemetry.tracer_provider
+
+        wrapper = Module.new do
+          define_method(:your_api_method) do |**params|
+            tracer = tracer_provider.tracer("braintrust")
+
+            tracer.in_span("your_provider.operation") do |span|
+              # 1. Capture input
+              set_json_attr(span, "braintrust.input_json", extract_input(params))
+
+              # 2. Set metadata (provider, model, endpoint, all params)
+              set_json_attr(span, "braintrust.metadata", {
+                "provider" => "your_provider",
+                "endpoint" => "/v1/endpoint",
+                "model" => params[:model]
+              }.compact)
+
+              # 3. Call original
+              response = super(**params)
+
+              # 4. Capture output
+              set_json_attr(span, "braintrust.output_json", extract_output(response))
+
+              # 5. Capture metrics (normalized tokens)
+              set_json_attr(span, "braintrust.metrics", parse_usage_tokens(response.usage))
+
+              response
+            end
+          end
+        end
+
+        client.your_api.singleton_class.prepend(wrapper)
+        client
+      end
+
+      private
+
+      def self.set_json_attr(span, key, value)
+        span.set_attribute(key, JSON.generate(value)) if value
+      rescue => e
+        warn "Failed to serialize #{key}: #{e.message}"
+      end
+
+      def self.parse_usage_tokens(usage)
+        return {} unless usage
+        {
+          "prompt_tokens" => usage[:input_tokens] || usage[:prompt_tokens],
+          "completion_tokens" => usage[:output_tokens] || usage[:completion_tokens],
+          "tokens" => usage[:total_tokens]
+        }.compact
+      end
+    end
+  end
+end
+```
+
+## Streaming Pattern
+
+```ruby
+define_method(:stream) do |**params|
+  tracer = tracer_provider.tracer("braintrust")
+  aggregated_chunks = []
+
+  span = tracer.start_span("your_provider.operation.stream")
+  set_json_attr(span, "braintrust.input_json", extract_input(params))
+  set_json_attr(span, "braintrust.metadata", extract_metadata(params))
+
+  stream = begin
+    super(**params)
+  rescue => e
+    span.record_exception(e)
+    span.status = ::OpenTelemetry::Trace::Status.error("Error: #{e.message}")
+    span.finish
+    raise
+  end
+
+  original_each = stream.method(:each)
+  stream.define_singleton_method(:each) do |&block|
+    original_each.call do |chunk|
+      aggregated_chunks << chunk
+      block&.call(chunk)
+    end
+  rescue => e
+    span.record_exception(e)
+    span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+    raise
+  ensure
+    # CRITICAL: Always finish span even if stream partially consumed
+    unless aggregated_chunks.empty?
+      aggregated = aggregate_chunks(aggregated_chunks)
+      set_json_attr(span, "braintrust.output_json", aggregated)
+      set_json_attr(span, "braintrust.metrics", parse_usage_tokens(aggregated[:usage]))
+    end
+    span.finish
+  end
+
+  stream
+end
+```
+
+## Required Components
+
+**Do in this order:**
+
+- [ ] **Appraisals FIRST**: Add to `Appraisals` file (latest + 2 recent + uninstalled), run `bundle exec appraisal generate`
+- [ ] **Tests**: `test/braintrust/trace/your_provider_test.rb`
+- [ ] **Integration**: `lib/braintrust/trace/contrib/your_provider.rb`
+- [ ] **VCR cassettes**: `test/fixtures/vcr_cassettes/your_provider/` (record as you write tests)
+- [ ] **Auto-load**: Add to `lib/braintrust/trace.rb` with `begin/rescue LoadError`
+- [ ] **Example**: `examples/your_provider.rb`
+- [ ] **Example**: `examples/interal/your_provider.rb` write a comprehensive
+  example that uses all features in the integration.
+- [ ] **Env var**: Add to `.env.example` if needed
+
+## Test Coverage (LLM Providers)
+
+1. ✅ Non-streaming requests (basic + attributes + metrics)
+2. ✅ Streaming requests (full consumption)
+3. ✅ Early stream termination (partial consumption)
+4. ✅ Error handling (exception recording)
+5. ✅ Multimodal content (images, tools if applicable)
+6. ✅ Token usage edge cases (cached, reasoning tokens)
+7. ✅ Multiple APIs (if provider has multiple endpoints)
+8. ✅ Verify we don't change the behaviour of the integration.
+
+## Appraisal Configuration (Set up FIRST)
+
+**CRITICAL**: Configure appraisal at the START, before writing tests. Test latest + 2 recent versions + uninstalled.
+
+**Step 1 - Add to `Appraisals` file:**
+
+```ruby
+# Appraisals file - ADD THIS FIRST
+appraise "your_provider-latest" do
+  gem "your_provider", ">= 2.0"
+end
+
+appraise "your_provider-1.5" do
+  gem "your_provider", "~> 1.5.0"
+end
+
+appraise "your_provider-1.0" do
+  gem "your_provider", "~> 1.0.0"
+end
+
+appraise "your_provider-uninstalled" do
+  remove_gem "your_provider"
+end
+```
+
+**Step 2 - Generate gemfiles:**
+```bash
+bundle exec appraisal generate
+```
+
+**Step 3 - Use appraisal for ALL test runs:**
+```bash
+bundle exec appraisal rake test   # Run all scenarios (use this in TDD cycle)
+```
+
+**Determine versions**: Check release history, focus on API changes, include customer-likely versions.
+
+## MCP Validation
+
+After implementation, validate with MCP tools:
+
+```ruby
+# Run example
+bundle exec ruby examples/your_provider.rb
+
+# Query traces
+mcp__braintrust__list_recent_objects(object_type: "project_logs", limit: 10)
+
+# Inspect span
+mcp__braintrust__resolve_object(object_type: "project_logs", object_id: "span_id")
+
+# BTQL query
+mcp__braintrust__btql_query(query: "SELECT * FROM project_logs WHERE metadata.provider = 'your_provider'")
+```
+
+**Verify attributes**: `input`, `output`, `metadata`, `metrics`, `span_attributes.braintrust.parent`, `span_attributes.braintrust.org`
+
+## TDD Workflow (CRITICAL)
+
+**After EVERY major change**: test → lint → fix → commit cycle
+
+1. **Create todo list** at start
+2. **Write one failing test**
+3. **Implement minimal code** to pass
+4. **Run tests with appraisal**: `bundle exec appraisal rake test`
+5. **Lint**: `bundle exec rake lint` (fix with `rake lint:fix`)
+6. **Verify with MCP** tools
+7. **Refactor** if needed
+8. **Repeat cycle** for: basic → attributes → streaming → errors → tokens → multimodal
+
+## Defensive Coding
+
+- ✅ Nil checks (`return {} unless usage`)
+- ✅ Safe navigation (`params[:model] || "unknown"`)
+- ✅ Compact hashes (`.compact`)
+- ✅ Error handling (`begin/rescue/ensure`)
+- ✅ JSON safety (rescue in `set_json_attr`)
+- ✅ Graceful gem loading (`rescue LoadError`)
+
+## StandardRB & CI
+
+Lint after every change (part of TDD cycle):
+```bash
+bundle exec rake lint          # Check StandardRB
+bundle exec rake lint:fix      # Auto-fix
+```
+
+Coverage target (check periodically):
+```bash
+bundle exec rake coverage      # >90% line, >80% branch
+```
+
+**CI requirements**: StandardRB + tests on Ruby 3.2/3.3/3.4 + Ubuntu/macOS + all appraisal scenarios
+
+## Token Normalization
+
+Normalize to Braintrust standard:
+- `prompt_tokens` (input)
+- `completion_tokens` (output)
+- `tokens` (total)
+- `prompt_cached_tokens` (if cached)
+- `prompt_cache_creation_tokens` (if cache created)
+- `completion_reasoning_tokens` (if reasoning)
+
+## VCR Cassettes
+
+```bash
+VCR_MODE=all bundle exec rake test           # Re-record all
+VCR_MODE=new_episodes bundle exec rake test  # Record new only
+VCR_OFF=true bundle exec rake test           # Skip VCR
+```
+
+## Reference Files
+
+- Integrations: `lib/braintrust/trace/contrib/{openai,anthropic}.rb`
+- Tests: `test/braintrust/trace/{openai,anthropic}_test.rb`
+- Test helpers: `test/test_helper.rb`
+- Examples: `examples/{openai,anthropic}.rb`
+- Config: `Rakefile`, `Appraisals`, `.github/workflows/ci.yml`
