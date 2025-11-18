@@ -25,9 +25,6 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-# Require the integration
-require_relative "../lib/braintrust/trace/contrib/github.com/alexrudall/ruby-openai/ruby-openai"
-
 Braintrust.init(blocking_login: true)
 
 # Create OpenAI client (ruby-openai uses access_token parameter)

@@ -30,9 +30,6 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
-# Load the integration
-require_relative "../../lib/braintrust/trace/contrib/github.com/alexrudall/ruby-openai/ruby-openai"
-
 Braintrust.init(blocking_login: true)
 
 # Get a tracer for this example
