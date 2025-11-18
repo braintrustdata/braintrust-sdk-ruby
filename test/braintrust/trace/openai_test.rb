@@ -7,7 +7,16 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     # Skip all OpenAI tests if the gem is not available
     skip "OpenAI gem not available" unless defined?(OpenAI)
 
-    @api_key = ENV["OPENAI_API_KEY"]
+    # Check which gem is loaded by looking at Gem.loaded_specs
+    # ruby-openai has gem name "ruby-openai"
+    # official openai gem has gem name "openai"
+    if Gem.loaded_specs["ruby-openai"]
+      skip "openai gem not available (found ruby-openai gem instead)"
+    elsif !Gem.loaded_specs["openai"]
+      skip "Could not determine which OpenAI gem is loaded"
+    end
+
+    @api_key = ENV["OPENAI_API_KEY"] || "test-api-key"
     @original_api_key = ENV["OPENAI_API_KEY"]
   end
 

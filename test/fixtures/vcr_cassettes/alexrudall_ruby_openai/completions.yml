@@ -1,0 +1,110 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-3.5-turbo-instruct","prompt":"Say hello:","max_tokens":10}'
+    headers:
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 17 Nov 2025 19:25:31 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Allow-Origin:
+      - "*"
+      Access-Control-Expose-Headers:
+      - X-Request-ID
+      Cache-Control:
+      - no-cache, must-revalidate
+      Openai-Model:
+      - gpt-3.5-turbo-instruct:20230824-v2
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '1140'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Via:
+      - envoy-router-7c5bff6974-tzpsx
+      X-Envoy-Upstream-Service-Time:
+      - '2127'
+      X-Ratelimit-Limit-Requests:
+      - '3500'
+      X-Ratelimit-Limit-Tokens:
+      - '90000'
+      X-Ratelimit-Remaining-Requests:
+      - '3498'
+      X-Ratelimit-Remaining-Tokens:
+      - '89997'
+      X-Ratelimit-Reset-Requests:
+      - 17ms
+      X-Ratelimit-Reset-Tokens:
+      - 2ms
+      X-Request-Id:
+      - req_fdd4484853274bf2a37088c8e18a564f
+      X-Openai-Proxy-Wasm:
+      - v0.1
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=XQgnGZMyTGKZjsnTht21ewi5CAqexkrsQ8Eh34L2fK4-1763407531-1.0.1.1-xGpOa2fm51mBMkx_APN3ivW57WD72axkRR0hvUdl015LROXLOHbHTAZ7PktaveX7DCDsSiCtg2P3NHmAD1u0f5cKcJcT8ATqNqb3TXn34KM;
+        path=/; expires=Mon, 17-Nov-25 19:55:31 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=xUkC8XXNZr_B8PVApECTx49WJo9.BsyD4Z_XsPhT270-1763407531760-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9a019d419d9e3b89-IAD
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |
+        {
+          "id": "cmpl-Ccz8tvk90ypUPW3EdXzfVkpWQpJiH",
+          "object": "text_completion",
+          "created": 1763407531,
+          "model": "gpt-3.5-turbo-instruct:20230824-v2",
+          "choices": [
+            {
+              "text": "\n\n\"Hello!\"",
+              "index": 0,
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 3,
+            "completion_tokens": 4,
+            "total_tokens": 7
+          }
+        }
+  recorded_at: Mon, 17 Nov 2025 19:25:31 GMT
+recorded_with: VCR 6.3.1
