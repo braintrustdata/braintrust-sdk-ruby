@@ -38,6 +38,66 @@ fi
 bundle exec rake lint
 """
 
+[tasks.example]
+description = "Run example with auto-detected appraisal (e.g., mise example examples/internal/openai.rb)"
+run = """
+#!/usr/bin/env bash
+set -e
+
+if [ -z "$1" ]; then
+  echo "Usage: mise example <path>"
+  echo "Examples:"
+  echo "  mise example examples/internal/openai.rb"
+  echo "  mise example examples/internal/anthropic.rb"
+  echo "  mise example examples/internal/alexrudall_ruby_openai.rb"
+  exit 1
+fi
+
+EXAMPLE_FILE="$1"
+
+# Check if file exists
+if [ ! -f "${EXAMPLE_FILE}" ]; then
+  echo "Error: File not found: ${EXAMPLE_FILE}"
+  exit 1
+fi
+
+# Determine which appraisal to use based on the filename/path
+case "${EXAMPLE_FILE}" in
+  *alexrudall*|*ruby_openai*|*ruby-openai*)
+    APPRAISAL="ruby-openai"
+    ;;
+  *openai*|*kitchen-sink*)
+    APPRAISAL="openai"
+    ;;
+  *anthropic*)
+    APPRAISAL="anthropic"
+    ;;
+  *)
+    # Default to no appraisal
+    APPRAISAL=""
+    ;;
+esac
+
+# Install gemfile if using appraisal and not already installed
+if [ -n "${APPRAISAL}" ]; then
+  GEMFILE="gemfiles/${APPRAISAL//-/_}.gemfile"
+  if [ -f "${GEMFILE}" ]; then
+    if ! bundle check --gemfile "${GEMFILE}" &>/dev/null; then
+      bundle install --gemfile "${GEMFILE}" --quiet
+    fi
+  fi
+fi
+
+# Run the example
+if [ -n "${APPRAISAL}" ]; then
+  echo "Running ${EXAMPLE_FILE} with ${APPRAISAL} appraisal..."
+  bundle exec appraisal ${APPRAISAL} ruby ${EXAMPLE_FILE}
+else
+  echo "Running ${EXAMPLE_FILE}..."
+  bundle exec ruby ${EXAMPLE_FILE}
+fi
+"""
+
 [hooks]
 postinstall = """
 echo "Installing gem dependencies..."
