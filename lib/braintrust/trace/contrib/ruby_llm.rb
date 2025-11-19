@@ -66,9 +66,13 @@ module Braintrust
 
       # Wrap a RubyLLM chat instance to automatically create spans for chat requests
       # Supports both synchronous and streaming requests
+      # This method is idempotent - calling it multiple times on the same instance is safe
       # @param chat [RubyLLM::Chat] the RubyLLM chat instance to wrap
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
       def self.wrap(chat, tracer_provider: nil)
+        # Check if already wrapped to make this idempotent
+        return chat if chat.instance_variable_get(:@braintrust_wrapped)
+
         tracer_provider ||= ::OpenTelemetry.tracer_provider
 
         # Create a wrapper module that intercepts chat.ask
@@ -320,7 +324,8 @@ module Braintrust
           end
         end
 
-        # Prepend the wrapper to the chat instance
+        # Mark as wrapped and prepend the wrapper to the chat instance
+        chat.instance_variable_set(:@braintrust_wrapped, true)
         chat.singleton_class.prepend(wrapper)
         chat
       end
