@@ -6,7 +6,6 @@ _.file = ".env"
 
 [tools]
 ruby = "3.2"
-rust = "1.83"
 watchexec = "latest"
 
 [tasks.lint]

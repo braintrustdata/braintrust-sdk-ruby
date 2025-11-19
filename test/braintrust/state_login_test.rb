@@ -45,43 +45,50 @@ class Braintrust::StateLoginTest < Minitest::Test
       app_url: "https://www.braintrust.dev"
     )
 
-    # Stub HTTP to fail twice, then succeed
-    # This tests the real Auth.login code path and retry logic
-    stub = stub_request(:post, "https://www.braintrust.dev/api/apikey/login")
-      .to_return(
-        {status: 500, body: "Internal Server Error"},
-        {status: 500, body: "Internal Server Error"},
-        {
-          status: 200,
-          body: JSON.generate({
-            org_info: [{
-              id: "test-org-id",
-              name: "test-org",
-              api_url: "https://api.braintrust.dev",
-              proxy_url: "https://api.braintrust.dev"
-            }]
-          }),
-          headers: {"Content-Type" => "application/json"}
-        }
-      )
-
+    # Disable VCR to allow WebMock stubs to work properly
+    VCR.turn_off!
     begin
-      # Start background login
-      state.login_in_thread
+      # Stub HTTP to fail twice, then succeed
+      # This tests the real Auth.login code path and retry logic
+      stub = stub_request(:post, "https://www.braintrust.dev/api/apikey/login")
+        .to_return(
+          {status: 500, body: "Internal Server Error"},
+          {status: 500, body: "Internal Server Error"},
+          {
+            status: 200,
+            body: JSON.generate({
+              org_info: [{
+                id: "test-org-id",
+                name: "test-org",
+                api_url: "https://api.braintrust.dev",
+                proxy_url: "https://api.braintrust.dev"
+              }]
+            }),
+            headers: {"Content-Type" => "application/json"}
+          }
+        )
 
-      # Wait for it to complete (should retry and eventually succeed)
-      state.wait_for_login(5)
+      begin
+        # Start background login
+        state.login_in_thread
 
-      # Should have retried and succeeded
-      assert state.logged_in, "State should be logged in after wait_for_login"
-      assert_equal "test-org-id", state.org_id
-      assert_equal "test-org", state.org_name
+        # Wait for it to complete (should retry and eventually succeed)
+        state.wait_for_login(5)
 
-      # Verify we made at least 3 requests (2 failures + 1 success)
-      assert_requested stub, at_least_times: 3
+        # Should have retried and succeeded
+        assert state.logged_in, "State should be logged in after wait_for_login"
+        assert_equal "test-org-id", state.org_id
+        assert_equal "test-org", state.org_name
+
+        # Verify we made at least 3 requests (2 failures + 1 success)
+        assert_requested stub, at_least_times: 3
+      ensure
+        # Clean up the stub to prevent interference with other tests
+        remove_request_stub(stub)
+      end
     ensure
-      # Clean up the stub to prevent interference with other tests
-      remove_request_stub(stub)
+      # Re-enable VCR for other tests
+      VCR.turn_on!
     end
   end
 

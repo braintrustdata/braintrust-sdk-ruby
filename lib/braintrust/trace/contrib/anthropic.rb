@@ -400,8 +400,8 @@ module Braintrust
               # Accumulate text
               text = delta[:text] || delta["text"]
               if text
-                content_builders[index] ||= ""
-                content_builders[index] += text
+                content_builders[index] ||= +""
+                content_builders[index] << text
                 content_blocks[index][:type] = :text
               end
 
@@ -409,8 +409,8 @@ module Braintrust
               # Accumulate JSON for tool_use blocks
               partial_json = delta[:partial_json] || delta["partial_json"]
               if partial_json
-                content_builders[index] ||= ""
-                content_builders[index] += partial_json
+                content_builders[index] ||= +""
+                content_builders[index] << partial_json
                 content_blocks[index][:type] = :tool_use
               end
             end
