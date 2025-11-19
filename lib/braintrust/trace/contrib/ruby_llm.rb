@@ -64,19 +64,56 @@ module Braintrust
         metrics
       end
 
-      # Wrap a RubyLLM chat instance to automatically create spans for chat requests
+      # Wrap RubyLLM to automatically create spans for chat requests
       # Supports both synchronous and streaming requests
-      # This method is idempotent - calling it multiple times on the same instance is safe
-      # @param chat [RubyLLM::Chat] the RubyLLM chat instance to wrap
+      #
+      # Usage:
+      #   # Wrap the class once (affects all future instances):
+      #   Braintrust::Trace::RubyLLM.wrap
+      #
+      #   # Or wrap a specific instance:
+      #   chat = RubyLLM.chat(model: "gpt-4o-mini")
+      #   Braintrust::Trace::RubyLLM.wrap(chat)
+      #
+      # @param chat [RubyLLM::Chat, nil] the RubyLLM chat instance to wrap (if nil, wraps the class)
       # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider (defaults to global)
-      def self.wrap(chat, tracer_provider: nil)
+      def self.wrap(chat = nil, tracer_provider: nil)
+        tracer_provider ||= ::OpenTelemetry.tracer_provider
+
+        # If no chat instance provided, wrap the class globally
+        if chat.nil?
+          return if defined?(RubyLLM::Chat) && RubyLLM::Chat.instance_variable_get(:@braintrust_wrapped)
+          wrap_class(tracer_provider)
+          RubyLLM::Chat.instance_variable_set(:@braintrust_wrapped, true) if defined?(RubyLLM::Chat)
+          return nil
+        end
+
         # Check if already wrapped to make this idempotent
         return chat if chat.instance_variable_get(:@braintrust_wrapped)
 
-        tracer_provider ||= ::OpenTelemetry.tracer_provider
-
         # Create a wrapper module that intercepts chat.ask
-        wrapper = Module.new do
+        wrapper = create_wrapper_module(tracer_provider)
+
+        # Mark as wrapped and prepend the wrapper to the chat instance
+        chat.instance_variable_set(:@braintrust_wrapped, true)
+        chat.singleton_class.prepend(wrapper)
+        chat
+      end
+
+      # Wrap the RubyLLM::Chat class globally
+      # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider
+      def self.wrap_class(tracer_provider)
+        return unless defined?(RubyLLM::Chat)
+
+        wrapper = create_wrapper_module(tracer_provider)
+        RubyLLM::Chat.prepend(wrapper)
+      end
+
+      # Create the wrapper module that intercepts chat.ask
+      # @param tracer_provider [OpenTelemetry::SDK::Trace::TracerProvider] the tracer provider
+      # @return [Module] the wrapper module
+      def self.create_wrapper_module(tracer_provider)
+        Module.new do
           define_method(:ask) do |prompt = nil, **params, &block|
             tracer = tracer_provider.tracer("braintrust")
 
@@ -323,11 +360,6 @@ module Braintrust
             end
           end
         end
-
-        # Mark as wrapped and prepend the wrapper to the chat instance
-        chat.instance_variable_set(:@braintrust_wrapped, true)
-        chat.singleton_class.prepend(wrapper)
-        chat
       end
     end
   end
