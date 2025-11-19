@@ -117,248 +117,307 @@ module Braintrust
           define_method(:ask) do |prompt = nil, **params, &block|
             tracer = tracer_provider.tracer("braintrust")
 
-            # Determine if this is a streaming request (block provided)
-            is_streaming = !block.nil?
-
-            if is_streaming
-              # Handle streaming
-              aggregated_chunks = []
-              metadata = {
-                "provider" => "ruby_llm",
-                "stream" => true
-              }
-
-              # Start span
-              span = tracer.start_span("ruby_llm.chat.ask")
-
-              # Extract model from chat instance if available
-              if respond_to?(:model) && self.model
-                model = self.model.respond_to?(:id) ? self.model.id : self.model.to_s
-                metadata["model"] = model
+            if block
+              # Handle streaming request
+              wrapped_block = proc do |chunk|
+                block.call(chunk)
               end
-
-              # Build input - RubyLLM maintains conversation history
-              input_messages = []
-              if respond_to?(:messages) && messages && messages.any?
-                input_messages = messages.map { |m| m.respond_to?(:to_h) ? m.to_h : m }
-              end
-              # Add current prompt
-              input_messages << {role: "user", content: prompt} if prompt
-
-              Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
-              Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.metadata", metadata)
-
-              # Call original with wrapper block
-              begin
-                result = super(prompt, **params) do |chunk|
+              Braintrust::Trace::RubyLLM.handle_streaming_ask(self, tracer, prompt, params, block) do |aggregated_chunks|
+                super(prompt, **params) do |chunk|
                   aggregated_chunks << chunk
-                  block.call(chunk)
-                end
-              rescue => e
-                span.record_exception(e)
-                span.status = ::OpenTelemetry::Trace::Status.error("RubyLLM error: #{e.message}")
-                span.finish
-                raise
-              end
-
-              # Aggregate streaming output
-              unless aggregated_chunks.empty?
-                # Aggregate content from chunks
-                aggregated_content = aggregated_chunks.map { |c|
-                  c.respond_to?(:content) ? c.content : c.to_s
-                }.join
-
-                output = [{
-                  role: "assistant",
-                  content: aggregated_content
-                }]
-                Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.output_json", output)
-
-                # Try to extract usage from the result or last chunk
-                if result.respond_to?(:usage) && result.usage
-                  metrics = Braintrust::Trace::RubyLLM.parse_usage_tokens(result.usage)
-                  Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                  wrapped_block.call(chunk)
                 end
               end
-
-              span.finish
-              result
             else
-              # Handle non-streaming
-              tracer.in_span("ruby_llm.chat.ask") do |span|
-                # Initialize metadata hash
-                metadata = {
-                  "provider" => "ruby_llm"
-                }
-
-                # Extract model from chat instance if available
-                if respond_to?(:model) && self.model
-                  model = self.model.respond_to?(:id) ? self.model.id : self.model.to_s
-                  metadata["model"] = model
-                end
-
-                # Capture tools if available - use provider's tool_for method to get proper format
-                if respond_to?(:tools) && tools && tools.any?
-                  # Get the provider to determine the correct format
-                  provider = instance_variable_get(:@provider) if instance_variable_defined?(:@provider)
-
-                  metadata["tools"] = tools.map do |name, tool|
-                    tool_schema = nil
-
-                    # Use provider-specific tool_for method if available
-                    if provider
-                      begin
-                        # Try OpenAI format
-                        tool_schema = if provider.is_a?(RubyLLM::Providers::OpenAI)
-                          RubyLLM::Providers::OpenAI::Tools.tool_for(tool)
-                        # Try Anthropic format
-                        elsif defined?(RubyLLM::Providers::Anthropic) && provider.is_a?(RubyLLM::Providers::Anthropic)
-                          RubyLLM::Providers::Anthropic::Tools.tool_for(tool)
-                        # Fallback to manual construction using params_schema
-                        elsif tool.respond_to?(:params_schema) && tool.params_schema
-                          {
-                            "type" => "function",
-                            "function" => {
-                              "name" => tool.name.to_s,
-                              "description" => tool.description,
-                              "parameters" => tool.params_schema
-                            }
-                          }
-                        else
-                          # Minimal fallback
-                          {
-                            "type" => "function",
-                            "function" => {
-                              "name" => tool.name.to_s,
-                              "description" => tool.description,
-                              "parameters" => {}
-                            }
-                          }
-                        end
-                      rescue
-                        # If anything fails, use basic format
-                        tool_schema = {
-                          "type" => "function",
-                          "function" => {
-                            "name" => tool.name.to_s,
-                            "description" => tool.description,
-                            "parameters" => (tool.respond_to?(:params_schema) && tool.params_schema) ? tool.params_schema : {}
-                          }
-                        }
-                      end
-                    else
-                      # No provider, use basic format with params_schema if available
-                      tool_schema = {
-                        "type" => "function",
-                        "function" => {
-                          "name" => tool.name.to_s,
-                          "description" => tool.description,
-                          "parameters" => (tool.respond_to?(:params_schema) && tool.params_schema) ? tool.params_schema : {}
-                        }
-                      }
-                    end
-
-                    # Strip RubyLLM-specific fields to match native OpenAI format
-                    if tool_schema && tool_schema.dig("function", "parameters")
-                      tool_params = tool_schema["function"]["parameters"]
-                      # Remove strict and additionalProperties which are RubyLLM-specific
-                      tool_params.delete("strict") if tool_params.is_a?(Hash)
-                      tool_params.delete("additionalProperties") if tool_params.is_a?(Hash)
-                    end
-
-                    tool_schema
-                  end
-                end
-
-                # Build input - RubyLLM maintains conversation history
-                input_messages = []
-                if respond_to?(:messages) && messages && messages.any?
-                  input_messages = messages.map { |m| m.respond_to?(:to_h) ? m.to_h : m }
-                end
-                # Add current prompt
-                input_messages << {role: "user", content: prompt} if prompt
-
-                # Set input messages as JSON
-                Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
-
-                # Remember the message count before the call
-                messages_before_count = (respond_to?(:messages) && messages) ? messages.length : 0
-
-                # Call the original method
-                response = super(prompt, **params)
-
-                # Format output to match OpenAI's choices[] structure
-                if response
-                  # Build message object from response
-                  message = {
-                    "role" => "assistant",
-                    "content" => nil
-                  }
-
-                  # Add content if it's a simple text response
-                  if response.respond_to?(:content) && response.content && !response.content.empty?
-                    message["content"] = response.content
-                  end
-
-                  # Check if there are tool calls in the messages history
-                  if respond_to?(:messages) && messages
-                    # Get the assistant message with tool calls (if any)
-                    assistant_msg = messages[(messages_before_count + 1)..].find { |m| m.role.to_s == "assistant" && m.respond_to?(:tool_calls) && m.tool_calls&.any? }
-
-                    if assistant_msg&.tool_calls&.any?
-                      message["tool_calls"] = assistant_msg.tool_calls.map do |id, tc|
-                        # Ensure arguments is a JSON string (OpenAI format)
-                        args = tc.arguments
-                        args_string = args.is_a?(String) ? args : JSON.generate(args)
-
-                        {
-                          "id" => tc.id,
-                          "type" => "function",
-                          "function" => {
-                            "name" => tc.name,
-                            "arguments" => args_string
-                          }
-                        }
-                      end
-                      message["content"] = nil if message["tool_calls"]
-                    end
-                  end
-
-                  # Format as OpenAI choices[] structure
-                  output = [{
-                    "index" => 0,
-                    "message" => message,
-                    "finish_reason" => message["tool_calls"] ? "tool_calls" : "stop"
-                  }]
-
-                  Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.output_json", output)
-                end
-
-                # Set metrics (token usage)
-                # RubyLLM stores usage data directly in the response object/hash
-                if response.respond_to?(:to_h)
-                  response_hash = response.to_h
-                  # Build usage hash from RubyLLM's token fields
-                  usage = {
-                    "input_tokens" => response_hash[:input_tokens],
-                    "output_tokens" => response_hash[:output_tokens],
-                    "cached_tokens" => response_hash[:cached_tokens],
-                    "cache_creation_tokens" => response_hash[:cache_creation_tokens]
-                  }.compact
-
-                  unless usage.empty?
-                    metrics = Braintrust::Trace::RubyLLM.parse_usage_tokens(usage)
-                    Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
-                  end
-                end
-
-                # Set metadata
-                Braintrust::Trace::RubyLLM.set_json_attr(span, "braintrust.metadata", metadata)
-
-                response
+              # Handle non-streaming request
+              Braintrust::Trace::RubyLLM.handle_non_streaming_ask(self, tracer, prompt, params) do
+                super(prompt, **params)
               end
             end
           end
+        end
+      end
+
+      # Handle streaming chat request with tracing
+      # @param chat [RubyLLM::Chat] the chat instance
+      # @param tracer [OpenTelemetry::Trace::Tracer] the tracer
+      # @param prompt [String, nil] the user prompt
+      # @param params [Hash] additional parameters
+      # @param block [Proc] the streaming block
+      def self.handle_streaming_ask(chat, tracer, prompt, params, block)
+        aggregated_chunks = []
+        metadata = extract_metadata(chat, stream: true)
+
+        # Start span
+        span = tracer.start_span("ruby_llm.chat.ask")
+
+        # Set input and metadata
+        input_messages = build_input_messages(chat, prompt)
+        set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
+        set_json_attr(span, "braintrust.metadata", metadata)
+
+        # Call original method, passing aggregated_chunks to the block
+        begin
+          result = yield aggregated_chunks
+        rescue => e
+          span.record_exception(e)
+          span.status = ::OpenTelemetry::Trace::Status.error("RubyLLM error: #{e.message}")
+          span.finish
+          raise
+        end
+
+        # Set output and metrics from aggregated chunks
+        capture_streaming_output(span, aggregated_chunks, result)
+        span.finish
+        result
+      end
+
+      # Handle non-streaming chat request with tracing
+      # @param chat [RubyLLM::Chat] the chat instance
+      # @param tracer [OpenTelemetry::Trace::Tracer] the tracer
+      # @param prompt [String, nil] the user prompt
+      # @param params [Hash] additional parameters
+      def self.handle_non_streaming_ask(chat, tracer, prompt, params)
+        tracer.in_span("ruby_llm.chat.ask") do |span|
+          # Extract metadata (provider, model, tools)
+          metadata = extract_metadata(chat)
+
+          # Build input messages
+          input_messages = build_input_messages(chat, prompt)
+          set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
+
+          # Remember message count before the call (for tool call detection)
+          messages_before_count = (chat.respond_to?(:messages) && chat.messages) ? chat.messages.length : 0
+
+          # Call the original method
+          response = yield
+
+          # Capture output and metrics
+          capture_non_streaming_output(span, chat, response, messages_before_count)
+
+          # Set metadata
+          set_json_attr(span, "braintrust.metadata", metadata)
+
+          response
+        end
+      end
+
+      # Extract metadata from chat instance (provider, model, tools, stream flag)
+      # @param chat [RubyLLM::Chat] the chat instance
+      # @param stream [Boolean] whether this is a streaming request
+      # @return [Hash] metadata hash
+      def self.extract_metadata(chat, stream: false)
+        metadata = {"provider" => "ruby_llm"}
+        metadata["stream"] = true if stream
+
+        # Extract model
+        if chat.respond_to?(:model) && chat.model
+          model = chat.model.respond_to?(:id) ? chat.model.id : chat.model.to_s
+          metadata["model"] = model
+        end
+
+        # Extract tools (only for non-streaming)
+        if !stream && chat.respond_to?(:tools) && chat.tools&.any?
+          metadata["tools"] = extract_tools_metadata(chat)
+        end
+
+        metadata
+      end
+
+      # Extract tools metadata from chat instance
+      # @param chat [RubyLLM::Chat] the chat instance
+      # @return [Array<Hash>] array of tool schemas
+      def self.extract_tools_metadata(chat)
+        provider = chat.instance_variable_get(:@provider) if chat.instance_variable_defined?(:@provider)
+
+        chat.tools.map do |_name, tool|
+          format_tool_schema(tool, provider)
+        end
+      end
+
+      # Format a tool into OpenAI-compatible schema
+      # @param tool [Object] the tool object
+      # @param provider [Object, nil] the provider instance
+      # @return [Hash] tool schema
+      def self.format_tool_schema(tool, provider)
+        tool_schema = nil
+
+        # Use provider-specific tool_for method if available
+        if provider
+          begin
+            tool_schema = if provider.is_a?(RubyLLM::Providers::OpenAI)
+              RubyLLM::Providers::OpenAI::Tools.tool_for(tool)
+            elsif defined?(RubyLLM::Providers::Anthropic) && provider.is_a?(RubyLLM::Providers::Anthropic)
+              RubyLLM::Providers::Anthropic::Tools.tool_for(tool)
+            elsif tool.respond_to?(:params_schema) && tool.params_schema
+              build_basic_tool_schema(tool)
+            else
+              build_minimal_tool_schema(tool)
+            end
+          rescue
+            # If anything fails, use basic format
+            tool_schema = (tool.respond_to?(:params_schema) && tool.params_schema) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
+          end
+        else
+          # No provider, use basic format with params_schema if available
+          tool_schema = (tool.respond_to?(:params_schema) && tool.params_schema) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
+        end
+
+        # Strip RubyLLM-specific fields to match native OpenAI format
+        if tool_schema&.dig("function", "parameters")
+          tool_params = tool_schema["function"]["parameters"]
+          tool_params.delete("strict") if tool_params.is_a?(Hash)
+          tool_params.delete("additionalProperties") if tool_params.is_a?(Hash)
+        end
+
+        tool_schema
+      end
+
+      # Build a basic tool schema with parameters
+      # @param tool [Object] the tool object
+      # @return [Hash] tool schema
+      def self.build_basic_tool_schema(tool)
+        {
+          "type" => "function",
+          "function" => {
+            "name" => tool.name.to_s,
+            "description" => tool.description,
+            "parameters" => tool.params_schema
+          }
+        }
+      end
+
+      # Build a minimal tool schema without parameters
+      # @param tool [Object] the tool object
+      # @return [Hash] tool schema
+      def self.build_minimal_tool_schema(tool)
+        {
+          "type" => "function",
+          "function" => {
+            "name" => tool.name.to_s,
+            "description" => tool.description,
+            "parameters" => {}
+          }
+        }
+      end
+
+      # Build input messages array from chat history and prompt
+      # @param chat [RubyLLM::Chat] the chat instance
+      # @param prompt [String, nil] the user prompt
+      # @return [Array<Hash>] array of message hashes
+      def self.build_input_messages(chat, prompt)
+        input_messages = []
+
+        # Add conversation history
+        if chat.respond_to?(:messages) && chat.messages&.any?
+          input_messages = chat.messages.map { |m| m.respond_to?(:to_h) ? m.to_h : m }
+        end
+
+        # Add current prompt
+        input_messages << {role: "user", content: prompt} if prompt
+
+        input_messages
+      end
+
+      # Capture streaming output and metrics
+      # @param span [OpenTelemetry::Trace::Span] the span
+      # @param aggregated_chunks [Array] the aggregated chunks
+      # @param result [Object] the result object
+      def self.capture_streaming_output(span, aggregated_chunks, result)
+        return if aggregated_chunks.empty?
+
+        # Aggregate content from chunks
+        aggregated_content = aggregated_chunks.map { |c|
+          c.respond_to?(:content) ? c.content : c.to_s
+        }.join
+
+        output = [{
+          role: "assistant",
+          content: aggregated_content
+        }]
+        set_json_attr(span, "braintrust.output_json", output)
+
+        # Try to extract usage from the result
+        if result.respond_to?(:usage) && result.usage
+          metrics = parse_usage_tokens(result.usage)
+          set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+        end
+      end
+
+      # Capture non-streaming output and metrics
+      # @param span [OpenTelemetry::Trace::Span] the span
+      # @param chat [RubyLLM::Chat] the chat instance
+      # @param response [Object] the response object
+      # @param messages_before_count [Integer] message count before the call
+      def self.capture_non_streaming_output(span, chat, response, messages_before_count)
+        return unless response
+
+        # Build message object from response
+        message = {
+          "role" => "assistant",
+          "content" => nil
+        }
+
+        # Add content if it's a simple text response
+        if response.respond_to?(:content) && response.content && !response.content.empty?
+          message["content"] = response.content
+        end
+
+        # Check if there are tool calls in the messages history
+        if chat.respond_to?(:messages) && chat.messages
+          assistant_msg = chat.messages[(messages_before_count + 1)..].find { |m|
+            m.role.to_s == "assistant" && m.respond_to?(:tool_calls) && m.tool_calls&.any?
+          }
+
+          if assistant_msg&.tool_calls&.any?
+            message["tool_calls"] = format_tool_calls(assistant_msg.tool_calls)
+            message["content"] = nil
+          end
+        end
+
+        # Format as OpenAI choices[] structure
+        output = [{
+          "index" => 0,
+          "message" => message,
+          "finish_reason" => message["tool_calls"] ? "tool_calls" : "stop"
+        }]
+
+        set_json_attr(span, "braintrust.output_json", output)
+
+        # Set metrics (token usage)
+        if response.respond_to?(:to_h)
+          response_hash = response.to_h
+          usage = {
+            "input_tokens" => response_hash[:input_tokens],
+            "output_tokens" => response_hash[:output_tokens],
+            "cached_tokens" => response_hash[:cached_tokens],
+            "cache_creation_tokens" => response_hash[:cache_creation_tokens]
+          }.compact
+
+          unless usage.empty?
+            metrics = parse_usage_tokens(usage)
+            set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+          end
+        end
+      end
+
+      # Format tool calls into OpenAI format
+      # @param tool_calls [Hash, Array] the tool calls
+      # @return [Array<Hash>] formatted tool calls
+      def self.format_tool_calls(tool_calls)
+        tool_calls.map do |_id, tc|
+          # Ensure arguments is a JSON string (OpenAI format)
+          args = tc.arguments
+          args_string = args.is_a?(String) ? args : JSON.generate(args)
+
+          {
+            "id" => tc.id,
+            "type" => "function",
+            "function" => {
+              "name" => tc.name,
+              "arguments" => args_string
+            }
+          }
         end
       end
     end
