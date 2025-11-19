@@ -124,7 +124,7 @@ module Braintrust
             choice_data[index] ||= {
               index: index,
               role: nil,
-              content: "",
+              content: +"",
               tool_calls: [],
               finish_reason: nil
             }
@@ -136,7 +136,7 @@ module Braintrust
 
             # Aggregate content
             if delta[:content]
-              choice_data[index][:content] += delta[:content]
+              choice_data[index][:content] << delta[:content]
             end
 
             # Aggregate tool_calls (similar to Go SDK logic)
@@ -149,15 +149,15 @@ module Braintrust
                     id: tool_call_delta[:id],
                     type: tool_call_delta[:type],
                     function: {
-                      name: tool_call_delta.dig(:function, :name) || "",
-                      arguments: tool_call_delta.dig(:function, :arguments) || ""
+                      name: tool_call_delta.dig(:function, :name) || +"",
+                      arguments: tool_call_delta.dig(:function, :arguments) || +""
                     }
                   }
                 elsif choice_data[index][:tool_calls].any?
                   # Continuation - append arguments to last tool call
                   last_tool_call = choice_data[index][:tool_calls].last
                   if tool_call_delta.dig(:function, :arguments)
-                    last_tool_call[:function][:arguments] += tool_call_delta[:function][:arguments]
+                    last_tool_call[:function][:arguments] << tool_call_delta[:function][:arguments]
                   end
                 end
               end
