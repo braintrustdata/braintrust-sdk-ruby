@@ -13,6 +13,10 @@ Study existing integrations as examples:
 - **OpenAI**: `lib/braintrust/trace/contrib/openai.rb` (tests: `test/braintrust/trace/openai_test.rb`, example: `examples/openai.rb`)
 - **Anthropic**: `lib/braintrust/trace/contrib/anthropic.rb` (tests: `test/braintrust/trace/anthropic_test.rb`, example: `examples/anthropic.rb`)
 
+**Important Notes**:
+- **Examine the library thoroughly** - Study the library's documentation and source code to identify ALL critical methods that call LLMs/AI services. Plan to trace every method that makes API calls, not just the obvious ones.
+- Some integrations (e.g. ruby-llm) support multiple providers (e.g. OpenAI and Anthropic). Test all supported providers.
+
 ## Core Pattern: Module Prepending
 
 ```ruby
@@ -122,6 +126,26 @@ define_method(:stream) do |**params|
 end
 ```
 
+## Examples
+
+Write two examples:
+- **Customer example** (`examples/your_provider.rb`): Concise example demonstrating setup and basic usage
+- **Internal example** (`examples/internal/your_provider.rb`): Comprehensive example using every library feature
+
+Follow existing example patterns:
+- **Nest all API calls under a manual root span** (see `examples/openai.rb`):
+  ```ruby
+  tracer = OpenTelemetry.tracer_provider.tracer("your-provider-example")
+  root_span = nil
+
+  response = tracer.in_span("examples/your_provider.rb") do |span|
+    root_span = span
+    client.your_api.call(...)  # Automatically traced, nested under root_span
+  end
+  ```
+- Use consistent nomenclature for spans and projects
+- Print permalink at end: `Braintrust::Trace.permalink(root_span)`
+
 ## Required Components
 
 **Do in this order:**
@@ -132,8 +156,7 @@ end
 - [ ] **VCR cassettes**: `test/fixtures/vcr_cassettes/your_provider/` (record as you write tests)
 - [ ] **Auto-load**: Add to `lib/braintrust/trace.rb` with `begin/rescue LoadError`
 - [ ] **Example**: `examples/your_provider.rb`
-- [ ] **Example**: `examples/interal/your_provider.rb` write a comprehensive
-  example that uses all features in the integration.
+- [ ] **Example**: `examples/internal/your_provider.rb` (comprehensive internal example)
 - [ ] **Env var**: Add to `.env.example` if needed
 
 ## Test Coverage (LLM Providers)
@@ -142,7 +165,12 @@ end
 2. ✅ Streaming requests (full consumption)
 3. ✅ Early stream termination (partial consumption)
 4. ✅ Error handling (exception recording)
-5. ✅ Multimodal content (images, tools if applicable)
+5. ✅ **All critical features** - Test ALL provider capabilities:
+   - Tool/function calling (if supported)
+   - Images/vision (if supported)
+   - System messages (if supported)
+   - Multiple messages/chat history (if supported)
+   - Any other provider-specific features
 6. ✅ Token usage edge cases (cached, reasoning tokens)
 7. ✅ Multiple APIs (if provider has multiple endpoints)
 8. ✅ Verify we don't change the behaviour of the integration.
@@ -184,25 +212,50 @@ bundle exec appraisal rake test   # Run all scenarios (use this in TDD cycle)
 
 **Determine versions**: Check release history, focus on API changes, include customer-likely versions.
 
-## MCP Validation
+## Testing Tools & Validation
 
-After implementation, validate with MCP tools:
+Use multiple testing approaches to validate your integration:
 
-```ruby
-# Run example
-bundle exec ruby examples/your_provider.rb
+### 1. Unit Tests (Primary)
+- **Location**: `test/braintrust/trace/your_provider_test.rb`
+- **Purpose**: Test all code paths, edge cases, and error handling
+- **Run**: `bundle exec appraisal rake test`
+- **Coverage**: Track with `bundle exec rake coverage` (>90% line, >80% branch)
 
-# Query traces
-mcp__braintrust__list_recent_objects(object_type: "project_logs", limit: 10)
+### 2. Console Log Inspection
+- **Purpose**: Quickly verify trace structure during development
+- **Usage**:
+  ```bash
+  BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG=true bundle exec ruby examples/your_provider.rb
+  ```
+- **Verify**: Check span hierarchy, attributes, and parent/child relationships
 
-# Inspect span
-mcp__braintrust__resolve_object(object_type: "project_logs", object_id: "span_id")
+### 3. Braintrust MCP Server (Integration Testing)
+- **Purpose**: Query and inspect traces in the Braintrust platform
+- **Setup**: Should be auto-configured in Docker environment
+- **Commands**:
+  ```ruby
+  # List recent traces
+  mcp__braintrust__list_recent_objects(object_type: "project_logs", limit: 10)
 
-# BTQL query
-mcp__braintrust__btql_query(query: "SELECT * FROM project_logs WHERE metadata.provider = 'your_provider'")
-```
+  # Inspect specific span
+  mcp__braintrust__resolve_object(object_type: "project_logs", object_id: "span_id")
 
-**Verify attributes**: `input`, `output`, `metadata`, `metrics`, `span_attributes.braintrust.parent`, `span_attributes.braintrust.org`
+  # BTQL query
+  mcp__braintrust__btql_query(query: "SELECT * FROM project_logs WHERE metadata.provider = 'your_provider'")
+  ```
+- **Verify attributes**: `input`, `output`, `metadata`, `metrics`, `span_attributes.braintrust.parent`, `span_attributes.braintrust.org`
+
+### 4. Examples (Manual Testing)
+- **Customer example**: `bundle exec ruby examples/your_provider.rb`
+- **Internal example**: `bundle exec ruby examples/internal/your_provider.rb`
+- **Purpose**: End-to-end validation of real API calls
+
+### Testing Workflow
+1. **TDD cycle**: Write unit test → implement → run `bundle exec appraisal rake test`
+2. **Console log**: Use `BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG=true` to debug span structure
+3. **MCP validation**: Query traces with Braintrust MCP server
+4. **Examples**: Run examples to verify end-to-end behavior
 
 ## TDD Workflow (CRITICAL)
 
