@@ -145,14 +145,16 @@ module Braintrust
       # @param params [Hash] additional parameters
       # @param block [Proc] the streaming block
       def self.handle_streaming_ask(chat, tracer, prompt, params, block)
-        aggregated_chunks = []
-        metadata = extract_metadata(chat, stream: true)
-
-        # Start span
+        # Start span immediately for accurate timing
         span = tracer.start_span("ruby_llm.chat.ask")
 
-        # Set input and metadata
+        aggregated_chunks = []
+
+        # Extract metadata and build input messages
+        metadata = extract_metadata(chat, stream: true)
         input_messages = build_input_messages(chat, prompt)
+
+        # Set input and metadata
         set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
         set_json_attr(span, "braintrust.metadata", metadata)
 
@@ -178,11 +180,12 @@ module Braintrust
       # @param prompt [String, nil] the user prompt
       # @param params [Hash] additional parameters
       def self.handle_non_streaming_ask(chat, tracer, prompt, params)
-        tracer.in_span("ruby_llm.chat.ask") do |span|
-          # Extract metadata (provider, model, tools)
-          metadata = extract_metadata(chat)
+        # Start span immediately for accurate timing
+        span = tracer.start_span("ruby_llm.chat.ask")
 
-          # Build input messages
+        begin
+          # Extract metadata and build input messages
+          metadata = extract_metadata(chat)
           input_messages = build_input_messages(chat, prompt)
           set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
 
@@ -199,6 +202,8 @@ module Braintrust
           set_json_attr(span, "braintrust.metadata", metadata)
 
           response
+        ensure
+          span.finish
         end
       end
 
