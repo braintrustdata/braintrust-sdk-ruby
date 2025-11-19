@@ -196,7 +196,6 @@ module Braintrust
         wrapper = Module.new do
           define_method(:stream) do |**params, &block|
             tracer = tracer_provider.tracer("braintrust")
-            aggregated_events = []
 
             metadata = {
               "provider" => "anthropic",
@@ -256,58 +255,97 @@ module Braintrust
             end
 
             # Store references on the stream object itself for the wrapper
-            stream.instance_variable_set(:@braintrust_aggregated_events, aggregated_events)
             stream.instance_variable_set(:@braintrust_span, span)
             stream.instance_variable_set(:@braintrust_metadata, metadata)
+            stream.instance_variable_set(:@braintrust_span_finished, false)
 
-            # Wrap the stream to aggregate events
+            # Local helper for brevity
+            set_json_attr = ->(attr_name, obj) { Braintrust::Trace::Anthropic.set_json_attr(span, attr_name, obj) }
+
+            # Helper lambda to extract stream data and set span attributes
+            # This is DRY - used by both .each() and .text() wrappers
+            extract_stream_metadata = lambda do
+              # Extract the SDK's internal accumulated message (built during streaming)
+              acc_msg = stream.instance_variable_get(:@accumated_message_snapshot)
+              return unless acc_msg
+
+              # Set output from accumulated message
+              if acc_msg.respond_to?(:content) && acc_msg.content
+                content_array = acc_msg.content.map(&:to_h)
+                output = [{
+                  role: acc_msg.respond_to?(:role) ? acc_msg.role : "assistant",
+                  content: content_array
+                }]
+                set_json_attr.call("braintrust.output_json", output)
+              end
+
+              # Set metrics from accumulated message
+              if acc_msg.respond_to?(:usage) && acc_msg.usage
+                metrics = Braintrust::Trace::Anthropic.parse_usage_tokens(acc_msg.usage)
+                set_json_attr.call("braintrust.metrics", metrics) unless metrics.empty?
+              end
+
+              # Update metadata with response fields
+              if acc_msg.respond_to?(:stop_reason) && acc_msg.stop_reason
+                metadata["stop_reason"] = acc_msg.stop_reason
+              end
+              if acc_msg.respond_to?(:model) && acc_msg.model
+                metadata["model"] = acc_msg.model
+              end
+              set_json_attr.call("braintrust.metadata", metadata)
+            end
+
+            # Helper lambda to finish span (prevents double-finishing via closure)
+            finish_braintrust_span = lambda do
+              return if stream.instance_variable_get(:@braintrust_span_finished)
+              stream.instance_variable_set(:@braintrust_span_finished, true)
+
+              extract_stream_metadata.call
+              span.finish
+            end
+
+            # Wrap .each() to ensure span finishes after consumption
             original_each = stream.method(:each)
             stream.define_singleton_method(:each) do |&user_block|
-              events = instance_variable_get(:@braintrust_aggregated_events)
-              span_obj = instance_variable_get(:@braintrust_span)
-              meta = instance_variable_get(:@braintrust_metadata)
+              # Consume stream, calling user's block for each event
+              # The SDK builds @accumated_message_snapshot internally
+              original_each.call(&user_block)
+            rescue => e
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+              raise
+            ensure
+              # Extract accumulated message and finish span
+              finish_braintrust_span.call
+            end
 
-              begin
-                original_each.call do |event|
-                  # Store event data for aggregation - must deeply convert to hash
-                  if event.respond_to?(:to_h)
-                    events << Braintrust::Trace::Anthropic.deep_to_hash(event.to_h)
-                  end
-                  # Call user's block if provided
-                  user_block&.call(event)
-                end
+            # Wrap .text() to return an Enumerable that ensures span finishes
+            original_text = stream.method(:text)
+            stream.define_singleton_method(:text) do
+              text_enum = original_text.call
+
+              # Return wrapper Enumerable that finishes span after consumption
+              Enumerator.new do |y|
+                # Consume text enumerable (this consumes underlying stream)
+                # The SDK builds @accumated_message_snapshot internally
+                text_enum.each { |text| y << text }
               rescue => e
-                span_obj.record_exception(e)
-                span_obj.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+                span.record_exception(e)
+                span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
                 raise
               ensure
-                # Always aggregate and finish span after stream completes
-                unless events.empty?
-                  aggregated_output = Braintrust::Trace::Anthropic.aggregate_streaming_events(events)
-
-                  # Set output
-                  if aggregated_output[:content]
-                    output = [{
-                      role: "assistant",
-                      content: aggregated_output[:content]
-                    }]
-                    Braintrust::Trace::Anthropic.set_json_attr(span_obj, "braintrust.output_json", output)
-                  end
-
-                  # Set metrics if usage is available
-                  if aggregated_output[:usage]
-                    metrics = Braintrust::Trace::Anthropic.parse_usage_tokens(aggregated_output[:usage])
-                    Braintrust::Trace::Anthropic.set_json_attr(span_obj, "braintrust.metrics", metrics) unless metrics.empty?
-                  end
-
-                  # Update metadata with response fields
-                  meta["stop_reason"] = aggregated_output[:stop_reason] if aggregated_output[:stop_reason]
-                  meta["model"] = aggregated_output[:model] if aggregated_output[:model]
-                  Braintrust::Trace::Anthropic.set_json_attr(span_obj, "braintrust.metadata", meta)
-                end
-
-                span_obj.finish
+                # Extract accumulated message and finish span
+                finish_braintrust_span.call
               end
+            end
+
+            # Wrap .close() to ensure span finishes even if stream not consumed
+            original_close = stream.method(:close)
+            stream.define_singleton_method(:close) do
+              original_close.call
+            ensure
+              # Finish span even if stream was closed early
+              finish_braintrust_span.call
             end
 
             # If a block was provided to stream(), call each with it immediately
@@ -321,140 +359,6 @@ module Braintrust
 
         # Prepend the wrapper to the messages resource
         client.messages.singleton_class.prepend(wrapper)
-      end
-
-      # Recursively convert Anthropic objects to pure hashes
-      # Anthropic gem returns nested objects in to_h that need deep conversion
-      # @param obj [Object] the object to convert
-      # @return [Object] the deeply converted object
-      def self.deep_to_hash(obj)
-        case obj
-        when Hash
-          obj.transform_values { |v| deep_to_hash(v) }
-        when Array
-          obj.map { |v| deep_to_hash(v) }
-        else
-          # Try to convert objects that respond to to_h
-          if obj.respond_to?(:to_h) && !obj.is_a?(Symbol) && !obj.is_a?(Numeric) && !obj.is_a?(String) && !obj.is_a?(TrueClass) && !obj.is_a?(FalseClass) && !obj.is_a?(NilClass)
-            deep_to_hash(obj.to_h)
-          else
-            obj
-          end
-        end
-      end
-
-      # Aggregate streaming events into a single response structure
-      # @param events [Array<Hash>] array of event hashes from stream
-      # @return [Hash] aggregated response with content, usage, etc.
-      def self.aggregate_streaming_events(events)
-        return {} if events.empty?
-
-        result = {
-          content: [],
-          usage: {},
-          stop_reason: nil,
-          model: nil
-        }
-
-        # Track content blocks by index
-        content_blocks = {}
-        content_builders = {}
-
-        events.each do |event|
-          # Events may have string or symbol keys depending on how they were converted
-          event_type = event[:type] || event["type"]
-          # Convert to symbol for consistent comparison
-          event_type = event_type.to_sym if event_type.respond_to?(:to_sym)
-          next unless event_type
-
-          case event_type
-          when :message_start, "message_start"
-            # Extract model and initial usage (input tokens, cache tokens)
-            message = event[:message] || event["message"]
-            if message
-              result[:model] = message[:model] || message["model"]
-              if message[:usage] || message["usage"]
-                usage = message[:usage] || message["usage"]
-                result[:usage].merge!(usage)
-              end
-            end
-
-          when :content_block_start, "content_block_start"
-            # Initialize a new content block
-            index = event[:index] || event["index"]
-            content_block = event[:content_block] || event["content_block"]
-            content_blocks[index] = content_block if index && content_block
-
-          when :content_block_delta, "content_block_delta"
-            # Accumulate deltas for content blocks
-            index = event[:index] || event["index"]
-            delta = event[:delta] || event["delta"]
-            next unless index && delta
-
-            delta_type = delta[:type] || delta["type"]
-            delta_type = delta_type.to_sym if delta_type.respond_to?(:to_sym)
-            content_blocks[index] ||= {}
-
-            case delta_type
-            when :text_delta, "text_delta"
-              # Accumulate text
-              text = delta[:text] || delta["text"]
-              if text
-                content_builders[index] ||= +""
-                content_builders[index] << text
-                content_blocks[index][:type] = :text
-              end
-
-            when :input_json_delta, "input_json_delta"
-              # Accumulate JSON for tool_use blocks
-              partial_json = delta[:partial_json] || delta["partial_json"]
-              if partial_json
-                content_builders[index] ||= +""
-                content_builders[index] << partial_json
-                content_blocks[index][:type] = :tool_use
-              end
-            end
-
-          when :message_delta, "message_delta"
-            # Get final stop reason and cumulative usage (output tokens)
-            delta = event[:delta] || event["delta"]
-            if delta
-              stop_reason = delta[:stop_reason] || delta["stop_reason"]
-              result[:stop_reason] = stop_reason if stop_reason
-            end
-
-            usage = event[:usage] || event["usage"]
-            result[:usage].merge!(usage) if usage
-          end
-        end
-
-        # Build final content array from aggregated blocks
-        content_builders.each do |index, text|
-          block = content_blocks[index]
-          next unless block
-
-          block_type = block[:type] || block["type"]
-          block_type = block_type.to_sym if block_type.respond_to?(:to_sym)
-          case block_type
-          when :text, "text"
-            block[:text] = text
-          when :tool_use, "tool_use"
-            # Parse the accumulated JSON string
-            begin
-              parsed = JSON.parse(text)
-              block[:input] = parsed
-            rescue JSON::ParserError
-              block[:input] = text
-            end
-          end
-        end
-
-        # Convert blocks hash to sorted array
-        if content_blocks.any?
-          result[:content] = content_blocks.keys.sort.map { |idx| content_blocks[idx] }
-        end
-
-        result
       end
     end
   end

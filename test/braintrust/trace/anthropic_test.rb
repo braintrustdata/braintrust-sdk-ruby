@@ -662,4 +662,225 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       end
     end
   end
+
+  def test_wrap_handles_streaming_with_text_each
+    VCR.use_cassette("anthropic/streaming_text_each") do
+      require "anthropic"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and wrap it
+      client = Anthropic::Client.new(api_key: @api_key)
+      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request using .text.each
+      collected_text = ""
+      stream = client.messages.stream(
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 50,
+        messages: [
+          {role: "user", content: "Count to 3"}
+        ]
+      )
+
+      # Consume the stream using .text.each (not .each)
+      stream.text.each do |text|
+        collected_text += text
+      end
+
+      # Verify we got some text
+      refute_empty collected_text, "Should have received text from stream"
+
+      # Validate actual content correctness
+      assert_equal "1\n2\n3", collected_text, "Should count to 3"
+      assert_match(/1/, collected_text, "Should contain 1")
+      assert_match(/2/, collected_text, "Should contain 2")
+      assert_match(/3/, collected_text, "Should contain 3")
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "anthropic.messages.create", span.name
+
+      # CRITICAL: Verify output was aggregated
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length, "Should have one output message"
+      assert_equal "assistant", output[0]["role"]
+
+      # Should have aggregated the text content
+      text_block = output[0]["content"].find { |b| b["type"] == "text" }
+      assert text_block, "Should have a text content block"
+      assert text_block["text"], "Text block should have text"
+      refute_empty text_block["text"], "Text should not be empty"
+      assert_equal collected_text, text_block["text"], "Aggregated text should match collected text"
+
+      # Validate content in span output matches expected
+      assert_equal "1\n2\n3", text_block["text"], "Span output should contain correct count"
+
+      # CRITICAL: Verify metrics were captured
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
+      assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
+      assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
+    end
+  end
+
+  def test_wrap_handles_streaming_with_accumulated_text
+    VCR.use_cassette("anthropic/streaming_accumulated_text") do
+      require "anthropic"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and wrap it
+      client = Anthropic::Client.new(api_key: @api_key)
+      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request using .accumulated_text
+      stream = client.messages.stream(
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 50,
+        messages: [
+          {role: "user", content: "Say hello"}
+        ]
+      )
+
+      # Get accumulated text (blocks until stream completes)
+      accumulated_text = stream.accumulated_text
+
+      # Verify we got some text
+      refute_empty accumulated_text, "Should have received text from stream"
+
+      # Validate actual content correctness
+      expected_text = "Hello! How are you doing today? Is there anything I can help you with?"
+      assert_equal expected_text, accumulated_text, "Should receive greeting response"
+      assert_match(/Hello/, accumulated_text, "Should contain greeting")
+      assert_match(/help/, accumulated_text, "Should offer help")
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "anthropic.messages.create", span.name
+
+      # CRITICAL: Verify output was aggregated
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length, "Should have one output message"
+      assert_equal "assistant", output[0]["role"]
+
+      # Should have aggregated the text content
+      text_block = output[0]["content"].find { |b| b["type"] == "text" }
+      assert text_block, "Should have a text content block"
+      assert_equal accumulated_text, text_block["text"], "Aggregated text should match accumulated text"
+      assert_equal expected_text, text_block["text"], "Span output should contain correct greeting"
+
+      # CRITICAL: Verify metrics were captured
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
+      assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
+      assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
+    end
+  end
+
+  def test_wrap_handles_streaming_with_accumulated_message
+    VCR.use_cassette("anthropic/streaming_accumulated_message") do
+      require "anthropic"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and wrap it
+      client = Anthropic::Client.new(api_key: @api_key)
+      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request using .accumulated_message
+      stream = client.messages.stream(
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 50,
+        messages: [
+          {role: "user", content: "What is 2+2?"}
+        ]
+      )
+
+      # Get accumulated message (blocks until stream completes)
+      message = stream.accumulated_message
+
+      # Verify we got a message
+      refute_nil message, "Should have received message from stream"
+      refute_nil message.content, "Message should have content"
+      refute_empty message.content, "Message content should not be empty"
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "anthropic.messages.create", span.name
+
+      # CRITICAL: Verify output was aggregated
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length, "Should have one output message"
+      assert_equal "assistant", output[0]["role"]
+
+      # Should have content
+      refute_empty output[0]["content"], "Output content should not be empty"
+
+      # CRITICAL: Verify metrics were captured
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["prompt_tokens"], "Should have prompt_tokens"
+      assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
+      assert metrics["completion_tokens"], "Should have completion_tokens"
+      assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
+    end
+  end
+
+  def test_wrap_handles_streaming_with_close
+    VCR.use_cassette("anthropic/streaming_close") do
+      require "anthropic"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and wrap it
+      client = Anthropic::Client.new(api_key: @api_key)
+      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request and close early without consuming
+      stream = client.messages.stream(
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 50,
+        messages: [
+          {role: "user", content: "Write a long story"}
+        ]
+      )
+
+      # Close the stream early (before consuming)
+      stream.close
+
+      # Drain and verify span was finished
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "anthropic.messages.create", span.name
+
+      # Verify input was captured
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert_equal 1, input.length
+      assert_equal "user", input[0]["role"]
+
+      # When stream is closed early, we may have partial or no output
+      # The important part is that the span finished properly
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal true, metadata["stream"]
+    end
+  end
 end

@@ -18,6 +18,9 @@ unless ENV["ANTHROPIC_API_KEY"]
   exit 1
 end
 
+# Model to use for all examples
+MODEL = "claude-sonnet-4-20250514"
+
 # Initialize Braintrust tracing with a specific project
 Braintrust.init(
   default_project: "ruby-sdk-internal-examples",
@@ -48,7 +51,7 @@ tracer.in_span("anthropic-examples") do |span|
 
   tracer.in_span("messages") do
     message = client.messages.create(
-      model: "claude-3-5-sonnet-20241022",
+      model: MODEL,
       max_tokens: 1024,
       system: "You are a helpful assistant.",
       messages: [
@@ -67,7 +70,7 @@ tracer.in_span("anthropic-examples") do |span|
 
   tracer.in_span("tools") do
     message = client.messages.create(
-      model: "claude-3-5-sonnet-20241022",
+      model: MODEL,
       max_tokens: 1024,
       system: "You are a helpful weather assistant.",
       messages: [
@@ -113,7 +116,7 @@ tracer.in_span("anthropic-examples") do |span|
 
   tracer.in_span("vision-url") do
     message = client.messages.create(
-      model: "claude-3-5-sonnet-20241022",
+      model: MODEL,
       max_tokens: 300,
       messages: [
         {
@@ -142,7 +145,7 @@ tracer.in_span("anthropic-examples") do |span|
 
   tracer.in_span("system-prompt-params") do
     message = client.messages.create(
-      model: "claude-3-5-sonnet-20241022",
+      model: MODEL,
       max_tokens: 200,
       system: "You are a concise technical writer.",
       messages: [
@@ -162,7 +165,7 @@ tracer.in_span("anthropic-examples") do |span|
 
   tracer.in_span("multiple-tools") do
     message = client.messages.create(
-      model: "claude-3-5-sonnet-20241022",
+      model: MODEL,
       max_tokens: 1024,
       messages: [
         {role: "user", content: "What time is it in Tokyo and what's the weather there?"}
@@ -211,7 +214,7 @@ tracer.in_span("anthropic-examples") do |span|
   tracer.in_span("tool-result") do
     # First: Get tool call
     first_message = client.messages.create(
-      model: "claude-3-5-sonnet-20241022",
+      model: MODEL,
       max_tokens: 1024,
       messages: [
         {role: "user", content: "What's the weather in Paris?"}
@@ -235,7 +238,7 @@ tracer.in_span("anthropic-examples") do |span|
     if tool_use_block
       # Second: Provide tool result
       second_message = client.messages.create(
-        model: "claude-3-5-sonnet-20241022",
+        model: MODEL,
         max_tokens: 1024,
         messages: [
           {role: "user", content: "What's the weather in Paris?"},
@@ -280,6 +283,91 @@ tracer.in_span("anthropic-examples") do |span|
     else
       puts "  (Model didn't use tool)"
     end
+  end
+
+  puts "\nAnthropic Streaming Examples"
+  puts "============================"
+  puts "Demonstrating: .each, .text.each, .accumulated_text"
+
+  # ======================
+  # Example 7: Basic Streaming with .each
+  # ======================
+  puts "\n=== Example 7: Streaming with .each ==="
+
+  tracer.in_span("streaming-each") do
+    print "  "
+    client.messages.stream(
+      model: MODEL,
+      max_tokens: 100,
+      messages: [
+        {role: "user", content: "Count to 5"}
+      ]
+    ) do |event|
+      if event.type == :content_block_delta && event.delta.type == :text_delta
+        print event.delta.text
+      end
+    end
+    puts # newline
+  end
+
+  # ======================
+  # Example 8: Streaming with .text.each
+  # ======================
+  puts "\n=== Example 8: Streaming with .text.each ==="
+
+  tracer.in_span("streaming-text-each") do
+    stream = client.messages.stream(
+      model: MODEL,
+      max_tokens: 100,
+      messages: [
+        {role: "user", content: "Say hello"}
+      ]
+    )
+
+    print "  "
+    stream.text.each do |text|
+      print text
+    end
+    puts # newline
+  end
+
+  # ======================
+  # Example 9: Streaming with .accumulated_text
+  # ======================
+  puts "\n=== Example 9: Streaming with .accumulated_text ==="
+
+  tracer.in_span("streaming-accumulated-text") do
+    stream = client.messages.stream(
+      model: MODEL,
+      max_tokens: 100,
+      messages: [
+        {role: "user", content: "Tell me a very short joke"}
+      ]
+    )
+
+    # Blocks until stream completes and returns full text
+    text = stream.accumulated_text
+    puts "  #{text}"
+  end
+
+  # ======================
+  # Example 10: Streaming with .accumulated_message
+  # ======================
+  puts "\n=== Example 10: Streaming with .accumulated_message ==="
+
+  tracer.in_span("streaming-accumulated-message") do
+    stream = client.messages.stream(
+      model: MODEL,
+      max_tokens: 100,
+      messages: [
+        {role: "user", content: "What is 2+2?"}
+      ]
+    )
+
+    # Blocks until stream completes and returns full Message object
+    message = stream.accumulated_message
+    puts "  #{message.content[0].text}"
+    puts "  (Tokens: #{message.usage.input_tokens} in, #{message.usage.output_tokens} out)"
   end
 end
 
