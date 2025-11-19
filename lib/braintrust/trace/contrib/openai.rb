@@ -353,6 +353,119 @@ module Braintrust
 
             stream
           end
+
+          # Wrap stream for streaming chat completions (returns ChatCompletionStream with convenience methods)
+          define_method(:stream) do |**params|
+            tracer = tracer_provider.tracer("braintrust")
+            metadata = {
+              "provider" => "openai",
+              "endpoint" => "/v1/chat/completions"
+            }
+
+            # Start span with proper context (will be child of current span if any)
+            span = tracer.start_span("openai.chat.completions.create")
+
+            # Capture request metadata fields
+            metadata_fields = %i[
+              model frequency_penalty logit_bias logprobs max_tokens n
+              presence_penalty response_format seed service_tier stop
+              stream stream_options temperature top_p top_logprobs
+              tools tool_choice parallel_tool_calls user functions function_call
+            ]
+
+            metadata_fields.each do |field|
+              metadata[field.to_s] = params[field] if params.key?(field)
+            end
+            metadata["stream"] = true  # Explicitly mark as streaming
+
+            # Set input messages as JSON
+            if params[:messages]
+              messages_array = params[:messages].map(&:to_h)
+              span.set_attribute("braintrust.input_json", JSON.generate(messages_array))
+            end
+
+            # Set initial metadata
+            span.set_attribute("braintrust.metadata", JSON.generate(metadata))
+
+            # Call the original stream method with error handling
+            begin
+              stream = super(**params)
+            rescue => e
+              # Record exception if stream creation fails
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("OpenAI API error: #{e.message}")
+              span.finish
+              raise
+            end
+
+            # Local helper for setting JSON attributes
+            set_json_attr = ->(attr_name, obj) { Braintrust::Trace::OpenAI.set_json_attr(span, attr_name, obj) }
+
+            # Helper to extract metadata from SDK's internal snapshot
+            extract_stream_metadata = lambda do
+              # Access the SDK's internal accumulated completion snapshot
+              snapshot = stream.current_completion_snapshot
+              return unless snapshot
+
+              # Set output from accumulated choices
+              if snapshot.choices&.any?
+                choices_array = snapshot.choices.map(&:to_h)
+                set_json_attr.call("braintrust.output_json", choices_array)
+              end
+
+              # Set metrics if usage is available
+              if snapshot.usage
+                metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(snapshot.usage)
+                set_json_attr.call("braintrust.metrics", metrics) unless metrics.empty?
+              end
+
+              # Update metadata with response fields
+              metadata["id"] = snapshot.id if snapshot.respond_to?(:id) && snapshot.id
+              metadata["created"] = snapshot.created if snapshot.respond_to?(:created) && snapshot.created
+              metadata["model"] = snapshot.model if snapshot.respond_to?(:model) && snapshot.model
+              metadata["system_fingerprint"] = snapshot.system_fingerprint if snapshot.respond_to?(:system_fingerprint) && snapshot.system_fingerprint
+              set_json_attr.call("braintrust.metadata", metadata)
+            end
+
+            # Prevent double-finish of span
+            finish_braintrust_span = lambda do
+              return if stream.instance_variable_get(:@braintrust_span_finished)
+              stream.instance_variable_set(:@braintrust_span_finished, true)
+              extract_stream_metadata.call
+              span.finish
+            end
+
+            # Wrap .each() method - this is the core consumption method
+            original_each = stream.method(:each)
+            stream.define_singleton_method(:each) do |&block|
+              original_each.call(&block)
+            rescue => e
+              span.record_exception(e)
+              span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+              raise
+            ensure
+              finish_braintrust_span.call
+            end
+
+            # Wrap .text() method - returns enumerable for text deltas
+            original_text = stream.method(:text)
+            stream.define_singleton_method(:text) do
+              text_enum = original_text.call
+              # Wrap the returned enumerable's .each method
+              text_enum.define_singleton_method(:each) do |&block|
+                super(&block)
+              rescue => e
+                span.record_exception(e)
+                span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
+                raise
+              ensure
+                finish_braintrust_span.call
+              end
+              text_enum
+            end
+
+            stream
+          end
         end
 
         # Prepend the wrapper to the completions resource

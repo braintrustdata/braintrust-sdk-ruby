@@ -1054,4 +1054,163 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert_equal "openai.responses.create", spans[0].name
     end
   end
+
+  def test_wrap_handles_streaming_with_text
+    VCR.use_cassette("openai/streaming_text") do
+      require "openai"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request using .stream (not .stream_raw)
+      stream = client.chat.completions.stream(
+        messages: [
+          {role: "user", content: "Count from 1 to 3"}
+        ],
+        model: "gpt-4o-mini",
+        max_tokens: 50,
+        stream_options: {
+          include_usage: true
+        }
+      )
+
+      # Consume the stream using .text() method
+      full_text = ""
+      stream.text.each do |delta|
+        full_text += delta
+      end
+
+      # Verify we got content
+      refute_empty full_text
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.chat.completions.create", span.name
+
+      # Verify input was captured
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert_equal 1, input.length
+      assert_equal "user", input[0]["role"]
+      assert_equal "Count from 1 to 3", input[0]["content"]
+
+      # Verify output was aggregated from stream
+      assert span.attributes.key?("braintrust.output_json")
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length
+      assert_equal 0, output[0]["index"]
+      assert_equal "assistant", output[0]["message"]["role"]
+      assert output[0]["message"]["content"], "Should have aggregated content"
+      assert output[0]["message"]["content"].length > 0, "Content should not be empty"
+
+      # Verify metadata includes stream flag
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal "openai", metadata["provider"]
+      assert_equal true, metadata["stream"]
+      assert_match(/gpt-4o-mini/, metadata["model"])
+
+      # Verify metrics were captured (if include_usage was respected)
+      if span.attributes.key?("braintrust.metrics")
+        metrics = JSON.parse(span.attributes["braintrust.metrics"])
+        assert metrics["tokens"] > 0 if metrics["tokens"]
+      end
+    end
+  end
+
+  def test_wrap_handles_streaming_with_get_final_completion
+    VCR.use_cassette("openai/streaming_get_final_completion") do
+      require "openai"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request using .stream
+      stream = client.chat.completions.stream(
+        messages: [
+          {role: "user", content: "Say hello"}
+        ],
+        model: "gpt-4o-mini",
+        max_tokens: 20,
+        stream_options: {
+          include_usage: true
+        }
+      )
+
+      # Use .get_final_completion() to block and get final result
+      completion = stream.get_final_completion
+
+      # Verify we got a completion
+      refute_nil completion
+      refute_nil completion.choices
+      assert completion.choices.length > 0
+      refute_nil completion.choices[0].message.content
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.chat.completions.create", span.name
+
+      # Verify output was captured
+      assert span.attributes.key?("braintrust.output_json")
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length
+      assert output[0]["message"]["content"], "Should have captured content"
+    end
+  end
+
+  def test_wrap_handles_streaming_with_get_output_text
+    VCR.use_cassette("openai/streaming_get_output_text") do
+      require "openai"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(api_key: @api_key)
+      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Make a streaming request using .stream
+      stream = client.chat.completions.stream(
+        messages: [
+          {role: "user", content: "Say hello"}
+        ],
+        model: "gpt-4o-mini",
+        max_tokens: 20,
+        stream_options: {
+          include_usage: true
+        }
+      )
+
+      # Use .get_output_text() to block and get final text
+      output_text = stream.get_output_text
+
+      # Verify we got text
+      refute_nil output_text
+      refute_empty output_text
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.chat.completions.create", span.name
+
+      # Verify output was captured
+      assert span.attributes.key?("braintrust.output_json")
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length
+      assert output[0]["message"]["content"], "Should have captured content"
+    end
+  end
 end

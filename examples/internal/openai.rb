@@ -12,7 +12,10 @@ require "json"
 # This example showcases ALL OpenAI features with proper tracing:
 # 1. Vision (image understanding) with array content
 # 2. Tool/function calling (single-turn)
-# 3. Streaming chat completions with automatic chunk aggregation
+# 3. Streaming chat completions with automatic chunk aggregation (stream_raw)
+# 3a. Streaming with .text() convenience method
+# 3b. Streaming with .get_final_completion() convenience method
+# 3c. Streaming with .get_output_text() convenience method
 # 4. Multi-turn tool calling with tool_call_id
 # 5. Mixed content (text + images)
 # 6. Reasoning models with advanced token metrics
@@ -127,10 +130,10 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     puts "  Tokens: #{response.usage.total_tokens}"
   end
 
-  # Example 3: Streaming Chat Completions
-  puts "\n3. Streaming Chat Completions"
+  # Example 3: Streaming Chat Completions (stream_raw method)
+  puts "\n3. Streaming Chat Completions (stream_raw)"
   puts "-" * 50
-  tracer.in_span("example-streaming") do
+  tracer.in_span("example-streaming-raw") do
     print "Streaming response: "
     stream = client.chat.completions.stream_raw(
       model: "gpt-4o-mini",
@@ -155,6 +158,74 @@ tracer.in_span("examples/internal/openai.rb") do |span|
     puts ""
     puts "✓ Streaming complete, tokens: #{total_tokens}"
     puts "  (Note: Braintrust automatically aggregates all chunks for the trace)"
+  end
+
+  # Example 3a: Streaming with .stream() and .text() convenience method
+  puts "\n3a. Streaming with .stream() and .text()"
+  puts "-" * 50
+  tracer.in_span("example-streaming-text") do
+    print "Streaming text: "
+    stream = client.chat.completions.stream(
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "user", content: "Say hello"}
+      ],
+      max_tokens: 20,
+      stream_options: {
+        include_usage: true
+      }
+    )
+
+    # Use .text() convenience method to iterate over text deltas only
+    stream.text.each do |delta|
+      print delta
+    end
+    puts ""
+    puts "✓ Streaming complete using .text() method"
+    puts "  (Note: Span is automatically finished and metrics captured)"
+  end
+
+  # Example 3b: Streaming with .get_final_completion()
+  puts "\n3b. Streaming with .get_final_completion()"
+  puts "-" * 50
+  tracer.in_span("example-streaming-final-completion") do
+    stream = client.chat.completions.stream(
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "user", content: "Say hello"}
+      ],
+      max_tokens: 20,
+      stream_options: {
+        include_usage: true
+      }
+    )
+
+    # Use .get_final_completion() to block and get the complete response
+    completion = stream.get_final_completion
+    puts "✓ Final completion: #{completion.choices[0].message.content}"
+    puts "  Tokens: #{completion.usage&.total_tokens || "N/A"}"
+    puts "  (Note: Span finished automatically after stream consumed)"
+  end
+
+  # Example 3c: Streaming with .get_output_text()
+  puts "\n3c. Streaming with .get_output_text()"
+  puts "-" * 50
+  tracer.in_span("example-streaming-output-text") do
+    stream = client.chat.completions.stream(
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "user", content: "Say hello"}
+      ],
+      max_tokens: 20,
+      stream_options: {
+        include_usage: true
+      }
+    )
+
+    # Use .get_output_text() to block and get just the text
+    output_text = stream.get_output_text
+    puts "✓ Output text: #{output_text}"
+    puts "  (Note: Span finished automatically after stream consumed)"
   end
 
   # Example 4: Multi-turn Tool Calling (with tool_call_id)
@@ -390,6 +461,7 @@ puts "This golden example validates that the Ruby SDK properly captures:"
 puts "  ✓ Vision messages with array content (text + image_url)"
 puts "  ✓ Tool calling (single and multi-turn with tool_call_id)"
 puts "  ✓ Streaming chat completions with chunk aggregation"
+puts "  ✓ Streaming convenience methods (.text(), .get_final_completion(), .get_output_text())"
 puts "  ✓ Mixed content messages (multiple text/image blocks)"
 puts "  ✓ Advanced token metrics (cached, reasoning, audio tokens)"
 puts "  ✓ All request parameters (temperature, top_p, seed, user, etc.)"
