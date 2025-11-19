@@ -44,8 +44,9 @@ VCR.configure do |config|
     URI(request.uri).path.start_with?("/otel/")
   end
 
-  # Allow real requests when VCR_OFF=true (for debugging)
-  config.allow_http_connections_when_no_cassette = true if ENV["VCR_OFF"]
+  # Explicitly block real HTTP connections by default
+  # Only allow real requests when VCR_OFF=true (for debugging)
+  config.allow_http_connections_when_no_cassette = ENV["VCR_OFF"] == "true"
 
   # Recording mode: :once (default), :all (re-record), :none (no recording)
   config.default_cassette_options = {
