@@ -58,7 +58,10 @@ module Braintrust
 
         # Calculate total if not provided
         if !metrics.key?("tokens") && metrics.key?("prompt_tokens") && metrics.key?("completion_tokens")
-          metrics["tokens"] = metrics["prompt_tokens"] + metrics["completion_tokens"]
+          total = metrics["prompt_tokens"] + metrics["completion_tokens"]
+          # Add cache creation tokens to the total if present
+          total += metrics["prompt_cache_creation_tokens"] if metrics.key?("prompt_cache_creation_tokens")
+          metrics["tokens"] = total
         end
 
         metrics

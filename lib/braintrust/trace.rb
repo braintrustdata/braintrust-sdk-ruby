@@ -41,6 +41,15 @@ rescue LoadError
 end
 
 # RubyLLM integration is optional - automatically loaded if ruby_llm gem is available
+#
+# Usage:
+#   # Wrap the class once (affects all instances):
+#   Braintrust::Trace::RubyLLM.wrap
+#
+#   # Or wrap a specific instance:
+#   chat = RubyLLM.chat(model: "gpt-4o-mini")
+#   Braintrust::Trace::RubyLLM.wrap(chat)
+#
 begin
   require "ruby_llm"
   require_relative "trace/contrib/ruby_llm"
