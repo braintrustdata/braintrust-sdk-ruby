@@ -2,6 +2,7 @@
 
 require "opentelemetry/sdk"
 require "json"
+require_relative "../token_parser"
 
 module Braintrust
   module Trace
@@ -18,25 +19,22 @@ module Braintrust
       end
 
       # Parse usage tokens from OpenAI API response, handling nested token_details
-      # Maps OpenAI field names to Braintrust standard names:
-      # - input_tokens → prompt_tokens
-      # - output_tokens → completion_tokens
-      # - total_tokens → tokens
-      # - *_tokens_details.* → prefix_*
-      #
+      # Uses shared TokenParser for top-level fields, handles OpenAI-specific nested details
       # @param usage [Hash, Object] usage object from OpenAI response
       # @return [Hash<String, Integer>] metrics hash with normalized names
       def self.parse_usage_tokens(usage)
-        metrics = {}
-        return metrics unless usage
+        return {} unless usage
 
         # Convert to hash if it's an object
         usage_hash = usage.respond_to?(:to_h) ? usage.to_h : usage
 
+        # Start with shared token parser for top-level fields
+        metrics = TokenParser.parse_usage_tokens(usage)
+
+        # Handle OpenAI-specific nested *_tokens_details objects
         usage_hash.each do |key, value|
           key_str = key.to_s
 
-          # Handle nested *_tokens_details objects
           if key_str.end_with?("_tokens_details")
             # Convert to hash if it's an object (OpenAI gem returns objects)
             details_hash = value.respond_to?(:to_h) ? value.to_h : value
@@ -51,19 +49,6 @@ module Braintrust
             details_hash.each do |detail_key, detail_value|
               next unless detail_value.is_a?(Numeric)
               metrics["#{prefix}_#{detail_key}"] = detail_value.to_i
-            end
-          elsif value.is_a?(Numeric)
-            # Handle top-level token fields
-            case key_str
-            when "input_tokens"
-              metrics["prompt_tokens"] = value.to_i
-            when "output_tokens"
-              metrics["completion_tokens"] = value.to_i
-            when "total_tokens"
-              metrics["tokens"] = value.to_i
-            else
-              # Keep other numeric fields as-is (future-proofing)
-              metrics[key_str] = value.to_i
             end
           end
         end

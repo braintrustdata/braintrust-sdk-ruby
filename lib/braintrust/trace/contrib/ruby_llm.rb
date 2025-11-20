@@ -2,6 +2,7 @@
 
 require "opentelemetry/sdk"
 require "json"
+require_relative "../token_parser"
 
 module Braintrust
   module Trace
@@ -19,52 +20,11 @@ module Braintrust
         warn "Failed to serialize #{attr_name}: #{e.message}"
       end
 
-      # Parse usage tokens from RubyLLM response
-      # Maps to Braintrust standard names:
-      # - input_tokens/prompt_tokens → prompt_tokens
-      # - output_tokens/completion_tokens → completion_tokens
-      # - total_tokens → tokens
-      #
+      # Parse usage tokens from RubyLLM response using shared token parser
       # @param usage [Hash, Object] usage object from RubyLLM response
       # @return [Hash<String, Integer>] metrics hash with normalized names
       def self.parse_usage_tokens(usage)
-        metrics = {}
-        return metrics unless usage
-
-        # Convert to hash if it's an object
-        usage_hash = usage.respond_to?(:to_h) ? usage.to_h : usage
-        return metrics unless usage_hash.is_a?(Hash)
-
-        usage_hash.each do |key, value|
-          next unless value.is_a?(Numeric)
-          key_str = key.to_s
-
-          case key_str
-          when "input_tokens", "prompt_tokens"
-            metrics["prompt_tokens"] ||= value.to_i
-          when "output_tokens", "completion_tokens"
-            metrics["completion_tokens"] ||= value.to_i
-          when "total_tokens", "tokens"
-            metrics["tokens"] ||= value.to_i
-          when "cached_tokens"
-            metrics["prompt_cached_tokens"] = value.to_i
-          when "cache_creation_tokens"
-            metrics["prompt_cache_creation_tokens"] = value.to_i
-          else
-            # Keep other numeric fields as-is (future-proofing)
-            metrics[key_str] = value.to_i
-          end
-        end
-
-        # Calculate total if not provided
-        if !metrics.key?("tokens") && metrics.key?("prompt_tokens") && metrics.key?("completion_tokens")
-          total = metrics["prompt_tokens"] + metrics["completion_tokens"]
-          # Add cache creation tokens to the total if present
-          total += metrics["prompt_cache_creation_tokens"] if metrics.key?("prompt_cache_creation_tokens")
-          metrics["tokens"] = total
-        end
-
-        metrics
+        TokenParser.parse_usage_tokens(usage)
       end
 
       # Wrap RubyLLM to automatically create spans for chat requests
