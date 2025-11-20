@@ -7,7 +7,8 @@ class Braintrust::Trace::RubyLLMTest < Minitest::Test
     # Skip all RubyLLM tests if the gem is not available
     skip "RubyLLM gem not available" unless defined?(RubyLLM)
 
-    @api_key = ENV["OPENAI_API_KEY"]
+    # Use a fake API key for VCR playback (real key not needed with cassettes)
+    @api_key = ENV["OPENAI_API_KEY"] || "sk-test-key-for-vcr"
     @original_api_key = ENV["OPENAI_API_KEY"]
   end
 
