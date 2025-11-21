@@ -9,7 +9,7 @@ class Braintrust::APITest < Minitest::Test
 
   def test_api_new_with_explicit_state
     VCR.use_cassette("api/new_explicit_state") do
-      state = get_non_global_state
+      state = get_integration_test_state
 
       api = Braintrust::API.new(state: state)
       assert_equal state, api.state
@@ -41,7 +41,7 @@ class Braintrust::APITest < Minitest::Test
 
   def test_api_datasets_returns_datasets_instance
     VCR.use_cassette("api/datasets_instance") do
-      state = get_non_global_state
+      state = get_integration_test_state
       api = Braintrust::API.new(state: state)
 
       datasets = api.datasets
@@ -51,7 +51,7 @@ class Braintrust::APITest < Minitest::Test
 
   def test_api_datasets_is_memoized
     VCR.use_cassette("api/datasets_memoized") do
-      state = get_non_global_state
+      state = get_integration_test_state
       api = Braintrust::API.new(state: state)
 
       datasets1 = api.datasets

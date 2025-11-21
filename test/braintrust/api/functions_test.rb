@@ -9,7 +9,7 @@ class Braintrust::API::FunctionsTest < Minitest::Test
   end
 
   def get_test_api
-    state = get_non_global_state
+    state = get_integration_test_state
     Braintrust::API.new(state: state)
   end
 
