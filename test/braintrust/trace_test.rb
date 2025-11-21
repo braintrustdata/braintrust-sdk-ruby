@@ -20,7 +20,7 @@ class Braintrust::TraceTest < Minitest::Test
   end
 
   def test_enable_with_explicit_state
-    state = get_test_state
+    state = get_unit_test_state
     tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
     # Should not raise
@@ -32,7 +32,7 @@ class Braintrust::TraceTest < Minitest::Test
 
   def test_enable_with_global_state
     # Set global state
-    Braintrust::State.global = get_test_state(api_key: "global-key")
+    Braintrust::State.global = get_unit_test_state(api_key: "global-key")
 
     tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
@@ -44,7 +44,7 @@ class Braintrust::TraceTest < Minitest::Test
   end
 
   def test_enable_adds_console_exporter_when_env_var_set
-    state = get_test_state
+    state = get_unit_test_state
     tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
     # Set env var

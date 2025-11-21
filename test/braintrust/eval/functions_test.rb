@@ -11,7 +11,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
   end
 
   def get_test_state_and_api
-    state = get_non_global_state
+    state = get_integration_test_state
     api = Braintrust::API.new(state: state)
     [state, api]
   end

@@ -5,7 +5,7 @@ require "opentelemetry/sdk"
 
 class Braintrust::Trace::SpanProcessorTest < Minitest::Test
   def setup
-    @state = get_test_state
+    @state = get_unit_test_state
   end
 
   def test_adds_default_parent_if_missing

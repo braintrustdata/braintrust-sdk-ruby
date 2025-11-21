@@ -81,16 +81,24 @@ if [ -d "/workspace/repo" ]; then
         # Activate mise for this shell
         eval "$(mise activate bash)"
 
+        # Set UTF-8 encoding for Ruby (apply immediately)
+        export LANG=C.UTF-8
+        export LC_ALL=C.UTF-8
+
         # Create activation script for interactive shells (.bashrc)
         cat >> ~/.bashrc << 'EOFBASH'
 export PATH="$HOME/.local/bin:$PATH"
 eval "$(mise activate bash)"
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
 EOFBASH
 
         # Also add to .profile for login shells
         cat >> ~/.profile << 'EOFPROFILE'
 export PATH="$HOME/.local/bin:$PATH"
 eval "$(mise activate bash)"
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
 EOFPROFILE
 
         echo "Ruby environment ready"
