@@ -40,6 +40,14 @@ rescue LoadError
   # Anthropic gem not installed - integration will not be available
 end
 
+# Gemini integration is optional - automatically loaded if gemini-ai gem is available
+begin
+  require "gemini-ai"
+  require_relative "trace/contrib/gemini"
+rescue LoadError
+  # Gemini gem not installed - integration will not be available
+end
+
 module Braintrust
   module Trace
     # Set up OpenTelemetry tracing with Braintrust

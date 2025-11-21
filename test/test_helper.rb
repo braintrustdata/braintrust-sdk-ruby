@@ -38,6 +38,7 @@ VCR.configure do |config|
   config.filter_sensitive_data("<BRAINTRUST_API_KEY>") { ENV["BRAINTRUST_API_KEY"] }
   config.filter_sensitive_data("<OPENAI_API_KEY>") { ENV["OPENAI_API_KEY"] }
   config.filter_sensitive_data("<ANTHROPIC_API_KEY>") { ENV["ANTHROPIC_API_KEY"] }
+  config.filter_sensitive_data("<GOOGLE_API_KEY>") { ENV["GOOGLE_API_KEY"] }
 
   # Ignore OpenTelemetry trace exports (background async calls)
   config.ignore_request do |request|
