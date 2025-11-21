@@ -11,7 +11,8 @@ class Braintrust::StateTest < Minitest::Test
   def test_creates_state_with_required_fields
     state = Braintrust::State.new(
       api_key: "test-key",
-      default_project: "test-project"
+      default_project: "test-project",
+      skip_login: true
     )
 
     assert_equal "test-key", state.api_key
@@ -27,7 +28,7 @@ class Braintrust::StateTest < Minitest::Test
   end
 
   def test_global_state_getter_and_setter
-    state = Braintrust::State.new(api_key: "global-key")
+    state = Braintrust::State.new(api_key: "global-key", skip_login: true)
 
     Braintrust::State.global = state
 
@@ -36,8 +37,8 @@ class Braintrust::StateTest < Minitest::Test
 
   def test_global_state_is_thread_safe
     # Test that concurrent access doesn't cause race conditions
-    state1 = Braintrust::State.new(api_key: "key1")
-    state2 = Braintrust::State.new(api_key: "key2")
+    state1 = Braintrust::State.new(api_key: "key1", skip_login: true)
+    state2 = Braintrust::State.new(api_key: "key2", skip_login: true)
 
     threads = []
     errors = []

@@ -18,13 +18,14 @@ module Braintrust
     # @param app_url [String, nil] App URL (overrides BRAINTRUST_APP_URL env var)
     # @param api_url [String, nil] API URL (overrides BRAINTRUST_API_URL env var)
     # @param blocking_login [Boolean] whether to block and login synchronously (default: false)
+    # @param skip_login [Boolean] Skip login entirely, useful for testing (default: false)
     # @param enable_tracing [Boolean] whether to enable OpenTelemetry tracing (default: true)
     # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use
     # @param filter_ai_spans [Boolean, nil] Enable AI span filtering
     # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
     # @param exporter [Exporter, nil] Optional exporter override (for testing)
     # @return [State] the created state
-    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
+    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, skip_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
       require_relative "config"
       config = Config.from_env(
         api_key: api_key,
@@ -42,6 +43,7 @@ module Braintrust
         app_url: config.app_url,
         api_url: config.api_url,
         blocking_login: blocking_login,
+        skip_login: skip_login,
         enable_tracing: enable_tracing,
         tracer_provider: tracer_provider,
         config: config,

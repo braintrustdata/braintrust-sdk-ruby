@@ -41,7 +41,7 @@ module Braintrust
   # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
   # @param exporter [Exporter, nil] Optional exporter override (for testing)
   # @return [State] the created state
-  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
+  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, skip_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
     state = State.from_env(
       api_key: api_key,
       org_name: org_name,
@@ -49,6 +49,7 @@ module Braintrust
       app_url: app_url,
       api_url: api_url,
       blocking_login: blocking_login,
+      skip_login: skip_login,
       enable_tracing: enable_tracing,
       tracer_provider: tracer_provider,
       filter_ai_spans: filter_ai_spans,
