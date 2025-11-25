@@ -24,6 +24,9 @@ GEM
       bigdecimal
       rexml
     docile (1.4.1)
+    google-protobuf (4.33.0-aarch64-linux-gnu)
+      bigdecimal
+      rake (>= 13)
     google-protobuf (4.33.0-arm64-darwin)
       bigdecimal
       rake (>= 13)
@@ -128,6 +131,7 @@ GEM
     yard (0.9.37)
 
 PLATFORMS
+  aarch64-linux
   arm64-darwin-23
   arm64-darwin-24
   x64-mingw

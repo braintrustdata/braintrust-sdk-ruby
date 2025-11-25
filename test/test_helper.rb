@@ -85,7 +85,9 @@ module TracingTestHelper
     # @return [Array<OpenTelemetry::SDK::Trace::SpanData>]
     def drain
       @tracer_provider.force_flush
-      @exporter.finished_spans
+      spans = @exporter.finished_spans
+      @exporter.reset
+      spans
     end
 
     # Flush and drain exactly one span from the exporter
@@ -98,16 +100,19 @@ module TracingTestHelper
     end
   end
 
-  # Creates a test State with sensible defaults and validates it
+  # Creates a test State for unit tests (no login, no API calls)
   # Override any fields by passing options
+  # Note: Providing org_id skips the login thread automatically
   # @return [Braintrust::State]
-  def get_test_state(**options)
+  def get_unit_test_state(**options)
     defaults = {
       api_key: "test-key",
       api_url: "https://api.example.com",
       app_url: "https://app.example.com",
       org_name: "test-org",
-      default_project: "test-project"
+      org_id: "test-org-id",
+      default_project: "test-project",
+      enable_tracing: false
     }
 
     state = Braintrust::State.new(**defaults.merge(options))
@@ -115,26 +120,26 @@ module TracingTestHelper
     state
   end
 
-  # Creates a non-global State by calling Braintrust.init with set_global: false and blocking_login: true
+  # Creates a State for integration tests (performs login via VCR)
   # This performs login (via VCR cassettes in tests) without polluting global state
   # Use this for tests that need to interact with the API (eval, experiments, datasets, etc.)
   # @param options [Hash] Options to pass to Braintrust.init (set_global and blocking_login are fixed)
   # @return [Braintrust::State]
-  def get_non_global_state(**options)
+  def get_integration_test_state(**options)
     Braintrust.init(set_global: false, blocking_login: true, **options)
   end
 
   # Sets up OpenTelemetry with an in-memory exporter for testing
   # Returns an OtelTestRig with tracer_provider, exporter, state, and drain() method
   # The exporter can be passed to Braintrust::Trace.enable to replace OTLP exporter
-  # @param state_options [Hash] Options to pass to get_test_state
+  # @param state_options [Hash] Options to pass to get_unit_test_state
   # @return [OtelTestRig]
   def setup_otel_test_rig(**state_options)
     require "opentelemetry/sdk"
 
     exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
     tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
-    state = get_test_state(**state_options)
+    state = get_unit_test_state(**state_options)
 
     # Add Braintrust span processor (wraps simple processor with memory exporter)
     simple_processor = OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
@@ -162,6 +167,20 @@ module TracingTestHelper
     else
       "ruby-sdk-test--#{prefix}-#{entropy}"
     end
+  end
+
+  # Get OpenAI API key for tests
+  # Uses real key for recording, fake key for playback
+  # @return [String] API key
+  def get_openai_key
+    ENV["OPENAI_API_KEY"] || "sk-test-key-for-vcr"
+  end
+
+  # Get Anthropic API key for tests
+  # Uses real key for recording, fake key for playback
+  # @return [String] API key
+  def get_anthropic_key
+    ENV["ANTHROPIC_API_KEY"] || "sk-ant-test-key-for-vcr"
   end
 end
 

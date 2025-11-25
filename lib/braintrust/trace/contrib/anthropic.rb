@@ -2,6 +2,7 @@
 
 require "opentelemetry/sdk"
 require "json"
+require_relative "../tokens"
 
 module Braintrust
   module Trace
@@ -17,61 +18,11 @@ module Braintrust
         span.set_attribute(attr_name, JSON.generate(obj))
       end
 
-      # Parse usage tokens from Anthropic API response, handling cache tokens
-      # Maps Anthropic field names to Braintrust standard names:
-      # - input_tokens → contributes to prompt_tokens
-      # - cache_creation_input_tokens → prompt_cache_creation_tokens (and adds to prompt_tokens)
-      # - cache_read_input_tokens → prompt_cached_tokens (and adds to prompt_tokens)
-      # - output_tokens → completion_tokens
-      # - total_tokens → tokens (or calculated if missing)
-      #
+      # Parse usage tokens from Anthropic API response
       # @param usage [Hash, Object] usage object from Anthropic response
       # @return [Hash<String, Integer>] metrics hash with normalized names
       def self.parse_usage_tokens(usage)
-        metrics = {}
-        return metrics unless usage
-
-        # Convert to hash if it's an object
-        usage_hash = usage.respond_to?(:to_h) ? usage.to_h : usage
-
-        # Extract base values for calculation
-        input_tokens = 0
-        cache_creation_tokens = 0
-        cache_read_tokens = 0
-
-        usage_hash.each do |key, value|
-          next unless value.is_a?(Numeric)
-          key_str = key.to_s
-
-          case key_str
-          when "input_tokens"
-            input_tokens = value.to_i
-          when "cache_creation_input_tokens"
-            cache_creation_tokens = value.to_i
-            metrics["prompt_cache_creation_tokens"] = value.to_i
-          when "cache_read_input_tokens"
-            cache_read_tokens = value.to_i
-            metrics["prompt_cached_tokens"] = value.to_i
-          when "output_tokens"
-            metrics["completion_tokens"] = value.to_i
-          when "total_tokens"
-            metrics["tokens"] = value.to_i
-          else
-            # Keep other numeric fields as-is (future-proofing)
-            metrics[key_str] = value.to_i
-          end
-        end
-
-        # Calculate total prompt tokens (input + cache creation + cache read)
-        total_prompt_tokens = input_tokens + cache_creation_tokens + cache_read_tokens
-        metrics["prompt_tokens"] = total_prompt_tokens
-
-        # Calculate total tokens if not provided by Anthropic
-        if !metrics.key?("tokens") && metrics.key?("completion_tokens")
-          metrics["tokens"] = total_prompt_tokens + metrics["completion_tokens"]
-        end
-
-        metrics
+        Braintrust::Trace.parse_anthropic_usage_tokens(usage)
       end
 
       # Wrap an Anthropic::Client to automatically create spans for messages and responses

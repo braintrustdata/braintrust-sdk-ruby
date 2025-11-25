@@ -30,14 +30,18 @@ task :clean do
   FileUtils.rm_f("changelog.md")
 end
 
-def run_example(example)
-  prefix = case example
-  when /openai/, /kitchen-sink/
-    "bundle exec appraisal openai-latest"
-  else
-    "bundle exec"
+def appraisal_for(example)
+  case example
+  when /ruby_llm/ then "ruby_llm"
+  when /ruby-openai/, /ruby_openai/, /alexrudall/ then "ruby-openai"
+  when /anthropic/ then "anthropic"
+  when /openai/, /kitchen-sink/ then "openai"
   end
+end
 
+def run_example(example)
+  appraisal = appraisal_for(example)
+  prefix = appraisal ? "bundle exec appraisal #{appraisal}" : "bundle exec"
   sh "#{prefix} ruby #{example}"
 end
 

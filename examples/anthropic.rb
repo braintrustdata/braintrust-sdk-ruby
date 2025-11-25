@@ -38,7 +38,7 @@ message = tracer.in_span("examples/anthropic.rb") do |span|
   root_span = span
 
   client.messages.create(
-    model: "claude-3-5-sonnet-20241022",
+    model: "claude-3-haiku-20240307",
     max_tokens: 100,
     system: "You are a helpful assistant.",
     messages: [

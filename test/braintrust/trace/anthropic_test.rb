@@ -6,17 +6,6 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
   def setup
     # Skip all Anthropic tests if the gem is not available
     skip "Anthropic gem not available" unless defined?(Anthropic)
-
-    @api_key = ENV["ANTHROPIC_API_KEY"]
-    @original_api_key = ENV["ANTHROPIC_API_KEY"]
-  end
-
-  def teardown
-    if @original_api_key
-      ENV["ANTHROPIC_API_KEY"] = @original_api_key
-    else
-      ENV.delete("ANTHROPIC_API_KEY")
-    end
   end
 
   def test_wrap_creates_span_for_basic_message
@@ -27,7 +16,7 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create Anthropic client and wrap it with Braintrust tracing
-      client = Anthropic::Client.new(api_key: @api_key)
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
       Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a simple message request
