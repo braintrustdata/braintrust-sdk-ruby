@@ -155,7 +155,7 @@ message = tracer.in_span("chat-message") do |span|
   root_span = span
 
   client.messages.create(
-    model: "claude-3-5-sonnet-20241022",
+    model: "claude-3-haiku-20240307",
     max_tokens: 100,
     system: "You are a helpful assistant.",
     messages: [
@@ -165,6 +165,34 @@ message = tracer.in_span("chat-message") do |span|
 end
 
 puts "Response: #{message.content[0].text}"
+
+puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
+
+OpenTelemetry.tracer_provider.shutdown
+```
+
+### RubyLLM Tracing
+
+```ruby
+require "braintrust"
+require "ruby_llm"
+
+Braintrust.init
+
+# Wrap RubyLLM globally (wraps all Chat instances)
+Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
+
+tracer = OpenTelemetry.tracer_provider.tracer("ruby-llm-app")
+root_span = nil
+
+response = tracer.in_span("chat") do |span|
+  root_span = span
+
+  chat = RubyLLM.chat(model: "gpt-4o-mini")
+  chat.ask("Say hello!")
+end
+
+puts "Response: #{response.content}"
 
 puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 
@@ -236,7 +264,9 @@ Check out the [`examples/`](./examples/) directory for complete working examples
 - [eval.rb](./examples/eval.rb) - Create and run evaluations with custom test cases and scoring functions
 - [trace.rb](./examples/trace.rb) - Manual span creation and tracing
 - [openai.rb](./examples/openai.rb) - Automatically trace OpenAI API calls
+- [alexrudall_openai.rb](./examples/alexrudall_openai.rb) - Automatically trace ruby-openai gem API calls
 - [anthropic.rb](./examples/anthropic.rb) - Automatically trace Anthropic API calls
+- [ruby_llm.rb](./examples/ruby_llm.rb) - Automatically trace RubyLLM API calls
 - [trace/trace_attachments.rb](./examples/trace/trace_attachments.rb) - Log attachments (images, PDFs) in traces
 - [eval/dataset.rb](./examples/eval/dataset.rb) - Run evaluations using datasets stored in Braintrust
 - [eval/remote_functions.rb](./examples/eval/remote_functions.rb) - Use remote scoring functions

@@ -2,6 +2,7 @@
 
 require "opentelemetry/sdk"
 require "json"
+require_relative "../tokens"
 
 module Braintrust
   module Trace
@@ -17,72 +18,11 @@ module Braintrust
         span.set_attribute(attr_name, JSON.generate(obj))
       end
 
-      # Parse usage tokens from OpenAI API response, handling nested token_details
-      # Maps OpenAI field names to Braintrust standard names:
-      # - input_tokens → prompt_tokens
-      # - output_tokens → completion_tokens
-      # - total_tokens → tokens
-      # - *_tokens_details.* → prefix_*
-      #
+      # Parse usage tokens from OpenAI API response
       # @param usage [Hash, Object] usage object from OpenAI response
       # @return [Hash<String, Integer>] metrics hash with normalized names
       def self.parse_usage_tokens(usage)
-        metrics = {}
-        return metrics unless usage
-
-        # Convert to hash if it's an object
-        usage_hash = usage.respond_to?(:to_h) ? usage.to_h : usage
-
-        usage_hash.each do |key, value|
-          key_str = key.to_s
-
-          # Handle nested *_tokens_details objects
-          if key_str.end_with?("_tokens_details")
-            # Convert to hash if it's an object (OpenAI gem returns objects)
-            details_hash = value.respond_to?(:to_h) ? value.to_h : value
-            next unless details_hash.is_a?(Hash)
-
-            # Extract prefix (e.g., "prompt" from "prompt_tokens_details")
-            prefix = key_str.sub(/_tokens_details$/, "")
-            # Translate "input" → "prompt", "output" → "completion"
-            prefix = translate_metric_prefix(prefix)
-
-            # Process nested fields (e.g., cached_tokens, reasoning_tokens)
-            details_hash.each do |detail_key, detail_value|
-              next unless detail_value.is_a?(Numeric)
-              metrics["#{prefix}_#{detail_key}"] = detail_value.to_i
-            end
-          elsif value.is_a?(Numeric)
-            # Handle top-level token fields
-            case key_str
-            when "input_tokens"
-              metrics["prompt_tokens"] = value.to_i
-            when "output_tokens"
-              metrics["completion_tokens"] = value.to_i
-            when "total_tokens"
-              metrics["tokens"] = value.to_i
-            else
-              # Keep other numeric fields as-is (future-proofing)
-              metrics[key_str] = value.to_i
-            end
-          end
-        end
-
-        metrics
-      end
-
-      # Translate metric prefix to be consistent between different API formats
-      # @param prefix [String] the prefix to translate
-      # @return [String] translated prefix
-      def self.translate_metric_prefix(prefix)
-        case prefix
-        when "input"
-          "prompt"
-        when "output"
-          "completion"
-        else
-          prefix
-        end
+        Braintrust::Trace.parse_openai_usage_tokens(usage)
       end
 
       # Aggregate streaming chunks into a single response structure

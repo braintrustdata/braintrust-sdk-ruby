@@ -15,17 +15,6 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     elsif !Gem.loaded_specs["openai"]
       skip "Could not determine which OpenAI gem is loaded"
     end
-
-    @api_key = ENV["OPENAI_API_KEY"] || "test-api-key"
-    @original_api_key = ENV["OPENAI_API_KEY"]
-  end
-
-  def teardown
-    if @original_api_key
-      ENV["OPENAI_API_KEY"] = @original_api_key
-    else
-      ENV.delete("OPENAI_API_KEY")
-    end
   end
 
   def test_wrap_creates_span_for_chat_completions
@@ -36,7 +25,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it with Braintrust tracing
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a simple chat completion request with additional params to test metadata capture
@@ -107,7 +96,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a vision request with content array (image_url + text)
@@ -175,7 +164,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # First request - model will use a tool
@@ -290,7 +279,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a request (ideally with a model that returns detailed metrics)
@@ -353,7 +342,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
@@ -423,7 +412,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
@@ -561,7 +550,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -617,7 +606,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -677,7 +666,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -721,7 +710,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it (wraps BOTH chat and responses)
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -786,7 +775,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it (wraps BOTH chat and responses)
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -872,8 +861,8 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create two clients: one raw, one traced
-      raw_client = OpenAI::Client.new(api_key: @api_key)
-      traced_client = OpenAI::Client.new(api_key: @api_key)
+      raw_client = OpenAI::Client.new(api_key: get_openai_key)
+      traced_client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
 
       # Make identical requests
@@ -911,8 +900,8 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create two clients: one raw, one traced
-      raw_client = OpenAI::Client.new(api_key: @api_key)
-      traced_client = OpenAI::Client.new(api_key: @api_key)
+      raw_client = OpenAI::Client.new(api_key: get_openai_key)
+      traced_client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
 
       # Make identical streaming requests
@@ -961,8 +950,8 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create two clients: one raw, one traced
-      raw_client = OpenAI::Client.new(api_key: @api_key)
-      traced_client = OpenAI::Client.new(api_key: @api_key)
+      raw_client = OpenAI::Client.new(api_key: get_openai_key)
+      traced_client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -1008,8 +997,8 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create two clients: one raw, one traced
-      raw_client = OpenAI::Client.new(api_key: @api_key)
-      traced_client = OpenAI::Client.new(api_key: @api_key)
+      raw_client = OpenAI::Client.new(api_key: get_openai_key)
+      traced_client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(traced_client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
@@ -1063,7 +1052,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .stream (not .stream_raw)
@@ -1132,7 +1121,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .stream
@@ -1178,7 +1167,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Create OpenAI client and wrap it
-      client = OpenAI::Client.new(api_key: @api_key)
+      client = OpenAI::Client.new(api_key: get_openai_key)
       Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .stream

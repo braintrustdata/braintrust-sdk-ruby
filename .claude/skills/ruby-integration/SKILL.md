@@ -25,14 +25,24 @@ Study existing integrations as examples:
 module Braintrust
   module Trace
     module YourProvider
-      def self.wrap(client, tracer_provider: nil)
+      def self.wrap(client = nil, tracer_provider: nil)
         tracer_provider ||= ::OpenTelemetry.tracer_provider
+
+        # Idempotent wrapping: check if already wrapped
+        return client if client && client.instance_variable_get(:@braintrust_wrapped)
+
+        # Support class-level wrapping: wrap() with no args wraps class globally
+        if client.nil?
+          # Class wrapping: YourProvider.prepend(wrapper)
+          # Instance wrapping: client.singleton_class.prepend(wrapper)
+        end
 
         wrapper = Module.new do
           define_method(:your_api_method) do |**params|
             tracer = tracer_provider.tracer("braintrust")
 
             tracer.in_span("your_provider.operation") do |span|
+              # IMPORTANT: Start span FIRST (before metadata extraction) for accurate timing
               # 1. Capture input
               set_json_attr(span, "braintrust.input_json", extract_input(params))
 
@@ -58,8 +68,15 @@ module Braintrust
         end
 
         client.your_api.singleton_class.prepend(wrapper)
+        client.instance_variable_set(:@braintrust_wrapped, true) if client
         client
       end
+
+      ## Code Organization
+
+      - Break large methods (>50 lines) into focused helpers
+      - Separate streaming/non-streaming into distinct handler methods (e.g., `handle_streaming_request`, `handle_non_streaming_request`)
+      - Extract metadata/input/output capture into helper methods (e.g., `extract_metadata`, `build_input_messages`, `capture_output`)
 
       private
 
@@ -173,7 +190,8 @@ Follow existing example patterns:
    - Any other provider-specific features
 6. ✅ Token usage edge cases (cached, reasoning tokens)
 7. ✅ Multiple APIs (if provider has multiple endpoints)
-8. ✅ Verify we don't change the behaviour of the integration.
+8. ✅ Verify we don't change the behaviour of the integration
+9. ✅ **LLM wrapper libraries** - If tracing a library that wraps LLM providers (e.g., ruby_llm→OpenAI), verify traces match the underlying provider exactly (tools format, token format, output structure). Compare side-by-side with `BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG=1`
 
 ## Appraisal Configuration (Set up FIRST)
 
@@ -296,10 +314,10 @@ bundle exec rake coverage      # >90% line, >80% branch
 
 ## Token Normalization
 
-Normalize to Braintrust standard:
+Use shared `TokenParser.parse_usage_tokens(usage)` in `lib/braintrust/trace/token_parser.rb` to normalize tokens:
 - `prompt_tokens` (input)
 - `completion_tokens` (output)
-- `tokens` (total)
+- `tokens` (total, includes cache_creation_tokens)
 - `prompt_cached_tokens` (if cached)
 - `prompt_cache_creation_tokens` (if cache created)
 - `completion_reasoning_tokens` (if reasoning)

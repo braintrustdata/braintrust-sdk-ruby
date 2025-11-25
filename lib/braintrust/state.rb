@@ -49,6 +49,20 @@ module Braintrust
       )
     end
 
+    # Create a State object directly with explicit parameters
+    # @param api_key [String] Braintrust API key (required)
+    # @param org_name [String, nil] Organization name
+    # @param org_id [String, nil] Organization ID (if provided, skips login - useful for testing)
+    # @param default_project [String, nil] Default project name
+    # @param app_url [String, nil] App URL (default: https://www.braintrust.dev)
+    # @param api_url [String, nil] API URL
+    # @param proxy_url [String, nil] Proxy URL
+    # @param blocking_login [Boolean] Login synchronously (default: false)
+    # @param enable_tracing [Boolean] Enable OpenTelemetry tracing (default: true)
+    # @param tracer_provider [TracerProvider, nil] Optional tracer provider
+    # @param config [Config, nil] Optional config object
+    # @param exporter [Exporter, nil] Optional exporter for testing
+    # @return [State] the created state
     def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
@@ -61,13 +75,17 @@ module Braintrust
       @app_url = app_url || "https://www.braintrust.dev"
       @api_url = api_url
       @proxy_url = proxy_url
-      @logged_in = false
       @config = config
 
-      # Perform login after state setup
-      if blocking_login
+      # If org_id is provided, we're already "logged in" (useful for testing)
+      # Otherwise, perform login to discover org info
+      if org_id
+        @logged_in = true
+      elsif blocking_login
+        @logged_in = false
         login
       else
+        @logged_in = false
         login_in_thread
       end
 
