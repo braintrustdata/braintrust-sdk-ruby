@@ -251,3 +251,52 @@ end
 task release: ["release:publish", "release:github"] do
   puts "✓ Release completed successfully!"
 end
+
+# Version bump tasks
+def bump_version(type)
+  version_file = "lib/braintrust/version.rb"
+  content = File.read(version_file)
+  current = content.match(/VERSION = "(\d+)\.(\d+)\.(\d+)"/)
+  raise "Could not parse version from #{version_file}" unless current
+
+  major, minor, patch = current[1].to_i, current[2].to_i, current[3].to_i
+  old_version = "#{major}.#{minor}.#{patch}"
+
+  case type
+  when :major
+    major += 1
+    minor = 0
+    patch = 0
+  when :minor
+    minor += 1
+    patch = 0
+  when :patch
+    patch += 1
+  end
+
+  new_version = "#{major}.#{minor}.#{patch}"
+  new_content = content.gsub(/VERSION = "#{old_version}"/, "VERSION = \"#{new_version}\"")
+  File.write(version_file, new_content)
+
+  puts "#{old_version} → #{new_version}"
+  new_version
+end
+
+namespace :version do
+  namespace :bump do
+    desc "Bump patch version (0.0.5 → 0.0.6)"
+    task :patch do
+      bump_version(:patch)
+    end
+
+    desc "Bump minor version (0.0.5 → 0.1.0)"
+    task :minor do
+      bump_version(:minor)
+    end
+
+    desc "Bump major version (0.0.5 → 1.0.0)"
+    task :major do
+      bump_version(:major)
+    end
+  end
+end
