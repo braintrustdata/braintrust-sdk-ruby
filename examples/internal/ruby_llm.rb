@@ -14,6 +14,7 @@ require "opentelemetry/sdk"
 # - Streaming responses
 # - Tool calling
 # - Different models
+# - Direct complete() calls (ActiveRecord pattern)
 # - Error handling
 
 # Check for API keys
@@ -197,9 +198,35 @@ tracer.in_span("examples/internal/ruby_llm.rb") do |span|
     puts "Anthropic (claude-sonnet-4): #{response_anthropic.content}"
   end
 
-  # Feature 6: Error Handling
+  # Feature 6: Direct complete() call (ActiveRecord pattern)
+  # This demonstrates how RubyLLM's ActiveRecord integration (acts_as_chat) works:
+  # it adds messages directly to chat history and calls complete() instead of ask()
   puts "\n" + "=" * 80
-  puts "Feature 6: Error Handling"
+  puts "Feature 6: Direct complete() Call (ActiveRecord Pattern)"
+  puts "=" * 80
+
+  tracer.in_span("feature_direct_complete") do
+    puts "\n[OpenAI - gpt-4o-mini via complete()]"
+    chat_openai = RubyLLM.chat(model: "gpt-4o-mini")
+    # Simulate ActiveRecord pattern: add message directly, then call complete()
+    chat_openai.add_message(role: :user, content: "Say 'hello from complete()'")
+    response = chat_openai.complete
+    puts "Pattern: add_message() + complete()"
+    puts "A: #{response.content}"
+    puts "Tokens: #{response.to_h[:input_tokens]} in, #{response.to_h[:output_tokens]} out"
+
+    puts "\n[Anthropic - claude-sonnet-4 via complete()]"
+    chat_anthropic = RubyLLM.chat(model: "claude-sonnet-4")
+    chat_anthropic.add_message(role: :user, content: "Say 'hello from complete()'")
+    response = chat_anthropic.complete
+    puts "Pattern: add_message() + complete()"
+    puts "A: #{response.content}"
+    puts "Tokens: #{response.to_h[:input_tokens]} in, #{response.to_h[:output_tokens]} out"
+  end
+
+  # Feature 7: Error Handling
+  puts "\n" + "=" * 80
+  puts "Feature 7: Error Handling"
   puts "=" * 80
 
   tracer.in_span("feature_error_handling") do
