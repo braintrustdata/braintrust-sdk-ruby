@@ -98,7 +98,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal "openai", metadata["provider"]
       assert_equal "/v1/chat/completions", metadata["endpoint"]
-      assert_equal "gpt-4o-mini", metadata["model"]
+      assert_match(/\Agpt-4o-mini/, metadata["model"])
       assert_equal 10, metadata["max_tokens"]
       assert_equal 0.5, metadata["temperature"]
       refute_nil metadata["id"]
@@ -279,7 +279,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       client = OpenAI::Client.new(access_token: @api_key)
       Braintrust::Trace::AlexRudall::RubyOpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
-      # Make a streaming request
+      # Make a streaming request with stream_options to get usage metrics
       full_content = ""
       client.chat(
         parameters: {
@@ -288,6 +288,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
             {role: "user", content: "Count from 1 to 3"}
           ],
           max_tokens: 50,
+          stream_options: {include_usage: true},
           stream: proc do |chunk, _bytesize|
             delta_content = chunk.dig("choices", 0, "delta", "content")
             full_content += delta_content if delta_content
@@ -310,17 +311,35 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       assert_equal 1, input.length
       assert_equal "user", input[0]["role"]
 
+      # Verify output was captured and aggregated
+      assert span.attributes.key?("braintrust.output_json"), "Should have braintrust.output_json"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert_equal 1, output.length
+      assert_equal 0, output[0]["index"]
+      assert_equal "assistant", output[0]["message"]["role"]
+      refute_nil output[0]["message"]["content"]
+      refute_empty output[0]["message"]["content"]
+
       # Verify metadata includes stream flag
       assert span.attributes.key?("braintrust.metadata")
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal "openai", metadata["provider"]
       assert_equal true, metadata["stream"]
 
-      # Verify time_to_first_token metric is present
+      # Verify metrics include time_to_first_token and usage tokens
       assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
       metrics = JSON.parse(span.attributes["braintrust.metrics"])
       assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
       assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
+
+      # Verify usage metrics are present (when stream_options.include_usage is set)
+      assert metrics.key?("prompt_tokens"), "Should have prompt_tokens metric"
+      assert metrics["prompt_tokens"] > 0, "prompt_tokens should be > 0"
+      assert metrics.key?("completion_tokens"), "Should have completion_tokens metric"
+      assert metrics["completion_tokens"] > 0, "completion_tokens should be > 0"
+      assert metrics.key?("tokens"), "Should have tokens metric"
+      assert metrics["tokens"] > 0, "tokens should be > 0"
+      assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
     end
   end
 

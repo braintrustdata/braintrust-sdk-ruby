@@ -400,14 +400,20 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert_equal true, metadata["stream"]
       assert_match(/gpt-4o-mini/, metadata["model"])  # Model may include version suffix
 
-      # Verify metrics were captured (if include_usage was respected)
+      # Verify metrics include time_to_first_token and usage tokens
       assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
       metrics = JSON.parse(span.attributes["braintrust.metrics"])
-      assert metrics["tokens"] > 0 if metrics["tokens"]
-
-      # Verify time_to_first_token metric is present
       assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
       assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
+
+      # Verify usage metrics are present (when stream_options.include_usage is set)
+      assert metrics.key?("prompt_tokens"), "Should have prompt_tokens metric"
+      assert metrics["prompt_tokens"] > 0, "prompt_tokens should be > 0"
+      assert metrics.key?("completion_tokens"), "Should have completion_tokens metric"
+      assert metrics["completion_tokens"] > 0, "completion_tokens should be > 0"
+      assert metrics.key?("tokens"), "Should have tokens metric"
+      assert metrics["tokens"] > 0, "tokens should be > 0"
+      assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
     end
   end
 
