@@ -74,7 +74,7 @@ class RubyLLMIntegrationTest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "ruby_llm.chat.ask", span.name
+      assert_equal "ruby_llm.chat", span.name
 
       # Verify braintrust.input_json contains messages
       assert span.attributes.key?("braintrust.input_json")
@@ -131,7 +131,7 @@ class RubyLLMIntegrationTest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name (same for streaming and non-streaming)
-      assert_equal "ruby_llm.chat.ask", span.name
+      assert_equal "ruby_llm.chat", span.name
 
       # Verify input
       assert span.attributes.key?("braintrust.input_json")
@@ -175,15 +175,22 @@ class RubyLLMIntegrationTest < Minitest::Test
       refute_nil response
       refute_nil response.content
 
-      # Drain and verify span
-      span = rig.drain_one
+      # Tool calling creates sibling spans:
+      # 1. ruby_llm.chat - the LLM conversation span
+      # 2. ruby_llm.tool.* - tool execution span(s)
+      spans = rig.drain
+      assert spans.length >= 2, "Expected at least 2 spans for tool calling (chat + tool)"
 
-      # Verify span name
-      assert_equal "ruby_llm.chat.ask", span.name
+      # Find the chat span and tool span
+      chat_span = spans.find { |s| s.name == "ruby_llm.chat" }
+      tool_span = spans.find { |s| s.name.start_with?("ruby_llm.tool.") }
 
-      # Verify braintrust.metadata contains tools in exact OpenAI format
-      assert span.attributes.key?("braintrust.metadata")
-      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      refute_nil chat_span, "Expected a ruby_llm.chat span"
+      refute_nil tool_span, "Expected a ruby_llm.tool.* span"
+
+      # Verify chat span has metadata with tools
+      assert chat_span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
       assert_equal "ruby_llm", metadata["provider"]
 
       # Assert exact tool schema (OpenAI format with RubyLLM-specific fields stripped)
@@ -212,10 +219,81 @@ class RubyLLMIntegrationTest < Minitest::Test
       ]
       assert_equal expected_tools, metadata["tools"]
 
-      # Verify braintrust.output_json contains tool calls or response
+      # Verify chat span has output
+      assert chat_span.attributes.key?("braintrust.output_json")
+      output = JSON.parse(chat_span.attributes["braintrust.output_json"])
+      refute_nil output
+
+      # Verify tool span has correct attributes
+      assert tool_span.attributes.key?("braintrust.span_attributes"), "Tool span should have span_attributes"
+      span_attrs = JSON.parse(tool_span.attributes["braintrust.span_attributes"])
+      assert_equal "tool", span_attrs["type"]
+      assert tool_span.attributes.key?("braintrust.input_json"), "Tool span should have input"
+      assert tool_span.attributes.key?("braintrust.output_json"), "Tool span should have output"
+    end
+  end
+
+  # Test for GitHub issue #39: ActiveRecord integration calls complete() directly
+  # This simulates how acts_as_chat uses RubyLLM - it adds messages to chat history
+  # and then calls complete() directly, bypassing ask()
+  def test_wrap_creates_span_for_direct_complete
+    VCR.use_cassette("ruby_llm/direct_complete") do
+      require "ruby_llm"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Configure RubyLLM
+      RubyLLM.configure do |config|
+        config.openai_api_key = get_openai_key
+      end
+
+      # Create chat instance and wrap it
+      chat = RubyLLM.chat(model: "gpt-4o-mini")
+      Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap(chat, tracer_provider: rig.tracer_provider)
+
+      # Simulate ActiveRecord integration: add message directly, then call complete()
+      chat.add_message(role: :user, content: "Say 'hello'")
+      response = chat.complete
+
+      # Verify response
+      refute_nil response
+      refute_nil response.content
+      assert response.content.length > 0
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "ruby_llm.chat", span.name
+
+      # Verify braintrust.input_json contains the message we added
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert input.is_a?(Array)
+      assert input.length > 0
+      # The user message should be in the input
+      user_msg = input.find { |m| m["role"] == "user" }
+      refute_nil user_msg
+      assert_includes user_msg["content"], "hello"
+
+      # Verify braintrust.output_json contains response
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
       refute_nil output
+
+      # Verify braintrust.metadata contains provider and model info
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal "ruby_llm", metadata["provider"]
+      assert_equal "gpt-4o-mini", metadata["model"]
+
+      # Verify braintrust.metrics contains token usage
+      assert span.attributes.key?("braintrust.metrics")
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["prompt_tokens"] > 0
+      assert metrics["completion_tokens"] > 0
+      assert metrics["tokens"] > 0
     end
   end
 
@@ -248,7 +326,7 @@ class RubyLLMIntegrationTest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "ruby_llm.chat.ask", span.name
+      assert_equal "ruby_llm.chat", span.name
 
       # Verify the wrapped flag is set
       assert chat.instance_variable_get(:@braintrust_wrapped)
@@ -294,7 +372,7 @@ class RubyLLMIntegrationTest < Minitest::Test
 
       # Verify all spans have the correct name and attributes
       spans.each do |span|
-        assert_equal "ruby_llm.chat.ask", span.name
+        assert_equal "ruby_llm.chat", span.name
         assert span.attributes.key?("braintrust.input_json")
         assert span.attributes.key?("braintrust.output_json")
         assert span.attributes.key?("braintrust.metadata")
