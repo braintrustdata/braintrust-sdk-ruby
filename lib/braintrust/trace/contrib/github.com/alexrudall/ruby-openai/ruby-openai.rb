@@ -51,6 +51,11 @@ module Braintrust
                   tracer = tracer_provider.tracer("braintrust")
 
                   tracer.in_span("Chat Completion") do |span|
+                    # Track start time for time_to_first_token
+                    start_time = Time.now
+                    time_to_first_token = nil
+                    is_streaming = parameters.key?(:stream) && parameters[:stream].is_a?(Proc)
+
                     # Initialize metadata hash
                     metadata = {
                       "provider" => "openai",
@@ -82,9 +87,24 @@ module Braintrust
                       span.set_attribute("braintrust.input_json", JSON.generate(parameters[:messages]))
                     end
 
+                    # Wrap streaming callback if present to capture time to first token
+                    if is_streaming
+                      original_stream_proc = parameters[:stream]
+                      parameters = parameters.dup
+                      parameters[:stream] = proc do |chunk, bytesize|
+                        # Capture time to first token on first chunk
+                        time_to_first_token ||= Time.now - start_time
+                        # Call original callback
+                        original_stream_proc.call(chunk, bytesize)
+                      end
+                    end
+
                     begin
                       # Call the original method
                       response = super(parameters: parameters)
+
+                      # Calculate time to first token for non-streaming
+                      time_to_first_token ||= Time.now - start_time unless is_streaming
 
                       # Set output (choices) as JSON
                       if response && response["choices"]&.any?
@@ -92,10 +112,13 @@ module Braintrust
                       end
 
                       # Set metrics (token usage)
+                      metrics = {}
                       if response && response["usage"]
                         metrics = Braintrust::Trace::Contrib::Github::Alexrudall::RubyOpenAI.parse_usage_tokens(response["usage"])
-                        span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
                       end
+                      # Add time_to_first_token metric
+                      metrics["time_to_first_token"] = time_to_first_token || 0.0
+                      span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
 
                       # Add response metadata fields
                       if response

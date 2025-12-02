@@ -111,6 +111,10 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       assert metrics["completion_tokens"] > 0
       assert metrics["tokens"] > 0
       assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 
@@ -311,6 +315,12 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal "openai", metadata["provider"]
       assert_equal true, metadata["stream"]
+
+      # Verify time_to_first_token metric is present
+      assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 

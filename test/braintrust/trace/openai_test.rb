@@ -85,6 +85,10 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert metrics["completion_tokens"] > 0
       assert metrics["tokens"] > 0
       assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 
@@ -397,10 +401,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert_match(/gpt-4o-mini/, metadata["model"])  # Model may include version suffix
 
       # Verify metrics were captured (if include_usage was respected)
-      if span.attributes.key?("braintrust.metrics")
-        metrics = JSON.parse(span.attributes["braintrust.metrics"])
-        assert metrics["tokens"] > 0 if metrics["tokens"]
-      end
+      assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["tokens"] > 0 if metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 
@@ -1106,10 +1113,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert_match(/gpt-4o-mini/, metadata["model"])
 
       # Verify metrics were captured (if include_usage was respected)
-      if span.attributes.key?("braintrust.metrics")
-        metrics = JSON.parse(span.attributes["braintrust.metrics"])
-        assert metrics["tokens"] > 0 if metrics["tokens"]
-      end
+      assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["tokens"] > 0 if metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 
