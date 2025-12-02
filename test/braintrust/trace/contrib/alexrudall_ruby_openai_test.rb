@@ -73,7 +73,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name matches pattern
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify braintrust.input_json contains messages
       assert span.attributes.key?("braintrust.input_json")
@@ -161,7 +161,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -298,7 +298,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -404,7 +404,7 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify span status indicates an error
       assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code

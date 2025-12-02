@@ -50,7 +50,7 @@ module Braintrust
                 define_method(:chat) do |parameters:|
                   tracer = tracer_provider.tracer("braintrust")
 
-                  tracer.in_span("openai.chat.completions.create") do |span|
+                  tracer.in_span("Chat Completion") do |span|
                     # Initialize metadata hash
                     metadata = {
                       "provider" => "openai",

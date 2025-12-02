@@ -155,7 +155,7 @@ module Braintrust
           define_method(:create) do |**params|
             tracer = tracer_provider.tracer("braintrust")
 
-            tracer.in_span("openai.chat.completions.create") do |span|
+            tracer.in_span("Chat Completion") do |span|
               # Initialize metadata hash
               metadata = {
                 "provider" => "openai",
@@ -220,7 +220,7 @@ module Braintrust
             }
 
             # Start span with proper context (will be child of current span if any)
-            span = tracer.start_span("openai.chat.completions.create")
+            span = tracer.start_span("Chat Completion")
 
             # Capture request metadata fields
             metadata_fields = %i[
@@ -303,7 +303,7 @@ module Braintrust
             }
 
             # Start span with proper context (will be child of current span if any)
-            span = tracer.start_span("openai.chat.completions.create")
+            span = tracer.start_span("Chat Completion")
 
             # Capture request metadata fields
             metadata_fields = %i[

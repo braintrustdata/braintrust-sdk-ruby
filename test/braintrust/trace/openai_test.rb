@@ -47,7 +47,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name matches Go SDK
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify braintrust.input_json contains messages
       assert span.attributes.key?("braintrust.input_json")
@@ -127,7 +127,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify braintrust.input_json contains messages with content array
       assert span.attributes.key?("braintrust.input_json")
@@ -371,7 +371,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -439,7 +439,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -478,7 +478,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify span status indicates an error
       assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
@@ -529,7 +529,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify span status indicates an error
       assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
@@ -740,7 +740,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Verify first span is for chat completions
       chat_span = spans[0]
-      assert_equal "openai.chat.completions.create", chat_span.name
+      assert_equal "Chat Completion", chat_span.name
       chat_metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
       assert_equal "/v1/chat/completions", chat_metadata["endpoint"]
       assert_equal "gpt-4o-mini", chat_metadata["model"]
@@ -814,7 +814,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Verify first span is for STREAMING chat completions
       chat_span = spans[0]
-      assert_equal "openai.chat.completions.create", chat_span.name
+      assert_equal "Chat Completion", chat_span.name
       chat_metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
       assert_equal "/v1/chat/completions", chat_metadata["endpoint"]
       assert_equal true, chat_metadata["stream"], "Chat span should have stream flag"
@@ -887,7 +887,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       spans = rig.drain
       assert_equal 1, spans.length
-      assert_equal "openai.chat.completions.create", spans[0].name
+      assert_equal "Chat Completion", spans[0].name
     end
   end
 
@@ -937,7 +937,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       spans = rig.drain
       assert_equal 1, spans.length
-      assert_equal "openai.chat.completions.create", spans[0].name
+      assert_equal "Chat Completion", spans[0].name
     end
   end
 
@@ -1080,7 +1080,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -1149,7 +1149,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify output was captured
       assert span.attributes.key?("braintrust.output_json")
@@ -1193,7 +1193,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify output was captured
       assert span.attributes.key?("braintrust.output_json")
