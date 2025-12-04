@@ -113,7 +113,7 @@ Both integrations create spans with identical structure:
 
 | Span Attribute | Present in both? | Data matches? |
 |----------------|------------------|---------------|
-| `span.name` | ✅ Yes | ✅ "openai.chat.completions.create" |
+| `span.name` | ✅ Yes | ✅ "Chat Completion" |
 | `braintrust.input_json` | ✅ Yes | ✅ Identical message arrays |
 | `braintrust.output_json` | ✅ Yes | ✅ Identical choice arrays |
 | `braintrust.metadata` | ✅ Yes | ✅ Same provider, endpoint, model, params |

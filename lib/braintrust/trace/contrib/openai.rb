@@ -155,7 +155,10 @@ module Braintrust
           define_method(:create) do |**params|
             tracer = tracer_provider.tracer("braintrust")
 
-            tracer.in_span("openai.chat.completions.create") do |span|
+            tracer.in_span("Chat Completion") do |span|
+              # Track start time for time_to_first_token
+              start_time = Time.now
+
               # Initialize metadata hash
               metadata = {
                 "provider" => "openai",
@@ -184,6 +187,9 @@ module Braintrust
               # Call the original method
               response = super(**params)
 
+              # Calculate time to first token
+              time_to_first_token = Time.now - start_time
+
               # Set output (choices) as JSON
               # Use to_h to get the raw structure with all fields (including tool_calls)
               if response.respond_to?(:choices) && response.choices&.any?
@@ -192,10 +198,13 @@ module Braintrust
               end
 
               # Set metrics (token usage with advanced details)
+              metrics = {}
               if response.respond_to?(:usage) && response.usage
                 metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(response.usage)
-                span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
               end
+              # Add time_to_first_token metric
+              metrics["time_to_first_token"] = time_to_first_token
+              span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
 
               # Add response metadata fields
               metadata["id"] = response.id if response.respond_to?(:id) && response.id
@@ -214,13 +223,15 @@ module Braintrust
           define_method(:stream_raw) do |**params|
             tracer = tracer_provider.tracer("braintrust")
             aggregated_chunks = []
+            start_time = Time.now
+            time_to_first_token = nil
             metadata = {
               "provider" => "openai",
               "endpoint" => "/v1/chat/completions"
             }
 
             # Start span with proper context (will be child of current span if any)
-            span = tracer.start_span("openai.chat.completions.create")
+            span = tracer.start_span("Chat Completion")
 
             # Capture request metadata fields
             metadata_fields = %i[
@@ -259,6 +270,8 @@ module Braintrust
             original_each = stream.method(:each)
             stream.define_singleton_method(:each) do |&block|
               original_each.call do |chunk|
+                # Capture time to first token on first chunk
+                time_to_first_token ||= Time.now - start_time
                 aggregated_chunks << chunk.to_h
                 block&.call(chunk)
               end
@@ -275,10 +288,13 @@ module Braintrust
                 Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.output_json", aggregated_output[:choices])
 
                 # Set metrics if usage is included (requires stream_options.include_usage)
+                metrics = {}
                 if aggregated_output[:usage]
                   metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(aggregated_output[:usage])
-                  Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
                 end
+                # Add time_to_first_token metric
+                metrics["time_to_first_token"] = time_to_first_token || 0.0
+                Braintrust::Trace::OpenAI.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
 
                 # Update metadata with response fields
                 metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
@@ -297,13 +313,15 @@ module Braintrust
           # Wrap stream for streaming chat completions (returns ChatCompletionStream with convenience methods)
           define_method(:stream) do |**params|
             tracer = tracer_provider.tracer("braintrust")
+            start_time = Time.now
+            time_to_first_token = nil
             metadata = {
               "provider" => "openai",
               "endpoint" => "/v1/chat/completions"
             }
 
             # Start span with proper context (will be child of current span if any)
-            span = tracer.start_span("openai.chat.completions.create")
+            span = tracer.start_span("Chat Completion")
 
             # Capture request metadata fields
             metadata_fields = %i[
@@ -354,10 +372,13 @@ module Braintrust
               end
 
               # Set metrics if usage is available
+              metrics = {}
               if snapshot.usage
                 metrics = Braintrust::Trace::OpenAI.parse_usage_tokens(snapshot.usage)
-                set_json_attr.call("braintrust.metrics", metrics) unless metrics.empty?
               end
+              # Add time_to_first_token metric
+              metrics["time_to_first_token"] = time_to_first_token || 0.0
+              set_json_attr.call("braintrust.metrics", metrics) unless metrics.empty?
 
               # Update metadata with response fields
               metadata["id"] = snapshot.id if snapshot.respond_to?(:id) && snapshot.id
@@ -378,7 +399,11 @@ module Braintrust
             # Wrap .each() method - this is the core consumption method
             original_each = stream.method(:each)
             stream.define_singleton_method(:each) do |&block|
-              original_each.call(&block)
+              original_each.call do |chunk|
+                # Capture time to first token on first chunk
+                time_to_first_token ||= Time.now - start_time
+                block&.call(chunk)
+              end
             rescue => e
               span.record_exception(e)
               span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")
@@ -392,8 +417,13 @@ module Braintrust
             stream.define_singleton_method(:text) do
               text_enum = original_text.call
               # Wrap the returned enumerable's .each method
+              original_text_each = text_enum.method(:each)
               text_enum.define_singleton_method(:each) do |&block|
-                super(&block)
+                original_text_each.call do |delta|
+                  # Capture time to first token on first delta
+                  time_to_first_token ||= Time.now - start_time
+                  block&.call(delta)
+                end
               rescue => e
                 span.record_exception(e)
                 span.status = ::OpenTelemetry::Trace::Status.error("Streaming error: #{e.message}")

@@ -47,7 +47,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name matches Go SDK
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify braintrust.input_json contains messages
       assert span.attributes.key?("braintrust.input_json")
@@ -85,6 +85,10 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert metrics["completion_tokens"] > 0
       assert metrics["tokens"] > 0
       assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 
@@ -127,7 +131,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify braintrust.input_json contains messages with content array
       assert span.attributes.key?("braintrust.input_json")
@@ -371,7 +375,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -396,11 +400,20 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert_equal true, metadata["stream"]
       assert_match(/gpt-4o-mini/, metadata["model"])  # Model may include version suffix
 
-      # Verify metrics were captured (if include_usage was respected)
-      if span.attributes.key?("braintrust.metrics")
-        metrics = JSON.parse(span.attributes["braintrust.metrics"])
-        assert metrics["tokens"] > 0 if metrics["tokens"]
-      end
+      # Verify metrics include time_to_first_token and usage tokens
+      assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
+
+      # Verify usage metrics are present (when stream_options.include_usage is set)
+      assert metrics.key?("prompt_tokens"), "Should have prompt_tokens metric"
+      assert metrics["prompt_tokens"] > 0, "prompt_tokens should be > 0"
+      assert metrics.key?("completion_tokens"), "Should have completion_tokens metric"
+      assert metrics["completion_tokens"] > 0, "completion_tokens should be > 0"
+      assert metrics.key?("tokens"), "Should have tokens metric"
+      assert metrics["tokens"] > 0, "tokens should be > 0"
+      assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
     end
   end
 
@@ -439,7 +452,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -478,7 +491,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify span status indicates an error
       assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
@@ -529,7 +542,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify span status indicates an error
       assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
@@ -740,7 +753,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Verify first span is for chat completions
       chat_span = spans[0]
-      assert_equal "openai.chat.completions.create", chat_span.name
+      assert_equal "Chat Completion", chat_span.name
       chat_metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
       assert_equal "/v1/chat/completions", chat_metadata["endpoint"]
       assert_equal "gpt-4o-mini", chat_metadata["model"]
@@ -814,7 +827,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Verify first span is for STREAMING chat completions
       chat_span = spans[0]
-      assert_equal "openai.chat.completions.create", chat_span.name
+      assert_equal "Chat Completion", chat_span.name
       chat_metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
       assert_equal "/v1/chat/completions", chat_metadata["endpoint"]
       assert_equal true, chat_metadata["stream"], "Chat span should have stream flag"
@@ -887,7 +900,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       spans = rig.drain
       assert_equal 1, spans.length
-      assert_equal "openai.chat.completions.create", spans[0].name
+      assert_equal "Chat Completion", spans[0].name
     end
   end
 
@@ -937,7 +950,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       spans = rig.drain
       assert_equal 1, spans.length
-      assert_equal "openai.chat.completions.create", spans[0].name
+      assert_equal "Chat Completion", spans[0].name
     end
   end
 
@@ -1080,7 +1093,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify input was captured
       assert span.attributes.key?("braintrust.input_json")
@@ -1106,10 +1119,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       assert_match(/gpt-4o-mini/, metadata["model"])
 
       # Verify metrics were captured (if include_usage was respected)
-      if span.attributes.key?("braintrust.metrics")
-        metrics = JSON.parse(span.attributes["braintrust.metrics"])
-        assert metrics["tokens"] > 0 if metrics["tokens"]
-      end
+      assert span.attributes.key?("braintrust.metrics"), "Should have braintrust.metrics"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["tokens"] > 0 if metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
     end
   end
 
@@ -1149,7 +1165,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify output was captured
       assert span.attributes.key?("braintrust.output_json")
@@ -1193,7 +1209,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
       span = rig.drain_one
 
       # Verify span name
-      assert_equal "openai.chat.completions.create", span.name
+      assert_equal "Chat Completion", span.name
 
       # Verify output was captured
       assert span.attributes.key?("braintrust.output_json")

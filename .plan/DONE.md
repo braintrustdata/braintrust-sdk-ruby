@@ -138,7 +138,7 @@
 - [x] Update test to verify braintrust.output_json contains choices
 - [x] Update test to verify braintrust.metadata contains model, temperature, etc
 - [x] Update test to verify braintrust.metrics contains prompt_tokens, completion_tokens, tokens
-- [x] Update span name to "openai.chat.completions.create" (match Go)
+- [x] Update span name to "Chat Completion" (match Go)
 - [x] Test with real OpenAI API and verify in Braintrust UI
 
 ### examples/openai.rb ✅
