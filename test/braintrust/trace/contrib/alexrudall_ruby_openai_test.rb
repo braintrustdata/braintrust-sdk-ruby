@@ -446,4 +446,175 @@ class Braintrust::Trace::AlexRudall::RubyOpenAITest < Minitest::Test
       assert span.events.any? { |event| event.name == "exception" }
     end
   end
+
+  def test_wrap_responses_create_non_streaming
+    VCR.use_cassette("alexrudall_ruby_openai/responses_non_streaming") do
+      require "openai"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(access_token: @api_key)
+      Braintrust::Trace::AlexRudall::RubyOpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this ruby-openai gem version" unless client.respond_to?(:responses)
+
+      # Make a non-streaming responses request
+      # ruby-openai 8.x uses: client.responses.create(parameters: {...})
+      response = client.responses.create(
+        parameters: {
+          model: "gpt-4o-mini",
+          input: "What is 2+2? Reply with just the number."
+        }
+      )
+
+      # Verify response
+      refute_nil response
+      refute_nil response["output"]
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.responses.create", span.name
+
+      # Verify braintrust.input_json contains input
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert_equal "What is 2+2? Reply with just the number.", input
+
+      # Verify braintrust.output_json contains output
+      assert span.attributes.key?("braintrust.output_json")
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      refute_nil output
+
+      # Verify braintrust.metadata contains request metadata
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal "openai", metadata["provider"]
+      assert_equal "/v1/responses", metadata["endpoint"]
+      assert_equal "gpt-4o-mini", metadata["model"]
+      refute_nil metadata["id"]
+
+      # Verify braintrust.metrics contains token usage
+      assert span.attributes.key?("braintrust.metrics")
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics["prompt_tokens"] > 0
+      assert metrics["completion_tokens"] > 0
+      assert metrics["tokens"] > 0
+      assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
+
+      # Verify time_to_first_token metric is present
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
+    end
+  end
+
+  def test_wrap_responses_create_streaming
+    VCR.use_cassette("alexrudall_ruby_openai/responses_streaming") do
+      require "openai"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client and wrap it
+      client = OpenAI::Client.new(access_token: @api_key)
+      Braintrust::Trace::AlexRudall::RubyOpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this ruby-openai gem version" unless client.respond_to?(:responses)
+
+      # Make a streaming responses request
+      # ruby-openai 8.x uses client.responses.create with stream: proc
+      chunks = []
+      client.responses.create(
+        parameters: {
+          model: "gpt-4o-mini",
+          input: "Count from 1 to 3",
+          stream: proc do |chunk, _event|
+            chunks << chunk
+          end
+        }
+      )
+
+      # Verify we got chunks
+      refute_empty chunks, "Should have received streaming chunks"
+
+      # Drain and verify span
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.responses.create", span.name
+
+      # Verify braintrust.input_json contains input
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert_equal "Count from 1 to 3", input
+
+      # Verify braintrust.output_json contains aggregated output
+      assert span.attributes.key?("braintrust.output_json"), "Missing braintrust.output_json"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
+      refute_nil output
+
+      # Verify braintrust.metadata contains request metadata with stream flag
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert_equal "openai", metadata["provider"]
+      assert_equal "/v1/responses", metadata["endpoint"]
+      assert_equal true, metadata["stream"]
+
+      # Verify braintrust.metrics contains time_to_first_token
+      assert span.attributes.key?("braintrust.metrics")
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be >= 0"
+    end
+  end
+
+  def test_wrap_responses_records_exception_for_errors
+    VCR.use_cassette("alexrudall_ruby_openai/responses_error") do
+      require "openai"
+
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create OpenAI client with invalid API key
+      client = OpenAI::Client.new(access_token: "invalid_key")
+      Braintrust::Trace::AlexRudall::RubyOpenAI.wrap(client, tracer_provider: rig.tracer_provider)
+
+      # Skip if responses API not available
+      skip "Responses API not available in this ruby-openai gem version" unless client.respond_to?(:responses)
+
+      # Make a request that will fail
+      error = assert_raises do
+        client.responses.create(
+          parameters: {
+            model: "gpt-4o-mini",
+            input: "test"
+          }
+        )
+      end
+
+      # Verify an error was raised
+      refute_nil error
+
+      # Drain and verify span was created with error information
+      span = rig.drain_one
+
+      # Verify span name
+      assert_equal "openai.responses.create", span.name
+
+      # Verify span status indicates an error
+      assert_equal OpenTelemetry::Trace::Status::ERROR, span.status.code
+
+      # Verify error message is captured
+      refute_nil span.status.description
+      assert span.status.description.length > 0
+
+      # Verify exception event was recorded
+      assert span.events.any? { |event| event.name == "exception" }
+    end
+  end
 end

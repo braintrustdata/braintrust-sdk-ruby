@@ -1,0 +1,147 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","input":"What is 2+2? Reply with just the number."}'
+    headers:
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 08 Dec 2025 20:05:30 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Ratelimit-Limit-Requests:
+      - '200'
+      X-Ratelimit-Limit-Tokens:
+      - '100000'
+      X-Ratelimit-Remaining-Requests:
+      - '198'
+      X-Ratelimit-Remaining-Tokens:
+      - '99611'
+      X-Ratelimit-Reset-Requests:
+      - 14m20.852s
+      X-Ratelimit-Reset-Tokens:
+      - 2h47m48.417s
+      Openai-Version:
+      - '2020-10-01'
+      Openai-Organization:
+      - user-ehotg7f6lk20ot29mnwkdime
+      Openai-Project:
+      - proj_qkNVwAL12pw1UayHomnm5oBd
+      X-Request-Id:
+      - req_871b07286c2b42358b69120f635d464a
+      Openai-Processing-Ms:
+      - '2152'
+      X-Envoy-Upstream-Service-Time:
+      - '2154'
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=pV_Y38So_b_gZV759oqUpcbxAhzA8ksn.v9zG7_cKvI-1765224330-1.0.1.1-Ndj15dXQI.AZhMxfCOOpeEJl.UUWnjcPtL6Ygz9F7P1D5aH6.MpNkYednPfAi.wStoTtQRuLgks21q3Q2vNp2_J9.yPRbzYvdB8Ka_QDjgA;
+        path=/; expires=Mon, 08-Dec-25 20:35:30 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=U4LUZ3YbjKdN5RpVMWhH42VoDo7cjBTDTlv99PLFx1E-1765224330144-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9aaee0ad0d2e6fbc-IAD
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_0f49a2d0e5b190d50069372f87fc708196ace42359ad61d0bb",
+          "object": "response",
+          "created_at": 1765224328,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "error": null,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "output": [
+            {
+              "id": "msg_0f49a2d0e5b190d50069372f88c4fc81968323478f95e1097c",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "4"
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 20,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 2,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 22
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Mon, 08 Dec 2025 20:05:30 GMT
+recorded_with: VCR 6.3.1
