@@ -14,16 +14,24 @@ module Braintrust
       return metrics unless usage_hash.is_a?(Hash)
 
       # Field mappings: OpenAI → Braintrust
+      # Supports both Chat Completions API (prompt_tokens, completion_tokens)
+      # and Responses API (input_tokens, output_tokens)
       field_map = {
         "prompt_tokens" => "prompt_tokens",
         "completion_tokens" => "completion_tokens",
-        "total_tokens" => "tokens"
+        "total_tokens" => "tokens",
+        # Responses API uses different field names
+        "input_tokens" => "prompt_tokens",
+        "output_tokens" => "completion_tokens"
       }
 
       # Prefix mappings for *_tokens_details
       prefix_map = {
         "prompt" => "prompt",
-        "completion" => "completion"
+        "completion" => "completion",
+        # Responses API uses input/output prefixes
+        "input" => "prompt",
+        "output" => "completion"
       }
 
       usage_hash.each do |key, value|

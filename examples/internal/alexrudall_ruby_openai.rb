@@ -18,6 +18,8 @@ require "json"
 # 6. Reasoning models with advanced token metrics
 # 7. Temperature variations
 # 8. Advanced parameters
+# 9. Responses API (non-streaming) [requires ruby-openai >= 8.0]
+# 10. Responses API (streaming) [requires ruby-openai >= 8.0]
 #
 # This example validates that the ruby-openai integration captures the SAME DATA
 # as the openai gem integration for identical inputs.
@@ -323,25 +325,61 @@ tracer.in_span("examples/internal/alexrudall_ruby_openai.rb") do |span|
     puts "  All params captured in metadata for Braintrust trace"
   end
 
-  # Examples 9-10: Responses API
-  # ruby-openai doesn't have a dedicated Responses API equivalent
-  puts "\n9-10. Responses API examples skipped (ruby-openai uses standard chat API)"
+  # Example 9: Responses API (Non-streaming)
+  # Version >= 8.x required
+  if client.respond_to?(:responses)
+    puts "\n9. Responses API (Non-streaming)"
+    puts "-" * 60
+    tracer.in_span("example-responses-api") do
+      response = client.responses.create(
+        parameters: {
+          model: "gpt-4o-mini",
+          input: "What are three benefits of Ruby programming language?",
+          instructions: "You are a programming language expert."
+        }
+      )
+      # ruby-openai returns Hash responses
+      output_text = response.dig("output", 0, "content", 0, "text")
+      puts "✓ Response API output: #{output_text[0..100]}..."
+      puts "  Tokens: #{response.dig("usage", "total_tokens")}"
+      puts "  Response automatically traced by Braintrust"
+    end
+
+    # Example 10: Responses API (Streaming)
+    # Version >= 8.x required
+    puts "\n10. Responses API (Streaming)"
+    puts "-" * 60
+    tracer.in_span("example-responses-streaming") do
+      print "Streaming response: "
+
+      # ruby-openai uses proc-based streaming for Responses API too
+      client.responses.create(
+        parameters: {
+          model: "gpt-4o-mini",
+          input: "Count from 1 to 5",
+          stream: proc do |chunk, _event|
+            # Handle different chunk types
+            if chunk["type"] == "response.output_text.delta"
+              print chunk["delta"]
+            end
+          end
+        }
+      )
+
+      puts ""
+      puts "✓ Streaming complete"
+      puts "  (Note: Braintrust automatically aggregates all chunks for the trace)"
+    end
+  else
+    puts "\n9-10. Responses API examples skipped (requires ruby-openai >= 8.0)"
+  end
 end # End of parent trace
 
 puts "\n" + "=" * 60
 puts "✓ All examples completed!"
 puts ""
-puts "This golden example validates that ruby-openai integration captures:"
-puts "  ✓ Tool calling (single and multi-turn with tool_call_id) ✓"
-puts "  ✓ Streaming chat completions with chunk aggregation ✓"
-puts "  ✓ Advanced token metrics (cached, reasoning, audio tokens) ✓"
-puts "  ✓ All request parameters (temperature, top_p, seed, user, etc.) ✓"
-puts "  ✓ Full message structures (role, content, tool_calls, etc.) ✓"
-puts "  ⊘ Vision messages with array content (skipped - needs investigation)"
-puts "  ⊘ Mixed content messages (skipped - same issue as vision)"
-puts ""
 puts "VERIFICATION: Compare this trace with examples/internal/openai.rb"
-puts "  → Both should capture IDENTICAL data for matching examples (2-4, 6-8)"
+puts "  → Both should capture IDENTICAL data for matching examples (2-4, 6-10)"
 puts "  → Input/output JSON, metadata, metrics should match exactly"
 puts ""
 puts "View this trace at:"
