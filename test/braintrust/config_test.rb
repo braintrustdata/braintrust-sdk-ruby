@@ -2,32 +2,27 @@
 
 require "test_helper"
 
+BRAINTRUST_CONFIG_ENV_VALUES = {
+  "BRAINTRUST_API_KEY" => ENV["BRAINTRUST_API_KEY"],
+  "BRAINTRUST_ORG_NAME" => ENV["BRAINTRUST_ORG_NAME"],
+  "BRAINTRUST_APP_URL" => ENV["BRAINTRUST_APP_URL"],
+  "BRAINTRUST_API_URL" => ENV["BRAINTRUST_API_URL"]
+}.freeze
+
 class Braintrust::ConfigTest < Minitest::Test
   def setup
-    # Save original env vars
-    @original_api_key = ENV["BRAINTRUST_API_KEY"]
-    @original_org_name = ENV["BRAINTRUST_ORG_NAME"]
-    @original_app_url = ENV["BRAINTRUST_APP_URL"]
+    # Setup a clean state
+    BRAINTRUST_CONFIG_ENV_VALUES.keys.each { |env_var| ENV.delete(env_var) }
   end
 
   def teardown
     # Restore original env vars
-    if @original_api_key
-      ENV["BRAINTRUST_API_KEY"] = @original_api_key
-    else
-      ENV.delete("BRAINTRUST_API_KEY")
-    end
-
-    if @original_org_name
-      ENV["BRAINTRUST_ORG_NAME"] = @original_org_name
-    else
-      ENV.delete("BRAINTRUST_ORG_NAME")
-    end
-
-    if @original_app_url
-      ENV["BRAINTRUST_APP_URL"] = @original_app_url
-    else
-      ENV.delete("BRAINTRUST_APP_URL")
+    BRAINTRUST_CONFIG_ENV_VALUES.each do |env_var, env_value|
+      if env_value
+        ENV[env_var] = env_value
+      else
+        ENV.delete(env_var)
+      end
     end
   end
 
