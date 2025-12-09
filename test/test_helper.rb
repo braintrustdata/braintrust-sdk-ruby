@@ -152,6 +152,7 @@ module TracingTestHelper
   # Helper to run eval internally without API calls for testing
   # Wraps the private run_internal method
   def run_test_eval(**kwargs)
+    kwargs[:parallelism] ||= 1
     Braintrust::Eval.send(:run_internal, **kwargs)
   end
 

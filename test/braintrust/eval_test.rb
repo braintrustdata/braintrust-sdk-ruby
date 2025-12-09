@@ -570,4 +570,184 @@ class Braintrust::EvalTest < Minitest::Test
       assert_match(/mutually exclusive/i, error.message)
     end
   end
+
+  # ============================================
+  # Parallelism tests
+  # ============================================
+
+  def test_eval_run_with_parallelism_executes_all_cases
+    rig = setup_otel_test_rig
+
+    executed = Queue.new
+    task = ->(input) {
+      executed << input
+      input.upcase
+    }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    result = run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-parallel",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [
+        {input: "a", expected: "A"},
+        {input: "b", expected: "B"},
+        {input: "c", expected: "C"},
+        {input: "d", expected: "D"}
+      ],
+      task: task,
+      scorers: [scorer],
+      parallelism: 3,
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    assert result.success?
+    assert_equal 4, executed.size
+
+    # Verify all inputs were processed
+    executed_inputs = [].tap { |a| a << executed.pop until executed.empty? }
+    assert_equal %w[a b c d].sort, executed_inputs.sort
+  end
+
+  def test_eval_run_parallelism_1_matches_sequential
+    rig = setup_otel_test_rig
+
+    order = []
+    mutex = Mutex.new
+    task = ->(input) {
+      mutex.synchronize { order << input }
+      input.upcase
+    }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    result = run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-sequential",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [
+        {input: "a", expected: "A"},
+        {input: "b", expected: "B"},
+        {input: "c", expected: "C"}
+      ],
+      task: task,
+      scorers: [scorer],
+      parallelism: 1,
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    assert result.success?
+    # With parallelism 1, order should be preserved
+    assert_equal %w[a b c], order
+  end
+
+  def test_eval_run_parallel_collects_errors_from_threads
+    rig = setup_otel_test_rig
+
+    task = ->(input) {
+      raise "intentional failure" if input == "bad"
+      input.upcase
+    }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    result = run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-parallel-errors",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [
+        {input: "good1", expected: "GOOD1"},
+        {input: "bad", expected: "BAD"},
+        {input: "good2", expected: "GOOD2"}
+      ],
+      task: task,
+      scorers: [scorer],
+      parallelism: 3,
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    assert result.failed?
+    assert_equal 1, result.errors.length
+    assert_match(/intentional failure/, result.errors.first)
+  end
+
+  def test_eval_run_parallelism_exceeds_max_raises
+    rig = setup_otel_test_rig
+
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    max_parallelism = Braintrust::Eval::MAX_PARALLELISM
+    error = assert_raises(ArgumentError) do
+      run_test_eval(
+        experiment_id: "test-exp-123",
+        experiment_name: "test-invalid",
+        project_id: "test-proj-123",
+        project_name: "test-project",
+        cases: [{input: "test", expected: "TEST"}],
+        task: task,
+        scorers: [scorer],
+        parallelism: max_parallelism + 1,
+        state: rig.state,
+        tracer_provider: rig.tracer_provider
+      )
+    end
+    assert_match(/cannot exceed #{max_parallelism}/, error.message)
+  end
+
+  def test_eval_run_invalid_parallelism_falls_back_to_sequential
+    rig = setup_otel_test_rig
+
+    order = []
+    mutex = Mutex.new
+    task = ->(input) {
+      mutex.synchronize { order << input }
+      input.upcase
+    }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    # Test parallelism: 0 falls back to sequential
+    order.clear
+    result = run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-fallback",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [
+        {input: "a", expected: "A"},
+        {input: "b", expected: "B"}
+      ],
+      task: task,
+      scorers: [scorer],
+      parallelism: 0,
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    assert result.success?
+    assert_equal %w[a b], order
+
+    # Test parallelism: -1 falls back to sequential
+    order.clear
+    result = run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-fallback",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [
+        {input: "a", expected: "A"},
+        {input: "b", expected: "B"}
+      ],
+      task: task,
+      scorers: [scorer],
+      parallelism: -1,
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    assert result.success?
+    assert_equal %w[a b], order
+  end
 end
