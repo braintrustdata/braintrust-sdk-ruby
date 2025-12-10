@@ -131,4 +131,68 @@ class Braintrust::API::FunctionsTest < Minitest::Test
       assert_instance_of Hash, result
     end
   end
+
+  def test_functions_create_with_function_type_scorer
+    VCR.use_cassette("functions/create_with_type_scorer") do
+      api = get_test_api
+      # This test verifies that we can create a function with function_type
+      # The function_type determines how the function appears in the UI
+      # (e.g., "scorer" functions appear in the Scorers section)
+      function_slug = "test-ruby-sdk-scorer-func"
+
+      response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_type: "scorer",
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this: {{output}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "scorer", response["function_type"]
+    end
+  end
+
+  def test_functions_create_without_function_type
+    VCR.use_cassette("functions/create_without_type") do
+      api = get_test_api
+      # This test verifies that function_type is nil when not specified
+      function_slug = "test-ruby-sdk-no-type-func"
+
+      response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Hello {{input}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_nil response["function_type"]
+    end
+  end
 end
