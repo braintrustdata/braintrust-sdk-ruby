@@ -5,6 +5,8 @@ require_relative "eval/cases"
 require_relative "eval/scorer"
 require_relative "eval/result"
 require_relative "internal/experiments"
+require_relative "internal/thread_pool"
+
 require "opentelemetry/sdk"
 require "json"
 
@@ -174,6 +176,9 @@ module Braintrust
   #     }
   #   )
   module Eval
+    # Maximum parallelism allowed (mirrors Internal::ThreadPool::MAX_PARALLELISM)
+    MAX_PARALLELISM = Internal::ThreadPool::MAX_PARALLELISM
+
     class << self
       # Create a scorer with a name and callable
       # @param name [String] The scorer name
@@ -193,7 +198,9 @@ module Braintrust
       #   - Hash: {name:, id:, project:, version:, limit:}
       # @param task [#call] The task to evaluate (must be callable)
       # @param scorers [Array<Scorer, #call>] The scorers to use (Scorer objects or callables)
-      # @param parallelism [Integer] Number of parallel workers (default: 1)
+      # @param parallelism [Integer] Number of parallel workers (default: 1).
+      #   When parallelism > 1, test cases are executed concurrently using a thread pool.
+      #   The task and scorers MUST be thread-safe when using parallelism > 1.
       # @param tags [Array<String>] Optional experiment tags
       # @param metadata [Hash] Optional experiment metadata
       # @param update [Boolean] If true, allow reusing existing experiment (default: false)
@@ -241,6 +248,7 @@ module Braintrust
           cases: cases,
           task: task,
           scorers: scorers,
+          parallelism: parallelism,
           state: state,
           tracer_provider: tracer_provider
         )
@@ -261,11 +269,12 @@ module Braintrust
       # @param cases [Array, Enumerable, Cases] Test cases
       # @param task [#call] Task callable
       # @param scorers [Array] Scorers
+      # @param parallelism [Integer] Number of parallel workers
       # @param state [State] Braintrust state
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
       # @return [Result]
       def run_internal(experiment_id:, experiment_name:, project_id:, project_name:,
-        cases:, task:, scorers:, state:, tracer_provider: nil)
+        cases:, task:, scorers:, parallelism:, state:, tracer_provider: nil)
         start_time = Time.now
 
         # Get tracer for creating spans
@@ -281,14 +290,23 @@ module Braintrust
         # Normalize scorers to Scorer objects
         normalized_scorers = normalize_scorers(scorers)
 
-        # Collect errors
-        errors = []
+        # Thread-safe error collection using Queue
+        errors = Queue.new
 
-        # Run each case with tracing
-        normalized_cases.each do |test_case|
-          run_case(test_case, task, normalized_scorers, errors,
-            tracer, parent_attr)
+        if parallelism && parallelism > 1
+          # Run cases concurrently using thread pool
+          Internal::ThreadPool.each(normalized_cases, parallelism: parallelism) do |test_case|
+            run_case(test_case, task, normalized_scorers, errors, tracer, parent_attr)
+          end
+        else
+          # No parallelism
+          normalized_cases.each do |test_case|
+            run_case(test_case, task, normalized_scorers, errors, tracer, parent_attr)
+          end
         end
+
+        # Convert Queue to Array after all threads complete
+        error_array = [].tap { |a| a << errors.pop until errors.empty? }
 
         # Calculate duration
         duration = Time.now - start_time
@@ -303,7 +321,7 @@ module Braintrust
           project_id: project_id,
           project_name: project_name,
           permalink: permalink,
-          errors: errors,
+          errors: error_array,
           duration: duration
         )
       end
@@ -459,7 +477,7 @@ module Braintrust
       # @param test_case [Case] The test case
       # @param task [#call] The task
       # @param scorers [Array<Scorer>] The scorers
-      # @param errors [Array<String>] Error collection array
+      # @param errors [Queue] Thread-safe error collection queue
       # @param tracer [Tracer] OpenTelemetry tracer
       # @param parent_attr [String] Parent attribute (experiment_id:exp_id)
       def run_case(test_case, task, scorers, errors, tracer, parent_attr)
