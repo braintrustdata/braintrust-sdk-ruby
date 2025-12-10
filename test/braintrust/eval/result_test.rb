@@ -96,4 +96,178 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       )
     end
   end
+
+  def test_scorer_stats_computes_mean
+    # Test that scorer_stats computes mean from raw scores
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: [],
+      duration: 1.5,
+      scores: {
+        "exact_match" => [1.0, 0.0, 1.0, 1.0],  # mean = 0.75
+        "relevance" => [0.8, 0.9, 0.7]           # mean = 0.8
+      }
+    )
+
+    stats = result.scorer_stats
+
+    assert_equal 2, stats.size
+    assert_equal "exact_match", stats["exact_match"].name
+    assert_equal 0.75, stats["exact_match"].score_mean
+    assert_equal "relevance", stats["relevance"].name
+    assert_in_delta 0.8, stats["relevance"].score_mean, 0.001
+  end
+
+  def test_scorer_stats_empty_when_no_scores
+    # Test scorer_stats returns empty hash when no score data
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: [],
+      duration: 1.5
+    )
+
+    assert_equal({}, result.scorer_stats)
+  end
+
+  def test_summary_builds_from_scores
+    # Test that summary is lazily built from score data
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: [],
+      duration: 1.5,
+      scores: {
+        "exact_match" => [1.0, 0.0, 1.0]
+      }
+    )
+
+    summary = result.summary
+
+    assert_instance_of Braintrust::Eval::ExperimentSummary, summary
+    assert_equal "my-project", summary.project_name
+    assert_equal "my-experiment", summary.experiment_name
+    assert_equal "exp_123", summary.experiment_id
+    assert_equal "https://braintrust.dev/link", summary.experiment_url
+    assert_equal 1, summary.scores.size
+    assert_in_delta 0.6667, summary.scores["exact_match"].score_mean, 0.001
+    assert_equal 1.5, summary.duration
+    assert_equal 0, summary.error_count
+    assert_equal [], summary.errors
+  end
+
+  def test_summary_includes_errors
+    # Test that summary includes error information
+    errors = ["Task failed: Error 1", "Scorer failed: Error 2"]
+
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: errors,
+      duration: 1.5
+    )
+
+    summary = result.summary
+
+    assert_equal 2, summary.error_count
+    assert_equal errors, summary.errors
+  end
+
+  def test_summary_without_scores
+    # Test that summary is still created when no score data (for metadata display)
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: [],
+      duration: 1.5
+    )
+
+    summary = result.summary
+
+    assert_instance_of Braintrust::Eval::ExperimentSummary, summary
+    assert_equal "my-experiment", summary.experiment_name
+    assert_equal({}, summary.scores)
+  end
+
+  def test_to_pretty_with_scores
+    # Test to_pretty formats summary (without TTY colors)
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: [],
+      duration: 1.5,
+      scores: {
+        "exact_match" => [0.75, 0.75, 0.75]
+      }
+    )
+
+    output = result.to_pretty
+
+    assert_match(/Experiment summary/, output)
+    assert_match(/exact_match/, output)
+    assert_match(/75\.0%/, output)
+    assert_match(/View results for my-experiment/, output)
+  end
+
+  def test_to_pretty_without_scores
+    # Test to_pretty still works when no score data (shows metadata only)
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: [],
+      duration: 1.5
+    )
+
+    output = result.to_pretty
+
+    assert_match(/Experiment summary/, output)
+    assert_match(/Experiment:.*my-experiment/, output)
+    assert_match(/Project:.*my-project/, output)
+    assert_match(/ID:.*exp_123/, output)
+    assert_match(/Duration:.*1\.5s/, output)  # >= 1s shows as seconds
+    assert_match(/Errors:.*0/, output)
+    # Should not have Scores section
+    refute_match(/Scores/, output)
+  end
+
+  def test_to_pretty_with_errors
+    # Test to_pretty shows error section when there are errors
+    result = Braintrust::Eval::Result.new(
+      experiment_id: "exp_123",
+      experiment_name: "my-experiment",
+      project_id: "proj_456",
+      project_name: "my-project",
+      permalink: "https://braintrust.dev/link",
+      errors: ["Task failed for input 'bad': division by zero"],
+      duration: 1.5
+    )
+
+    output = result.to_pretty
+
+    assert_match(/Errors:.*1/, output)
+    assert_match(/Errors/, output)  # Errors section header
+    assert_match(/Task failed for input 'bad'/, output)
+  end
 end

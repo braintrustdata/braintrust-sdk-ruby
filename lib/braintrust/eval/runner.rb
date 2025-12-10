@@ -4,6 +4,7 @@ require_relative "case"
 require_relative "cases"
 require_relative "scorer"
 require_relative "result"
+require_relative "summary"
 require_relative "../internal/thread_pool"
 
 require "opentelemetry/sdk"
@@ -28,6 +29,9 @@ module Braintrust
         @tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
         @tracer = @tracer_provider.tracer("braintrust-eval")
         @parent_attr = "experiment_id:#{experiment_id}"
+
+        # Mutex for thread-safe score collection
+        @score_mutex = Mutex.new
       end
 
       # Run evaluation and return Result
@@ -38,6 +42,7 @@ module Braintrust
         start_time = Time.now
         normalized_cases = normalize_cases(cases)
         errors = Queue.new
+        @scores = {} # Reset for each run: { scorer_name => Array<Numeric> }
 
         if parallelism && parallelism > 1
           Internal::ThreadPool.each(normalized_cases, parallelism: parallelism) do |test_case|
@@ -65,7 +70,8 @@ module Braintrust
           project_name: project_name,
           permalink: permalink,
           errors: error_array,
-          duration: duration
+          duration: duration,
+          scores: @scores
         )
       end
 
@@ -150,9 +156,12 @@ module Braintrust
           scorers.each do |scorer|
             score_value = scorer.call(test_case.input, test_case.expected, output, test_case.metadata || {})
             scores[scorer.name] = score_value
+
+            # Collect raw score for summary (thread-safe)
+            collect_score(scorer.name, score_value)
           rescue => e
             # Record first error but continue processing other scorers
-            scorer_error ||= "Scorer '#{scorer.name}' failed: #{e.message}"
+            scorer_error ||= e
             record_span_error(score_span, e, "ScorerError")
           end
 
@@ -215,6 +224,17 @@ module Braintrust
       # @param value [Object] The value to JSON encode
       def set_json_attr(span, key, value)
         span.set_attribute(key, JSON.dump(value))
+      end
+
+      # Collect a single score value for summary calculation
+      # @param name [String] Scorer name
+      # @param value [Object] Score value (only Numeric values are collected)
+      def collect_score(name, value)
+        return unless value.is_a?(Numeric)
+
+        @score_mutex.synchronize do
+          (@scores[name] ||= []) << value
+        end
       end
     end
   end
