@@ -257,8 +257,7 @@ module Braintrust
       # Print result summary to stdout
       # @param result [Result] The evaluation result
       def print_result(result)
-        puts "=" * 60
-        puts result
+        puts result.to_pretty
       end
 
       # Validate required parameters
