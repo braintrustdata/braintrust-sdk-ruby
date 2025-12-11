@@ -43,8 +43,12 @@ module Braintrust
       # @param prompt_data [Hash, nil] Prompt configuration (prompt, options, etc.)
       # @param name [String, nil] Optional display name (defaults to slug)
       # @param description [String, nil] Optional description
+      # @param function_type [String, nil] Function type ("llm", "scorer", "task", "tool", or nil)
+      # @param function_schema [Hash, nil] JSON schema for function parameters and return type
+      #   @option function_schema [Hash] :parameters JSON schema for input parameters
+      #   @option function_schema [Hash] :returns JSON schema for return value
       # @return [Hash] Function metadata
-      def create(project_name:, slug:, function_data:, prompt_data: nil, name: nil, description: nil)
+      def create(project_name:, slug:, function_data:, prompt_data: nil, name: nil, description: nil, function_type: nil, function_schema: nil)
         # Look up project ID
         projects_result = http_get("/v1/project", {"project_name" => project_name})
         project = projects_result["objects"]&.first
@@ -59,6 +63,8 @@ module Braintrust
         }
         payload[:prompt_data] = prompt_data if prompt_data
         payload[:description] = description if description
+        payload[:function_type] = function_type if function_type
+        payload[:function_schema] = function_schema if function_schema
 
         http_post_json("/v1/function", payload)
       end

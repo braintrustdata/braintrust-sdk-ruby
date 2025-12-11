@@ -131,4 +131,87 @@ class Braintrust::API::FunctionsTest < Minitest::Test
       assert_instance_of Hash, result
     end
   end
+
+  def test_functions_create_with_function_type
+    VCR.use_cassette("functions/create_with_type") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-scorer-typed"
+
+      response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        function_type: "scorer",
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this: {{output}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "scorer", response["function_type"]
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_functions_create_with_function_schema
+    VCR.use_cassette("functions/create_with_schema") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-tool-with-schema"
+
+      schema = {
+        parameters: {
+          type: "object",
+          properties: {
+            query: {type: "string", description: "Search query"}
+          },
+          required: ["query"]
+        },
+        returns: {
+          type: "string",
+          description: "Search results"
+        }
+      }
+
+      response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        function_type: "tool",
+        function_schema: schema,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Search for: {{query}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "tool", response["function_type"]
+      assert response.key?("function_schema")
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
 end
