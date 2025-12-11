@@ -192,6 +192,33 @@ module TracingTestHelper
   def get_anthropic_key
     ENV["ANTHROPIC_API_KEY"] || "sk-ant-test-key-for-vcr"
   end
+
+  # Creates a State for integration tests with in-memory exporter
+  # This performs login (via VCR cassettes) but uses an in-memory span exporter
+  # instead of OTLP, so force_flush doesn't cause timeouts in tests.
+  # Use this for tests that need API access AND tracing with fast flush.
+  # @param options [Hash] Options to pass to Braintrust.init
+  # @return [Hash] { state:, tracer_provider:, exporter: }
+  def get_integration_test_state_with_memory_exporter(**options)
+    require "opentelemetry/sdk"
+
+    # Create in-memory exporter (no HTTP calls, instant flush)
+    exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
+
+    # Create a new TracerProvider for this test
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+
+    # Initialize state with in-memory exporter
+    state = Braintrust.init(
+      set_global: false,
+      blocking_login: true,
+      tracer_provider: tracer_provider,
+      exporter: exporter,
+      **options
+    )
+
+    {state: state, tracer_provider: tracer_provider, exporter: exporter}
+  end
 end
 
 # Include helper in all test cases

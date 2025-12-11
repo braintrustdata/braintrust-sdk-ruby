@@ -11,14 +11,14 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
   end
 
   def get_test_state_and_api
-    state = get_integration_test_state
-    api = Braintrust::API.new(state: state)
-    [state, api]
+    rig = get_integration_test_state_with_memory_exporter
+    api = Braintrust::API.new(state: rig[:state])
+    [rig, api]
   end
 
   def test_functions_task_returns_callable
     VCR.use_cassette("eval_functions/task_callable") do
-      state, api = get_test_state_and_api
+      rig, api = get_test_state_and_api
       # This test verifies that Functions.task returns a callable object
       # The callable should accept an input and invoke the remote function
       function_slug = "test-ruby-sdk-task-callable"
@@ -46,7 +46,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       task = Braintrust::Eval::Functions.task(
         project: @project_name,
         slug: function_slug,
-        state: state
+        state: rig[:state]
       )
 
       # Should be callable
@@ -56,7 +56,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
 
   def test_functions_task_invokes_remote
     VCR.use_cassette("eval_functions/task_invoke") do
-      state, api = get_test_state_and_api
+      rig, api = get_test_state_and_api
       # This test verifies that calling the task actually invokes the remote function
       function_slug = "test-ruby-sdk-task-invoke"
 
@@ -83,7 +83,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       task = Braintrust::Eval::Functions.task(
         project: @project_name,
         slug: function_slug,
-        state: state
+        state: rig[:state]
       )
 
       result = task.call("world")
@@ -96,7 +96,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
 
   def test_functions_scorer_returns_scorer
     VCR.use_cassette("eval_functions/scorer") do
-      state, api = get_test_state_and_api
+      rig, api = get_test_state_and_api
       # This test verifies that Functions.scorer returns a Scorer object
       function_slug = "test-ruby-sdk-scorer"
 
@@ -124,7 +124,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       scorer = Braintrust::Eval::Functions.scorer(
         project: @project_name,
         slug: function_slug,
-        state: state
+        state: rig[:state]
       )
 
       # Should be a Scorer instance
@@ -135,7 +135,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
 
   def test_use_remote_task_in_eval_run
     VCR.use_cassette("eval_functions/eval_run") do
-      state, api = get_test_state_and_api
+      rig, api = get_test_state_and_api
       # This test verifies that remote tasks can be used in Eval.run
       # This is the main use case: calling server-side prompts in evals
       function_slug = "test-ruby-sdk-eval-task"
@@ -163,7 +163,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       task = Braintrust::Eval::Functions.task(
         project: @project_name,
         slug: function_slug,
-        state: state
+        state: rig[:state]
       )
 
       # Use in Eval.run with a simple exact match scorer
@@ -181,7 +181,8 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
             output.to_s.include?(expected) ? 1.0 : 0.0
           end
         ],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -193,7 +194,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
 
   def test_use_remote_scorer_in_eval_run
     VCR.use_cassette("eval_functions/remote_scorer") do
-      state, api = get_test_state_and_api
+      rig, api = get_test_state_and_api
       # This test verifies that remote scorers can be used in Eval.run
       # This tests the "online scorer" functionality
       function_slug = "test-ruby-sdk-eval-scorer"
@@ -230,7 +231,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       scorer = Braintrust::Eval::Functions.scorer(
         project: @project_name,
         slug: function_slug,
-        state: state
+        state: rig[:state]
       )
 
       # Simple task that uppercases
@@ -246,7 +247,8 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 

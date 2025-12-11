@@ -16,7 +16,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_basic
     VCR.use_cassette("eval/run_basic") do
-      state = get_integration_test_state
+      rig = get_integration_test_state_with_memory_exporter
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
@@ -32,7 +32,8 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -45,7 +46,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_task_error
     VCR.use_cassette("eval/run_task_error") do
-      state = get_integration_test_state
+      rig = get_integration_test_state_with_memory_exporter
 
       task = ->(input) {
         raise "Task failed!" if input == "bad"
@@ -65,7 +66,8 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -77,7 +79,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_scorer_error
     VCR.use_cassette("eval/run_scorer_error") do
-      state = get_integration_test_state
+      rig = get_integration_test_state_with_memory_exporter
 
       task = ->(input) { input.upcase }
 
@@ -95,7 +97,8 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -149,7 +152,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_multiple_scorers
     VCR.use_cassette("eval/run_multiple_scorers") do
-      state = get_integration_test_state
+      rig = get_integration_test_state_with_memory_exporter
 
       task = ->(input) { input.upcase }
 
@@ -169,7 +172,8 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer1, scorer2],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -179,7 +183,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_callable_task
     VCR.use_cassette("eval/run_callable_task") do
-      state = get_integration_test_state
+      rig = get_integration_test_state_with_memory_exporter
 
       callable_task = Class.new do
         def call(input)
@@ -199,7 +203,8 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: callable_task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -238,7 +243,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_method_scorer
     VCR.use_cassette("eval/run_method_scorer") do
-      state = get_integration_test_state
+      rig = get_integration_test_state_with_memory_exporter
 
       task = ->(input) { input.upcase }
       # Use a lambda instead of nested method
@@ -252,7 +257,8 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [test_method_scorer],  # Pass lambda directly
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -304,11 +310,8 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_tracing
     VCR.use_cassette("eval/run_with_tracing") do
-      # Set up test rig for capturing spans (includes Braintrust processor)
-      rig = setup_otel_test_rig
-
-      # Initialize and login
-      state = get_integration_test_state
+      # Use eval test state which gives us both logged-in state and in-memory tracing
+      rig = get_integration_test_state_with_memory_exporter
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
@@ -319,15 +322,17 @@ class Braintrust::EvalTest < Minitest::Test
         cases: [{input: "hello", expected: "HELLO"}],
         task: task,
         scorers: [scorer],
-        state: state,
-        tracer_provider: rig.tracer_provider,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
       assert result.success?
 
       # Verify spans were created
-      spans = rig.drain
+      # force_flush is already called by Eval.run, so we just need to get the finished spans
+      rig[:tracer_provider].force_flush
+      spans = rig[:exporter].finished_spans
 
       # Should have: 1 eval span, 1 task span, 1 score span
       assert_equal 3, spans.length
@@ -367,8 +372,8 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as string (same project as experiment)
   def test_eval_run_with_dataset_string
     VCR.use_cassette("eval/dataset_string") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      rig = get_integration_test_state_with_memory_exporter
+      api = Braintrust::API.new(state: rig[:state])
 
       # Create a test dataset with records
       project_name = "ruby-sdk-test"
@@ -403,7 +408,8 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: dataset_name,  # String - should fetch from same project
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -417,8 +423,8 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as hash with name + project
   def test_eval_run_with_dataset_hash_name_project
     VCR.use_cassette("eval/dataset_hash_name_project") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      rig = get_integration_test_state_with_memory_exporter
+      api = Braintrust::API.new(state: rig[:state])
 
       # Create a test dataset
       project_name = "ruby-sdk-test"
@@ -446,7 +452,8 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: {name: dataset_name, project: project_name},
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -457,8 +464,8 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as hash with id
   def test_eval_run_with_dataset_hash_id
     VCR.use_cassette("eval/dataset_hash_id") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      rig = get_integration_test_state_with_memory_exporter
+      api = Braintrust::API.new(state: rig[:state])
 
       # Create a test dataset
       project_name = "ruby-sdk-test"
@@ -486,7 +493,8 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: {id: dataset_id},  # By ID only
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -497,8 +505,8 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset with limit option
   def test_eval_run_with_dataset_limit
     VCR.use_cassette("eval/dataset_limit") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      rig = get_integration_test_state_with_memory_exporter
+      api = Braintrust::API.new(state: rig[:state])
 
       # Create a test dataset with multiple records
       project_name = "ruby-sdk-test"
@@ -537,7 +545,8 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: {name: dataset_name, project: project_name, limit: 2},
         task: task,
         scorers: [scorer],
-        state: state,
+        state: rig[:state],
+        tracer_provider: rig[:tracer_provider],
         quiet: true
       )
 
@@ -548,27 +557,26 @@ class Braintrust::EvalTest < Minitest::Test
 
   # Test dataset integration: error when both dataset and cases provided
   def test_eval_run_with_both_dataset_and_cases_errors
-    VCR.use_cassette("eval/run_both_dataset_and_cases_error") do
-      state = get_integration_test_state
+    # This test doesn't actually need VCR since it fails before any API calls
+    state = get_unit_test_state
 
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
 
-      # Try to provide both dataset and cases - should raise error
-      error = assert_raises(ArgumentError) do
-        Braintrust::Eval.run(
-          project: "ruby-sdk-test",
-          experiment: "test-error",
-          dataset: "some-dataset",
-          cases: [{input: "test"}],
-          task: task,
-          scorers: [scorer],
-          state: state
-        )
-      end
-
-      assert_match(/mutually exclusive/i, error.message)
+    # Try to provide both dataset and cases - should raise error
+    error = assert_raises(ArgumentError) do
+      Braintrust::Eval.run(
+        project: "ruby-sdk-test",
+        experiment: "test-error",
+        dataset: "some-dataset",
+        cases: [{input: "test"}],
+        task: task,
+        scorers: [scorer],
+        state: state
+      )
     end
+
+    assert_match(/mutually exclusive/i, error.message)
   end
 
   # ============================================
@@ -749,5 +757,42 @@ class Braintrust::EvalTest < Minitest::Test
     )
     assert result.success?
     assert_equal %w[a b], order
+  end
+
+  # ============================================
+  # force_flush verification tests
+  # ============================================
+
+  def test_eval_run_calls_force_flush_before_fetching_comparison
+    VCR.use_cassette("eval/run_basic") do
+      rig = get_integration_test_state_with_memory_exporter
+      tracer_provider = rig[:tracer_provider]
+
+      # Track whether force_flush was called
+      force_flush_called = false
+      original_force_flush = tracer_provider.method(:force_flush)
+
+      # Use stub to wrap the original method and verify it's called
+      tracer_provider.stub(:force_flush, -> {
+        force_flush_called = true
+        original_force_flush.call
+      }) do
+        task = ->(input) { input.upcase }
+        scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+        Braintrust::Eval.run(
+          project: "ruby-sdk-test",
+          experiment: "test-ruby-sdk-basic",
+          cases: [{input: "hello", expected: "HELLO"}],
+          task: task,
+          scorers: [scorer],
+          state: rig[:state],
+          tracer_provider: tracer_provider,
+          quiet: true
+        )
+      end
+
+      assert force_flush_called, "Eval.run should call force_flush on tracer_provider before fetching comparison"
+    end
   end
 end
