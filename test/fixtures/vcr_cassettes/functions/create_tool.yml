@@ -1,0 +1,269 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '395'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-YWE5MGFhZTQtMmRhZi00ZThhLTk3ODYtZTk5NDkwNzI2OGI4''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com
+        d4tuoctqmanu0.cloudfront.net; font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com
+        cdn.jsdelivr.net d4tuoctqmanu0.cloudfront.net fonts.googleapis.com mintlify-assets.b-cdn.net
+        fonts.cdnfonts.com; object-src ''none''; base-uri ''self''; form-action ''self'';
+        frame-ancestors ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=16;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 11 Dec 2025 04:55:29 GMT
+      Etag:
+      - '"12n7ok4b5phaz"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=16"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Nonce:
+      - YWE5MGFhZTQtMmRhZi00ZThhLTk3ODYtZTk5NDkwNzI2OGI4
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - iad1::iad1::6k66j-1765428929315-bb500ef1b844
+    body:
+      encoding: UTF-8
+      string: '{"org_info":[{"id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"braintrustdata.com","api_url":"https://staging-api.braintrust.dev","git_metadata":{"fields":["commit","branch","tag","author_name","author_email","commit_message","commit_time","dirty"],"collect":"some"},"is_universal_api":true,"proxy_url":"https://staging-api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
+  recorded_at: Thu, 11 Dec 2025 04:55:29 GMT
+- request:
+    method: get
+    uri: https://staging-api.braintrust.dev/v1/project?project_name=ruby-sdk-test
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '250'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P10
+      - JFK52-P8
+      Date:
+      - Thu, 11 Dec 2025 04:55:29 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - a1416d41-19fa-4c52-af7e-c0d3a20417a4
+      X-Bt-Internal-Trace-Id:
+      - 693a4ec100000000724592849e469a88
+      X-Amz-Apigw-Id:
+      - VaE-UHV4IAMEmEw=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"fa-HrwmCajpdJfSgika/ZPujG7WfoY"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-693a4ec1-5a022bf829148bfa2c82b9c3;Parent=0cc7925f91925a82;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 50883ba97150fac6d0b034722524bd0a.cloudfront.net (CloudFront), 1.1 ded721d3aeecfb4f35d39da9e2d34066.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - J46Wwdwmqvrs2UrVFOUVxIZRynka-APe8lZK8T1JqwMRs2zvhm3d3A==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"objects":[{"id":"ac86d18e-af78-4caf-918d-b89ad108ec67","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"ruby-sdk-test","created":"2025-10-22T03:32:12.324Z","deleted_at":null,"user_id":"f2ddc4e6-a51a-4a60-9734-9af4ea05c6ef","settings":null}]}'
+  recorded_at: Thu, 11 Dec 2025 04:55:29 GMT
+- request:
+    method: post
+    uri: https://staging-api.braintrust.dev/v1/function
+    body:
+      encoding: UTF-8
+      string: '{"project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-tool-helper","name":"test-ruby-sdk-tool-helper","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"user","content":"Echo:
+        {{input}}"}]},"options":{"model":"gpt-4o-mini"}},"description":"A test tool
+        that echoes input","function_type":"tool","function_schema":{"parameters":{"type":"object","properties":{"input":{"type":"string"}}},"returns":{"type":"string"}}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '653'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P10
+      - JFK52-P8
+      Date:
+      - Thu, 11 Dec 2025 04:55:30 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - b884d995-0953-4fa0-bdf6-fe5c01505210
+      X-Bt-Internal-Trace-Id:
+      - 693a4ec10000000002355e7e5957e641
+      X-Amz-Apigw-Id:
+      - VaE-XGcPoAMERFQ=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"28d-1DGRK2bqGP9mHBdYZI9WpnBp5dc"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-693a4ec1-7f376552059a0c5b7b043096;Parent=7b9004a2f7c668a5;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 417a202d3041fbbec8f1a62f5241641e.cloudfront.net (CloudFront), 1.1 94ad62d30119f960dbd892be99684e02.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - zZtSjF_ifwHGO1Cr-1S9dl8KC8irF5diFMFLUl6YLsTW4aSnbXVjlw==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"log_id":"p","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-tool-helper","name":"test-ruby-sdk-tool-helper","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"user","content":"Echo:
+        {{input}}"}]},"options":{"model":"gpt-4o-mini"}},"description":"A test tool
+        that echoes input","function_type":"tool","function_schema":{"parameters":{"type":"object","properties":{"input":{"type":"string"}}},"returns":{"type":"string"}},"id":"7872a93e-3e19-4250-811e-3bc888ed5323","created":"2025-12-11T04:55:30.037Z","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","_xact_id":"1000196291403334775"}'
+  recorded_at: Thu, 11 Dec 2025 04:55:30 GMT
+- request:
+    method: delete
+    uri: https://staging-api.braintrust.dev/v1/function/7872a93e-3e19-4250-811e-3bc888ed5323
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '285'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - JFK50-P10
+      - JFK52-P8
+      Date:
+      - Thu, 11 Dec 2025 04:55:30 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 302fcabc-a98c-4a73-a371-7d5376ace61a
+      X-Bt-Internal-Trace-Id:
+      - 693a4ec2000000006d155d5ba6cf1126
+      X-Amz-Apigw-Id:
+      - VaE-dGGYIAMEqlQ=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"11d-Eh4ubzNnNsnEzH/VIP2WIP6FR80"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-693a4ec2-056210884974c9576c9439b1;Parent=1f158ccaeb9f026b;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 2bfd6688fc2f119397b69ac2ba4187b8.cloudfront.net (CloudFront), 1.1 a9dc097bbaf22a663c80eb85450d7cce.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - iePPSubfoEfUovwAGW4tYpxDs71-IRxfEaE41UayYMzNL3fnmWgQSQ==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"log_id":"p","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-tool-helper","id":"7872a93e-3e19-4250-811e-3bc888ed5323","created":"2025-12-11T04:55:30.683Z","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","_object_delete":true,"_xact_id":"1000196291403335077"}'
+  recorded_at: Thu, 11 Dec 2025 04:55:30 GMT
+recorded_with: VCR 6.3.1
