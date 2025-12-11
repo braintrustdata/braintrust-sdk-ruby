@@ -131,4 +131,251 @@ class Braintrust::API::FunctionsTest < Minitest::Test
       assert_instance_of Hash, result
     end
   end
+
+  def test_functions_create_with_function_type
+    VCR.use_cassette("functions/create_with_type") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-scorer-typed"
+
+      response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        function_type: "scorer",
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this: {{output}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "scorer", response["function_type"]
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_functions_create_with_function_schema
+    VCR.use_cassette("functions/create_with_schema") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-tool-with-schema"
+
+      schema = {
+        parameters: {
+          type: "object",
+          properties: {
+            query: {type: "string", description: "Search query"}
+          },
+          required: ["query"]
+        },
+        returns: {
+          type: "string",
+          description: "Search results"
+        }
+      }
+
+      response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        function_type: "tool",
+        function_schema: schema,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Search for: {{query}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "tool", response["function_type"]
+      assert response.key?("function_schema")
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_functions_create_scorer_helper
+    VCR.use_cassette("functions/create_scorer") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-scorer-helper"
+
+      response = api.functions.create_scorer(
+        project_name: @project_name,
+        slug: function_slug,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this output: {{output}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "scorer", response["function_type"]
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_functions_create_tool_helper
+    VCR.use_cassette("functions/create_tool") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-tool-helper"
+
+      response = api.functions.create_tool(
+        project_name: @project_name,
+        slug: function_slug,
+        description: "A test tool that echoes input",
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Echo: {{input}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        },
+        function_schema: {
+          parameters: {
+            type: "object",
+            properties: {
+              input: {type: "string"}
+            }
+          },
+          returns: {type: "string"}
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "tool", response["function_type"]
+      assert_equal "A test tool that echoes input", response["description"]
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_functions_create_task_helper
+    VCR.use_cassette("functions/create_task") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-task-helper"
+
+      response = api.functions.create_task(
+        project_name: @project_name,
+        slug: function_slug,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Hello {{name}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "task", response["function_type"]
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_functions_create_llm_helper
+    VCR.use_cassette("functions/create_llm") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-llm-helper"
+
+      response = api.functions.create_llm(
+        project_name: @project_name,
+        slug: function_slug,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Translate to French: {{text}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      assert_instance_of Hash, response
+      assert response.key?("id")
+      assert_equal function_slug, response["slug"]
+      assert_equal "llm", response["function_type"]
+
+      # Clean up
+      api.functions.delete(id: response["id"])
+    end
+  end
+
+  def test_helper_validates_prompt_data_is_hash
+    VCR.use_cassette("functions/list") do
+      api = get_test_api
+
+      assert_raises(ArgumentError) do
+        api.functions.create_scorer(
+          project_name: @project_name,
+          slug: "test-invalid",
+          prompt_data: "not a hash"
+        )
+      end
+    end
+  end
+
+  def test_helper_validates_prompt_data_has_prompt_key
+    VCR.use_cassette("functions/list") do
+      api = get_test_api
+
+      assert_raises(ArgumentError) do
+        api.functions.create_scorer(
+          project_name: @project_name,
+          slug: "test-invalid",
+          prompt_data: {options: {model: "gpt-4o-mini"}}
+        )
+      end
+    end
+  end
 end

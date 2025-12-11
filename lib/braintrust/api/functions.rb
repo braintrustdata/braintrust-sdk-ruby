@@ -10,6 +10,12 @@ module Braintrust
     # Functions API namespace
     # Provides methods for creating, invoking, and managing remote functions (prompts)
     class Functions
+      TYPE_LLM = "llm"
+      TYPE_PROMPT = "prompt"
+      TYPE_SCORER = "scorer"
+      TYPE_TASK = "task"
+      TYPE_TOOL = "tool"
+
       def initialize(api)
         @api = api
         @state = api.state
@@ -43,8 +49,12 @@ module Braintrust
       # @param prompt_data [Hash, nil] Prompt configuration (prompt, options, etc.)
       # @param name [String, nil] Optional display name (defaults to slug)
       # @param description [String, nil] Optional description
+      # @param function_type [String, nil] Function type ("llm", "scorer", "task", "tool", or nil)
+      # @param function_schema [Hash, nil] JSON schema for function parameters and return type
+      #   @option function_schema [Hash] :parameters JSON schema for input parameters
+      #   @option function_schema [Hash] :returns JSON schema for return value
       # @return [Hash] Function metadata
-      def create(project_name:, slug:, function_data:, prompt_data: nil, name: nil, description: nil)
+      def create(project_name:, slug:, function_data:, prompt_data: nil, name: nil, description: nil, function_type: nil, function_schema: nil)
         # Look up project ID
         projects_result = http_get("/v1/project", {"project_name" => project_name})
         project = projects_result["objects"]&.first
@@ -59,6 +69,8 @@ module Braintrust
         }
         payload[:prompt_data] = prompt_data if prompt_data
         payload[:description] = description if description
+        payload[:function_type] = function_type if function_type
+        payload[:function_schema] = function_schema if function_schema
 
         http_post_json("/v1/function", payload)
       end
@@ -81,7 +93,109 @@ module Braintrust
         http_delete("/v1/function/#{id}")
       end
 
+      # Create a tool function
+      # Tools are functions that LLMs can call during execution.
+      # @param project_name [String] Project name
+      # @param slug [String] Function slug (URL-friendly identifier)
+      # @param prompt_data [Hash] Prompt configuration (prompt, options, etc.)
+      # @param name [String, nil] Optional display name (defaults to slug)
+      # @param description [String, nil] Description of what the tool does (recommended for LLM understanding)
+      # @param function_schema [Hash, nil] JSON schema defining the tool's parameters and return type
+      # @return [Hash] Function metadata
+      def create_tool(project_name:, slug:, prompt_data:, name: nil, description: nil, function_schema: nil)
+        validate_prompt_data!(prompt_data)
+        create(
+          project_name: project_name,
+          slug: slug,
+          function_data: {type: TYPE_PROMPT},
+          prompt_data: prompt_data,
+          name: name,
+          description: description,
+          function_type: TYPE_TOOL,
+          function_schema: function_schema
+        )
+      end
+
+      # Create a scorer function
+      # Scorers evaluate task outputs and return scores (typically 0-1).
+      # @param project_name [String] Project name
+      # @param slug [String] Function slug (URL-friendly identifier)
+      # @param prompt_data [Hash] Prompt configuration for the scoring logic
+      # @param name [String, nil] Optional display name (defaults to slug)
+      # @param description [String, nil] Optional description
+      # @param function_schema [Hash, nil] JSON schema for parameters and return type
+      # @return [Hash] Function metadata
+      def create_scorer(project_name:, slug:, prompt_data:, name: nil, description: nil, function_schema: nil)
+        validate_prompt_data!(prompt_data)
+        create(
+          project_name: project_name,
+          slug: slug,
+          function_data: {type: TYPE_PROMPT},
+          prompt_data: prompt_data,
+          name: name,
+          description: description,
+          function_type: TYPE_SCORER,
+          function_schema: function_schema
+        )
+      end
+
+      # Create a task function
+      # Tasks are general-purpose prompt functions.
+      # @param project_name [String] Project name
+      # @param slug [String] Function slug (URL-friendly identifier)
+      # @param prompt_data [Hash] Prompt configuration (prompt, options, etc.)
+      # @param name [String, nil] Optional display name (defaults to slug)
+      # @param description [String, nil] Optional description
+      # @param function_schema [Hash, nil] JSON schema for parameters and return type
+      # @return [Hash] Function metadata
+      def create_task(project_name:, slug:, prompt_data:, name: nil, description: nil, function_schema: nil)
+        validate_prompt_data!(prompt_data)
+        create(
+          project_name: project_name,
+          slug: slug,
+          function_data: {type: TYPE_PROMPT},
+          prompt_data: prompt_data,
+          name: name,
+          description: description,
+          function_type: TYPE_TASK,
+          function_schema: function_schema
+        )
+      end
+
+      # Create an LLM function
+      # LLM functions are prompt-based functions categorized as LLM type.
+      # @param project_name [String] Project name
+      # @param slug [String] Function slug (URL-friendly identifier)
+      # @param prompt_data [Hash] Prompt configuration (prompt, options, etc.)
+      # @param name [String, nil] Optional display name (defaults to slug)
+      # @param description [String, nil] Optional description
+      # @param function_schema [Hash, nil] JSON schema for parameters and return type
+      # @return [Hash] Function metadata
+      def create_llm(project_name:, slug:, prompt_data:, name: nil, description: nil, function_schema: nil)
+        validate_prompt_data!(prompt_data)
+        create(
+          project_name: project_name,
+          slug: slug,
+          function_data: {type: TYPE_PROMPT},
+          prompt_data: prompt_data,
+          name: name,
+          description: description,
+          function_type: TYPE_LLM,
+          function_schema: function_schema
+        )
+      end
+
       private
+
+      # Validate prompt_data structure
+      # @param prompt_data [Hash] The prompt data to validate
+      # @raise [ArgumentError] If prompt_data is invalid
+      def validate_prompt_data!(prompt_data)
+        raise ArgumentError, "prompt_data must be a Hash" unless prompt_data.is_a?(Hash)
+
+        has_prompt = prompt_data.key?(:prompt) || prompt_data.key?(TYPE_PROMPT)
+        raise ArgumentError, "prompt_data must contain a :prompt key" unless has_prompt
+      end
 
       # Core HTTP request method with logging
       # @param method [Symbol] :get, :post, or :delete
