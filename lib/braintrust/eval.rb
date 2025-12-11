@@ -2,6 +2,8 @@
 
 require_relative "eval/scorer"
 require_relative "eval/runner"
+require_relative "eval/summary"
+require_relative "eval/result"
 require_relative "internal/experiments"
 
 require "opentelemetry/sdk"
@@ -199,13 +201,15 @@ module Braintrust
       # @param metadata [Hash] Optional experiment metadata
       # @param update [Boolean] If true, allow reusing existing experiment (default: false)
       # @param quiet [Boolean] If true, suppress result output (default: false)
+      # @param send_logs [Boolean] If true (default), create experiment on server and send span data.
+      #   If false, run evaluation locally without sending data to Braintrust.
       # @param state [State, nil] Braintrust state (defaults to global state)
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider (defaults to global)
       # @return [Result]
       def run(project:, experiment:, task:, scorers:,
         cases: nil, dataset: nil,
         parallelism: 1, tags: nil, metadata: nil, update: false, quiet: false,
-        state: nil, tracer_provider: nil)
+        send_logs: true, state: nil, tracer_provider: nil)
         # Validate required parameters
         validate_params!(project: project, experiment: experiment,
           cases: cases, dataset: dataset, task: task, scorers: scorers)
@@ -223,17 +227,48 @@ module Braintrust
           cases = resolve_dataset(dataset, project, state)
         end
 
+        if send_logs
+          run_with_server(
+            project: project, experiment: experiment, task: task, scorers: scorers,
+            cases: cases, parallelism: parallelism, tags: tags, metadata: metadata,
+            update: update, quiet: quiet, state: state, tracer_provider: tracer_provider
+          )
+        else
+          run_local(
+            project: project, experiment: experiment, task: task, scorers: scorers,
+            cases: cases, parallelism: parallelism, quiet: quiet, state: state
+          )
+        end
+      end
+
+      private
+
+      # Print result summary to stdout
+      # @param result [Result] The evaluation result
+      def print_result(result)
+        puts result.to_pretty
+      end
+
+      # Run evaluation with server integration (send_logs: true)
+      # Creates experiment, sends span data, fetches comparison summary
+      def run_with_server(project:, experiment:, task:, scorers:, cases:,
+        parallelism:, tags:, metadata:, update:, quiet:, state:, tracer_provider:)
+        require_relative "api"
+
         # Register project and experiment via API
-        result = Internal::Experiments.get_or_create(
+        reg_result = Internal::Experiments.get_or_create(
           experiment, project, state: state,
           tags: tags, metadata: metadata, update: update
         )
 
-        experiment_id = result[:experiment_id]
-        project_id = result[:project_id]
-        project_name = result[:project_name]
+        experiment_id = reg_result[:experiment_id]
+        project_id = reg_result[:project_id]
+        project_name = reg_result[:project_name]
 
-        # Instantiate Runner and run evaluation
+        # Generate permalink
+        permalink = "#{state.app_url}/app/#{state.org_name}/object?object_type=experiment&object_id=#{experiment_id}"
+
+        # Instantiate Runner and run evaluation with tracing
         runner = Runner.new(
           experiment_id: experiment_id,
           experiment_name: experiment,
@@ -244,20 +279,163 @@ module Braintrust
           state: state,
           tracer_provider: tracer_provider
         )
-        result = runner.run(cases, parallelism: parallelism)
 
-        # Print result summary unless quiet
+        start_time = Time.now
+        run_result = runner.run(cases, parallelism: parallelism)
+        duration = Time.now - start_time
+
+        # Fetch comparison summary from API
+        # Note: If spans haven't been flushed yet, the API may return empty scores.
+        # In that case, fetch_comparison_summary falls back to local raw_scores.
+        summary = fetch_comparison_summary(
+          experiment_id: experiment_id,
+          experiment_name: experiment,
+          project_name: project_name,
+          permalink: permalink,
+          duration: duration,
+          errors: run_result.errors,
+          raw_scores: run_result.scores,
+          state: state
+        )
+
+        # Create result with summary
+        result = Result.new(
+          experiment_id: experiment_id,
+          experiment_name: experiment,
+          project_id: project_id,
+          project_name: project_name,
+          permalink: permalink,
+          errors: run_result.errors,
+          duration: duration,
+          scores: run_result.scores,
+          summary: summary
+        )
+
         print_result(result) unless quiet
-
         result
       end
 
-      private
+      # Run evaluation locally without server (send_logs: false)
+      # No experiment created, no span data sent, local summary only
+      def run_local(project:, experiment:, task:, scorers:, cases:,
+        parallelism:, quiet:, state:)
+        # Create a no-op tracer provider that doesn't send data
+        no_op_tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
-      # Print result summary to stdout
-      # @param result [Result] The evaluation result
-      def print_result(result)
-        puts result.to_pretty
+        # Instantiate Runner with no-op tracer (no data sent)
+        runner = Runner.new(
+          experiment_id: nil,
+          experiment_name: experiment,
+          project_id: nil,
+          project_name: project,
+          task: task,
+          scorers: scorers,
+          state: state,
+          tracer_provider: no_op_tracer_provider
+        )
+
+        start_time = Time.now
+        run_result = runner.run(cases, parallelism: parallelism)
+        duration = Time.now - start_time
+
+        # Build local summary from raw scores
+        summary = ExperimentSummary.from_raw_scores(
+          run_result.scores,
+          {
+            project_name: project,
+            experiment_name: experiment,
+            experiment_id: nil,
+            experiment_url: nil,
+            duration: duration,
+            error_count: run_result.errors.length,
+            errors: run_result.errors
+          }
+        )
+
+        # Create result with local summary
+        result = Result.new(
+          experiment_id: nil,
+          experiment_name: experiment,
+          project_id: nil,
+          project_name: project,
+          permalink: nil,
+          errors: run_result.errors,
+          duration: duration,
+          scores: run_result.scores,
+          summary: summary
+        )
+
+        print_result(result) unless quiet
+        result
+      end
+
+      # Fetch comparison summary from API, falling back to local on failure or empty response
+      def fetch_comparison_summary(experiment_id:, experiment_name:, project_name:,
+        permalink:, duration:, errors:, raw_scores:, state:)
+        api = API.new(state: state)
+        local_metadata = {
+          project_name: project_name,
+          experiment_name: experiment_name,
+          experiment_id: experiment_id,
+          experiment_url: permalink,
+          duration: duration,
+          error_count: errors.length,
+          errors: errors
+        }
+
+        begin
+          api_response = api.experiments.comparison(experiment_id: experiment_id)
+
+          # If API returned empty scores, fall back to local data
+          if api_response["scores"].nil? || api_response["scores"].empty?
+            Log.debug("API returned no scores, using local summary")
+            return ExperimentSummary.from_raw_scores(raw_scores, local_metadata)
+          end
+
+          build_server_summary(api_response, local_metadata)
+        rescue => e
+          Log.warn("Failed to fetch comparison summary: #{e.message}. Falling back to local summary.")
+          ExperimentSummary.from_raw_scores(raw_scores, local_metadata)
+        end
+      end
+
+      # Build ExperimentSummary from API response
+      def build_server_summary(api_response, metadata)
+        # Transform API scores into ScoreSummary objects
+        scores = (api_response["scores"] || {}).map do |name, data|
+          [name, ScoreSummary.new(
+            name: name,
+            score: data["score"],
+            diff: data["diff"],
+            improvements: data["improvements"],
+            regressions: data["regressions"]
+          )]
+        end.to_h
+
+        # Transform API metrics into MetricSummary objects
+        metrics = (api_response["metrics"] || {}).map do |name, data|
+          [name, MetricSummary.new(
+            name: name,
+            metric: data["metric"],
+            unit: data["unit"] || "",
+            diff: data["diff"]
+          )]
+        end.to_h
+
+        # Build comparison info if present
+        comparison = if api_response["comparisonExperimentName"]
+          ComparisonInfo.new(
+            baseline_experiment_id: api_response["comparisonExperimentId"],
+            baseline_experiment_name: api_response["comparisonExperimentName"]
+          )
+        end
+
+        ExperimentSummary.new(
+          scores: scores,
+          metrics: metrics.empty? ? nil : metrics,
+          comparison: comparison,
+          **metadata
+        )
       end
 
       # Validate required parameters

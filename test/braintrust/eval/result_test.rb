@@ -97,8 +97,8 @@ class Braintrust::Eval::ResultTest < Minitest::Test
     end
   end
 
-  def test_scorer_stats_computes_mean
-    # Test that scorer_stats computes mean from raw scores
+  def test_summary_scores_computes_mean
+    # Test that summary scores computes mean from raw scores
     result = Braintrust::Eval::Result.new(
       experiment_id: "exp_123",
       experiment_name: "my-experiment",
@@ -113,17 +113,17 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       }
     )
 
-    stats = result.scorer_stats
+    scores = result.summary.scores
 
-    assert_equal 2, stats.size
-    assert_equal "exact_match", stats["exact_match"].name
-    assert_equal 0.75, stats["exact_match"].score_mean
-    assert_equal "relevance", stats["relevance"].name
-    assert_in_delta 0.8, stats["relevance"].score_mean, 0.001
+    assert_equal 2, scores.size
+    assert_equal "exact_match", scores["exact_match"].name
+    assert_equal 0.75, scores["exact_match"].score
+    assert_equal "relevance", scores["relevance"].name
+    assert_in_delta 0.8, scores["relevance"].score, 0.001
   end
 
-  def test_scorer_stats_empty_when_no_scores
-    # Test scorer_stats returns empty hash when no score data
+  def test_summary_scores_empty_when_no_scores
+    # Test summary.scores returns empty hash when no score data
     result = Braintrust::Eval::Result.new(
       experiment_id: "exp_123",
       experiment_name: "my-experiment",
@@ -134,7 +134,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
       duration: 1.5
     )
 
-    assert_equal({}, result.scorer_stats)
+    assert_equal({}, result.summary.scores)
   end
 
   def test_summary_builds_from_scores
@@ -160,7 +160,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
     assert_equal "exp_123", summary.experiment_id
     assert_equal "https://braintrust.dev/link", summary.experiment_url
     assert_equal 1, summary.scores.size
-    assert_in_delta 0.6667, summary.scores["exact_match"].score_mean, 0.001
+    assert_in_delta 0.6667, summary.scores["exact_match"].score, 0.001
     assert_equal 1.5, summary.duration
     assert_equal 0, summary.error_count
     assert_equal [], summary.errors
@@ -229,7 +229,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
   end
 
   def test_to_pretty_without_scores
-    # Test to_pretty still works when no score data (shows metadata only)
+    # Test to_pretty still works when no score data (shows link only)
     result = Braintrust::Eval::Result.new(
       experiment_id: "exp_123",
       experiment_name: "my-experiment",
@@ -243,11 +243,7 @@ class Braintrust::Eval::ResultTest < Minitest::Test
     output = result.to_pretty
 
     assert_match(/Experiment summary/, output)
-    assert_match(/Experiment:.*my-experiment/, output)
-    assert_match(/Project:.*my-project/, output)
-    assert_match(/ID:.*exp_123/, output)
-    assert_match(/Duration:.*1\.5s/, output)  # >= 1s shows as seconds
-    assert_match(/Errors:.*0/, output)
+    assert_match(/View results for my-experiment/, output)
     # Should not have Scores section
     refute_match(/Scores/, output)
   end
@@ -266,7 +262,6 @@ class Braintrust::Eval::ResultTest < Minitest::Test
 
     output = result.to_pretty
 
-    assert_match(/Errors:.*1/, output)
     assert_match(/Errors/, output)  # Errors section header
     assert_match(/Task failed for input 'bad'/, output)
   end
