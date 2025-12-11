@@ -10,6 +10,12 @@ module Braintrust
     # Functions API namespace
     # Provides methods for creating, invoking, and managing remote functions (prompts)
     class Functions
+      TYPE_LLM = "llm"
+      TYPE_PROMPT = "prompt"
+      TYPE_SCORER = "scorer"
+      TYPE_TASK = "task"
+      TYPE_TOOL = "tool"
+
       def initialize(api)
         @api = api
         @state = api.state
@@ -101,11 +107,11 @@ module Braintrust
         create(
           project_name: project_name,
           slug: slug,
-          function_data: {type: "prompt"},
+          function_data: {type: TYPE_PROMPT},
           prompt_data: prompt_data,
           name: name,
           description: description,
-          function_type: "tool",
+          function_type: TYPE_TOOL,
           function_schema: function_schema
         )
       end
@@ -124,11 +130,11 @@ module Braintrust
         create(
           project_name: project_name,
           slug: slug,
-          function_data: {type: "prompt"},
+          function_data: {type: TYPE_PROMPT},
           prompt_data: prompt_data,
           name: name,
           description: description,
-          function_type: "scorer",
+          function_type: TYPE_SCORER,
           function_schema: function_schema
         )
       end
@@ -147,11 +153,11 @@ module Braintrust
         create(
           project_name: project_name,
           slug: slug,
-          function_data: {type: "prompt"},
+          function_data: {type: TYPE_PROMPT},
           prompt_data: prompt_data,
           name: name,
           description: description,
-          function_type: "task",
+          function_type: TYPE_TASK,
           function_schema: function_schema
         )
       end
@@ -170,11 +176,11 @@ module Braintrust
         create(
           project_name: project_name,
           slug: slug,
-          function_data: {type: "prompt"},
+          function_data: {type: TYPE_PROMPT},
           prompt_data: prompt_data,
           name: name,
           description: description,
-          function_type: "llm",
+          function_type: TYPE_LLM,
           function_schema: function_schema
         )
       end
@@ -187,7 +193,7 @@ module Braintrust
       def validate_prompt_data!(prompt_data)
         raise ArgumentError, "prompt_data must be a Hash" unless prompt_data.is_a?(Hash)
 
-        has_prompt = prompt_data.key?(:prompt) || prompt_data.key?("prompt")
+        has_prompt = prompt_data.key?(:prompt) || prompt_data.key?(TYPE_PROMPT)
         raise ArgumentError, "prompt_data must contain a :prompt key" unless has_prompt
       end
 
