@@ -284,9 +284,12 @@ module Braintrust
         run_result = runner.run(cases, parallelism: parallelism)
         duration = Time.now - start_time
 
+        # Flush spans before fetching comparison data from API
+        # This ensures the server has received all span data before we query for results
+        actual_tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
+        actual_tracer_provider.force_flush if actual_tracer_provider.respond_to?(:force_flush)
+
         # Fetch comparison summary from API
-        # Note: If spans haven't been flushed yet, the API may return empty scores.
-        # In that case, fetch_comparison_summary falls back to local raw_scores.
         summary = fetch_comparison_summary(
           experiment_id: experiment_id,
           experiment_name: experiment,
