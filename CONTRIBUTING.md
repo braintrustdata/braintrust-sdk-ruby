@@ -4,6 +4,8 @@ Thanks for contributing! Follow TDD practices: write tests first, implement mini
 
 ## Quick Setup
 
+### Option 1: Local Development
+
 ```bash
 # Clone repo
 git clone git@github.com:braintrustdata/braintrust-sdk-ruby.git
@@ -19,8 +21,40 @@ curl https://mise.run | sh
 # Install Ruby + tools (also runs bundle install)
 mise install
 
+# Install appraisals (for running examples)
+bundle exec appraisal install
+
 # Copy .env and add API keys
 cp .env.example .env
+
+# Verify setup
+rake
+```
+
+### Option 2: Docker Container
+
+Use the dev container if you prefer not to install Ruby tooling on your host machine. Your IDE edits files on the host; all tools run in the container.
+
+```bash
+# Clone repo
+git clone git@github.com:braintrustdata/braintrust-sdk-ruby.git
+cd braintrust-sdk-ruby
+
+# Copy .env and add API keys
+cp .env.example .env
+
+# Enter interactive shell (first run builds the image)
+docker compose run --rm -it dev
+```
+
+Once in the dev container, finish setup (same as above):
+
+```bash
+# Install Ruby + tools (also runs bundle install)
+mise install
+
+# Install appraisals (for running examples)
+bundle exec appraisal install
 
 # Verify setup
 rake
