@@ -1,0 +1,15 @@
+services:
+  dev:
+    build: .
+    volumes:
+      - .:/app
+      - dev-mise-data:/root/.local/share/mise
+      - dev-bundle-cache:/usr/local/bundle
+    working_dir: /app
+    environment:
+      - BUNDLE_PATH=/usr/local/bundle
+      - MISE_TRUSTED_CONFIG_PATHS=/app
+
+volumes:
+  dev-mise-data:
+  dev-bundle-cache:
