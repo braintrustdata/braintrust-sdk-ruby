@@ -79,65 +79,145 @@ All of our common dev tasks are in rake.
 rake -T 
 ```
 
+We use VCR for making http tests fast. You can run tests with these enabled,
+off, etc. If you add new tests you'll need to record new cassettes. See this
+for more details.
+
+```bash
+rake -T test:vcr
+```
+
 ### Adding new integrations for AI Libraries
 
-To add instrumentation support for a new AI library, follow these steps:
 
-#### 1. Define the Integration
+To add instrumentation support for a new library, use the integration generator:
 
-Create a new file in `lib/braintrust/contrib/`:
+```bash
+rake contrib:generate NAME=trustybrain_llm AUTO_REGISTER=true
+```
+
+This will create the integration structure and optionally register it. You can also specify additional options:
+
+```bash
+rake contrib:generate NAME=trustybrain_llm \
+  GEM_NAMES=trustybrain_llm,trustybrain \
+  REQUIRE_PATHS=trustybrain \
+  MIN_VERSION=1.0.0 \
+  MAX_VERSION=2.0.0 \
+  AUTO_REGISTER=true
+```
+
+#### Manual Setup
+
+If you prefer to create the integration manually, follow these steps:
+
+##### 1. Create the integration directory structure
+
+```bash
+mkdir -p lib/braintrust/contrib/trustybrain_llm
+mkdir -p test/braintrust/contrib/trustybrain_llm
+```
+
+##### 2. Define the integration
+
+Create `lib/braintrust/contrib/trustybrain_llm/integration.rb`:
 
 ```ruby
-# lib/braintrust/contrib/trustybrain_llm.rb
-module Braintrust::Contrib
-  class TrustybrainLLM
-    include Integration
+# frozen_string_literal: true
 
-    def self.integration_name
-      :trustybrain_llm
-    end
+require_relative "../integration"
 
-    def self.gem_names
-      ["trustybrain_llm"]
-    end
+module Braintrust
+  module Contrib
+    module TrustybrainLLM
+      class Integration
+        include Braintrust::Contrib::Integration
 
-    def self.patcher
-      TrustybrainLLMPatcher
-    end
-  end
+        def self.integration_name
+          :trustybrain_llm
+        end
 
-  class TrustybrainLLMPatcher < Patcher
-    def self.perform_patch(context)
-      # Add your instrumentation here
-      # context.tracer_provider gives you access to the tracer
+        def self.gem_names
+          ["trustybrain_llm"]
+        end
+
+        def self.loaded?
+          defined?(::TrustybrainLLM::Client) ? true : false
+        end
+
+        def self.patchers
+          require_relative "patcher"
+          [Patcher]
+        end
+      end
     end
   end
 end
 ```
 
-#### 2. Register It
+##### 3. Create a patcher
+
+Create `lib/braintrust/contrib/trustybrain_llm/patcher.rb`:
+
+```ruby
+# frozen_string_literal: true
+
+require_relative "../patcher"
+
+module Braintrust
+  module Contrib
+    module TrustybrainLLM
+      class Patcher < Braintrust::Contrib::Patcher
+        class << self
+          def applicable?
+            defined?(::TrustybrainLLM::Client)
+          end
+
+          def perform_patch(**options)
+            ::TrustybrainLLM::Client.prepend(Instrumentation)
+          end
+        end
+
+        module Instrumentation
+          def chat(*args, **kwargs, &block)
+            Braintrust::Contrib.tracer_for(self).in_span("trustybrain_llm.chat") do
+              super
+            end
+          end
+        end
+      end
+    end
+  end
+end
+```
+
+##### 4. Register it
 
 Add to `lib/braintrust/contrib.rb`:
 
 ```ruby
-require_relative "contrib/trustybrain_llm"
+require_relative "contrib/trustybrain_llm/integration"
 
 # At the bottom:
-Contrib::TrustybrainLLM.register!
+Contrib::TrustybrainLLM::Integration.register!
 ```
 
-#### 3. Write Tests
+##### 5. Add tests
 
-Create `test/braintrust/contrib/trustybrain_llm_test.rb`:
+Create test files in `test/braintrust/contrib/trustybrain_llm/`:
 
 ```ruby
+# test/braintrust/contrib/trustybrain_llm/integration_test.rb
 require "test_helper"
 
-class Braintrust::Contrib::TrustybrainLLMTest < Minitest::Test
+class Braintrust::Contrib::TrustybrainLLM::IntegrationTest < Minitest::Test
   def test_integration_basics
-    assert_equal :trustybrain_llm, TrustybrainLLM.integration_name
-    assert_equal ["trustybrain_llm"], TrustybrainLLM.gem_names
+    integration = Braintrust::Contrib::TrustybrainLLM::Integration
+    assert_equal :trustybrain_llm, integration.integration_name
+    assert_equal ["trustybrain_llm"], integration.gem_names
   end
+
+  # TODO: Add tests for patchers, availability, compatibility, and instrumentation
 end
 ```
 
@@ -177,4 +257,3 @@ mise use ruby@3.4
 ruby --version  # => 3.4.x
 bundle exec rake test
 ```
-
