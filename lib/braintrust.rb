@@ -7,6 +7,7 @@ require_relative "braintrust/trace"
 require_relative "braintrust/api"
 require_relative "braintrust/internal/experiments"
 require_relative "braintrust/eval"
+require_relative "braintrust/contrib"
 
 # Braintrust Ruby SDK
 #

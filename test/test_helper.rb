@@ -224,6 +224,51 @@ module TracingTestHelper
   def get_anthropic_key
     ENV["ANTHROPIC_API_KEY"] || "sk-ant-test-key-for-vcr"
   end
+
+  # Suppress log output during block execution.
+  # Use for tests that deliberately cause errors/warnings.
+  #
+  # @yield Block to execute with logging suppressed
+  # @return Result of the block
+  #
+  # @example
+  #   suppress_logs { failing_patcher.patch! }
+  #
+  def suppress_logs
+    original_logger = Braintrust::Log.logger
+    Braintrust::Log.logger = Logger.new(File::NULL)
+    yield
+  ensure
+    Braintrust::Log.logger = original_logger
+  end
+
+  # Safely stub a singleton method and restore the original after the block.
+  # This properly handles method restoration even when the method comes from
+  # an included/extended module in the ancestor chain.
+  #
+  # @param object [Object] The object whose singleton method to stub
+  # @param method_name [Symbol] The name of the method to stub
+  # @param stub_impl [Proc] The stub implementation (as a lambda or proc)
+  # @yield The test code to run with the stubbed method
+  #
+  # @example
+  #   with_stubbed_singleton_method(MyClass, :available?, -> { false }) do
+  #     # test code here
+  #   end
+  def with_stubbed_singleton_method(object, method_name, stub_impl)
+    # Save the original method by unbinding it
+    original_method = object.method(method_name).unbind
+
+    # Replace with stub
+    object.define_singleton_method(method_name, &stub_impl)
+
+    yield
+  ensure
+    # Restore the original method by rebinding
+    object.define_singleton_method(method_name) do |*args, **kwargs, &block|
+      original_method.bind_call(object, *args, **kwargs, &block)
+    end
+  end
 end
 
 # Include helper in all test cases

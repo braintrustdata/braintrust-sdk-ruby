@@ -77,3 +77,67 @@ for more details.
 ```bash
 rake -T test:vcr
 ```
+
+## Adding Integrations for AI Libraries
+
+To add instrumentation support for a new AI library, follow these steps:
+
+### 1. Define the Integration
+
+Create a new file in `lib/braintrust/contrib/`:
+
+```ruby
+# lib/braintrust/contrib/trustybrain_llm.rb
+module Braintrust::Contrib
+  class TrustybrainLLM
+    include Integration
+
+    def self.integration_name
+      :trustybrain_llm
+    end
+
+    def self.gem_names
+      ["trustybrain_llm"]
+    end
+
+    def self.patcher
+      TrustybrainLLMPatcher
+    end
+  end
+
+  class TrustybrainLLMPatcher < Patcher
+    def self.perform_patch(context)
+      # Add your instrumentation here
+      # context.tracer_provider gives you access to the tracer
+    end
+  end
+end
+```
+
+### 2. Register It
+
+Add to `lib/braintrust/contrib.rb`:
+
+```ruby
+require_relative "contrib/trustybrain_llm"
+
+# At the bottom:
+Contrib::TrustybrainLLM.register!
+```
+
+### 3. Write Tests
+
+Create `test/braintrust/contrib/trustybrain_llm_test.rb`:
+
+```ruby
+require "test_helper"
+
+class Braintrust::Contrib::TrustybrainLLMTest < Minitest::Test
+  def test_integration_basics
+    assert_equal :trustybrain_llm, TrustybrainLLM.integration_name
+    assert_equal ["trustybrain_llm"], TrustybrainLLM.gem_names
+  end
+end
+```
+
+See existing tests in `test/braintrust/contrib/` for complete examples of testing integrations, patchers, and the registry.
