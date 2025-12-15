@@ -1,17 +1,16 @@
 # Development container for braintrust-sdk-ruby
 FROM debian:trixie-slim
 
-# Install minimal dependencies for mise and Ruby compilation
+# Install curl, ca-certificates, and git first (needed for install-deps.sh and mise)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     git \
-    build-essential \
-    libssl-dev \
-    libreadline-dev \
-    zlib1g-dev \
-    libyaml-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Ruby build dependencies using shared script
+COPY scripts/install-deps.sh /tmp/install-deps.sh
+RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh && rm /tmp/install-deps.sh
 
 # Install mise
 RUN curl https://mise.run | sh
