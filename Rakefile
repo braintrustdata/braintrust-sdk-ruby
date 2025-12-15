@@ -252,6 +252,127 @@ task release: ["release:publish", "release:github"] do
   puts "✓ Release completed successfully!"
 end
 
+# Contrib tasks
+namespace :contrib do
+  desc "Generate a new integration (NAME=name [GEM_NAMES=gem1,gem2] [REQUIRE_PATHS=path1,path2] [MIN_VERSION=1.0.0] [MAX_VERSION=2.0.0] [AUTO_REGISTER=true])"
+  task :generate do
+    require "erb"
+    require "fileutils"
+
+    # Parse parameters
+    name = ENV["NAME"]
+    unless name
+      puts "Error: NAME is required"
+      puts "Usage: rake contrib:generate NAME=trustybrain_llm [GEM_NAMES=trustybrain_llm] [AUTO_REGISTER=true]"
+      exit 1
+    end
+
+    # Convert name to snake_case if it's PascalCase
+    snake_case_name = name.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+      .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+      .downcase
+
+    # Convert to PascalCase for module name
+    module_name = snake_case_name.split("_").map(&:capitalize).join
+
+    integration_name = snake_case_name.to_sym
+
+    # Parse optional parameters
+    gem_names = ENV["GEM_NAMES"]&.split(",") || [snake_case_name]
+    require_paths = ENV["REQUIRE_PATHS"]&.split(",") || gem_names
+    min_version = ENV["MIN_VERSION"]
+    max_version = ENV["MAX_VERSION"]
+    auto_register = ENV.fetch("AUTO_REGISTER", "false").downcase == "true"
+
+    # Display what will be generated
+    puts "\n=== Generating Integration ==="
+    puts "Name: #{module_name}"
+    puts "Integration name: :#{integration_name}"
+    puts "Gem names: #{gem_names.inspect}"
+    puts "Require paths: #{require_paths.inspect}" if require_paths != gem_names
+    puts "Min version: #{min_version}" if min_version
+    puts "Max version: #{max_version}" if max_version
+    puts
+
+    # Template binding
+    template_binding = binding
+
+    # Paths
+    integration_dir = "lib/braintrust/contrib/#{snake_case_name}"
+    test_dir = "test/braintrust/contrib/#{snake_case_name}"
+
+    # Create directories
+    FileUtils.mkdir_p(integration_dir)
+    FileUtils.mkdir_p(test_dir)
+
+    # Generate files
+    templates = {
+      "templates/contrib/integration.rb.erb" => "#{integration_dir}/integration.rb",
+      "templates/contrib/patcher.rb.erb" => "#{integration_dir}/patcher.rb",
+      "templates/contrib/integration_test.rb.erb" => "#{test_dir}/integration_test.rb",
+      "templates/contrib/patcher_test.rb.erb" => "#{test_dir}/patcher_test.rb"
+    }
+
+    templates.each do |template_path, output_path|
+      template = ERB.new(File.read(template_path), trim_mode: "-")
+      content = template.result(template_binding)
+      File.write(output_path, content)
+      puts "✓ Created #{output_path}"
+    end
+
+    # Auto-register if requested
+    if auto_register
+      contrib_file = "lib/braintrust/contrib.rb"
+      contrib_content = File.read(contrib_file)
+
+      # Find the position to insert (before the last "end" or after the last require)
+      insertion_point = if /^# Load integration stubs/.match?(contrib_content)
+        contrib_content.index("# Load integration stubs")
+      else
+        # Insert before the final module end
+        contrib_content.rindex("end")
+      end
+
+      require_line = "require_relative \"contrib/#{snake_case_name}/integration\""
+      register_line = "Contrib::#{module_name}::Integration.register!"
+
+      # Check if already registered
+      if contrib_content.include?(require_line)
+        puts "⚠ #{contrib_file} already contains this integration"
+      else
+        lines_to_add = [
+          "",
+          "# #{module_name}",
+          require_line,
+          register_line
+        ].join("\n")
+
+        contrib_content.insert(insertion_point, lines_to_add + "\n")
+        File.write(contrib_file, contrib_content)
+        puts "✓ Updated #{contrib_file}"
+      end
+    end
+
+    # Display next steps
+    puts "\n=== Next Steps ==="
+    unless auto_register
+      puts "1. Add to lib/braintrust/contrib.rb:"
+      puts "   require_relative \"contrib/#{snake_case_name}/integration\""
+      puts "   Contrib::#{module_name}::Integration.register!"
+      puts
+    end
+    puts "#{auto_register ? "1" : "2"}. Implement the patcher in:"
+    puts "   #{integration_dir}/patcher.rb"
+    puts
+    puts "#{auto_register ? "2" : "3"}. Add tests in:"
+    puts "   #{test_dir}/"
+    puts
+    puts "#{auto_register ? "3" : "4"}. Run tests:"
+    puts "   bundle exec rake test TEST=#{test_dir}/**/*_test.rb"
+    puts
+  end
+end
+
 # Version bump tasks
 def bump_version(type)
   version_file = "lib/braintrust/version.rb"
