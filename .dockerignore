@@ -1,0 +1,7 @@
+.git
+*.gem
+coverage/
+doc/
+pkg/
+tmp/
+.env
