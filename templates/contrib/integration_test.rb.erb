@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class Braintrust::Contrib::<%= module_name %>::IntegrationTest < Minitest::Test
+  def setup
+    @integration = Braintrust::Contrib::<%= module_name %>::Integration
+  end
+
+  def test_integration_name
+    assert_equal :<%= integration_name %>, @integration.integration_name
+  end
+
+  def test_gem_names
+    assert_equal <%= gem_names.inspect %>, @integration.gem_names
+  end
+<% if require_paths != gem_names %>
+
+  def test_require_paths
+    assert_equal <%= require_paths.inspect %>, @integration.require_paths
+  end
+<% end %>
+
+  def test_minimum_version
+<% if min_version %>
+    assert_equal "<%= min_version %>", @integration.minimum_version
+<% else %>
+    assert_nil @integration.minimum_version
+<% end %>
+  end
+
+  def test_maximum_version
+<% if max_version %>
+    assert_equal "<%= max_version %>", @integration.maximum_version
+<% else %>
+    assert_nil @integration.maximum_version
+<% end %>
+  end
+
+  def test_loaded
+    # loaded? should return true/false based on whether the library is loaded
+    assert [true, false].include?(@integration.loaded?)
+  end
+
+  def test_patchers
+    patchers = @integration.patchers
+    assert_kind_of Array, patchers
+    assert_includes patchers, Braintrust::Contrib::<%= module_name %>::Patcher
+  end
+end
