@@ -78,66 +78,133 @@ for more details.
 rake -T test:vcr
 ```
 
-## Adding Integrations for AI Libraries
+## Adding integrations for libraries
 
-To add instrumentation support for a new AI library, follow these steps:
+To add instrumentation support for a new library, use the integration generator:
 
-### 1. Define the Integration
+```bash
+rake contrib:generate NAME=trustybrain_llm AUTO_REGISTER=true
+```
 
-Create a new file in `lib/braintrust/contrib/`:
+This will create the integration structure and optionally register it. You can also specify additional options:
+
+```bash
+rake contrib:generate NAME=trustybrain_llm \
+  GEM_NAMES=trustybrain_llm,trustybrain \
+  REQUIRE_PATHS=trustybrain \
+  MIN_VERSION=1.0.0 \
+  MAX_VERSION=2.0.0 \
+  AUTO_REGISTER=true
+```
+
+### Manual Setup
+
+If you prefer to create the integration manually, follow these steps:
+
+### 1. Create the integration directory structure
+
+```bash
+mkdir -p lib/braintrust/contrib/trustybrain_llm
+mkdir -p test/braintrust/contrib/trustybrain_llm
+```
+
+### 2. Define the integration stub
+
+Create `lib/braintrust/contrib/trustybrain_llm/integration.rb`:
 
 ```ruby
-# lib/braintrust/contrib/trustybrain_llm.rb
-module Braintrust::Contrib
-  class TrustybrainLLM
-    include Integration
+# frozen_string_literal: true
 
-    def self.integration_name
-      :trustybrain_llm
-    end
+require_relative "../integration"
 
-    def self.gem_names
-      ["trustybrain_llm"]
-    end
+module Braintrust
+  module Contrib
+    module TrustybrainLLM
+      class Integration
+        include Braintrust::Contrib::Integration
 
-    def self.patcher
-      TrustybrainLLMPatcher
-    end
-  end
+        def self.integration_name
+          :trustybrain_llm
+        end
 
-  class TrustybrainLLMPatcher < Patcher
-    def self.perform_patch(context)
-      # Add your instrumentation here
-      # context.tracer_provider gives you access to the tracer
+        def self.gem_names
+          ["trustybrain_llm"]
+        end
+
+        def self.patchers
+          require_relative "patcher"
+          [Patcher]
+        end
+      end
     end
   end
 end
 ```
 
-### 2. Register It
+### 3. Create the patcher
+
+Create `lib/braintrust/contrib/trustybrain_llm/patcher.rb`:
+
+```ruby
+# frozen_string_literal: true
+
+require_relative "../patcher"
+
+module Braintrust
+  module Contrib
+    module TrustybrainLLM
+      class Patcher < Braintrust::Contrib::Patcher
+        class << self
+          def applicable?
+            defined?(::TrustybrainLLM::Client)
+          end
+
+          def perform_patch(**options)
+            ::TrustybrainLLM::Client.prepend(Instrumentation)
+          end
+        end
+
+        module Instrumentation
+          def chat(*args, **kwargs, &block)
+            Braintrust::Contrib.tracer_for(self).in_span("trustybrain_llm.chat") do
+              super
+            end
+          end
+        end
+      end
+    end
+  end
+end
+```
+
+### 4. Register it
 
 Add to `lib/braintrust/contrib.rb`:
 
 ```ruby
-require_relative "contrib/trustybrain_llm"
+require_relative "contrib/trustybrain_llm/integration"
 
 # At the bottom:
-Contrib::TrustybrainLLM.register!
+Contrib::TrustybrainLLM::Integration.register!
 ```
 
-### 3. Write Tests
+### 5. Write tests
 
-Create `test/braintrust/contrib/trustybrain_llm_test.rb`:
+Create test files in `test/braintrust/contrib/trustybrain_llm/`:
 
 ```ruby
+# test/braintrust/contrib/trustybrain_llm/integration_test.rb
 require "test_helper"
 
-class Braintrust::Contrib::TrustybrainLLMTest < Minitest::Test
+class Braintrust::Contrib::TrustybrainLLM::IntegrationTest < Minitest::Test
   def test_integration_basics
-    assert_equal :trustybrain_llm, TrustybrainLLM.integration_name
-    assert_equal ["trustybrain_llm"], TrustybrainLLM.gem_names
+    integration = Braintrust::Contrib::TrustybrainLLM::Integration
+    assert_equal :trustybrain_llm, integration.integration_name
+    assert_equal ["trustybrain_llm"], integration.gem_names
   end
+
+  # TODO: Add tests for patchers, availability, compatibility, and instrumentation
 end
 ```
 
-See existing tests in `test/braintrust/contrib/` for complete examples of testing integrations, patchers, and the registry.
+See existing tests in `test/braintrust/contrib/` for complete examples.

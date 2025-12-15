@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+require_relative "../integration"
+
+module Braintrust
+  module Contrib
+    module <%= module_name %>
+      # Integration for <%= gem_names.join(", ") %>
+      class Integration
+        include Braintrust::Contrib::Integration
+
+        # @return [Symbol] Unique identifier for this integration
+        def self.integration_name
+          :<%= integration_name %>
+        end
+
+        # @return [Array<String>] Gem names this integration supports
+        def self.gem_names
+          <%= gem_names.inspect %>
+        end
+<% if require_paths != gem_names %>
+
+        # @return [Array<String>] Require paths for auto-instrument detection
+        def self.require_paths
+          <%= require_paths.inspect %>
+        end
+<% end %>
+<% if min_version %>
+
+        # @return [String] Minimum compatible version
+        def self.minimum_version
+          "<%= min_version %>"
+        end
+<% end %>
+<% if max_version %>
+
+        # @return [String] Maximum compatible version
+        def self.maximum_version
+          "<%= max_version %>"
+        end
+<% end %>
+
+        # Lazy-load the patcher only when actually patching.
+        # @return [Array<Class>] The patcher classes
+        def self.patchers
+          require_relative "patcher"
+          [Patcher]
+        end
+      end
+    end
+  end
+end

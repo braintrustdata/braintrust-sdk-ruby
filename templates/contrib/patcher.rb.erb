@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+require_relative "../patcher"
+
+module Braintrust
+  module Contrib
+    module <%= module_name %>
+      # Patcher for <%= gem_names.join(", ") %>
+      class Patcher < Braintrust::Contrib::Patcher
+        class << self
+          # Check if this patcher should apply.
+          # @return [Boolean] true if target library is available
+          def applicable?
+            # TODO: Update to check if target library classes are defined
+            # Example: defined?(::SomeLibrary::Client)
+            true
+          end
+
+          # Perform the actual patching.
+          # @param options [Hash] Configuration options passed from integration
+          # @return [void]
+          def perform_patch(**options)
+            # TODO: Add your instrumentation here
+            # Example: ::SomeLibrary::Client.prepend(Instrumentation)
+          end
+        end
+
+        # Example instrumentation module (uncomment and modify for your integration)
+        # module Instrumentation
+        #   def some_method(*args, **kwargs, &block)
+        #     Braintrust::Contrib.tracer_for(self).in_span("somelibrary.some_method") do
+        #       super
+        #     end
+        #   end
+        # end
+      end
+    end
+  end
+end
