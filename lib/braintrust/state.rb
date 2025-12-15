@@ -93,6 +93,11 @@ module Braintrust
       if enable_tracing
         require_relative "trace"
         Trace.setup(self, tracer_provider, exporter: exporter)
+
+        # Propagate tracer_provider to Contrib if loaded (soft dependency check)
+        if defined?(Braintrust::Contrib)
+          Braintrust::Contrib.init(tracer_provider: tracer_provider)
+        end
       end
     end
 

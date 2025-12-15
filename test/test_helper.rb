@@ -66,6 +66,8 @@ end
 require_relative "support/assert_helper"
 require_relative "support/braintrust_helper"
 require_relative "support/fixture_helper"
+require_relative "support/log_helper"
+require_relative "support/mock_helper"
 require_relative "support/provider_helper"
 require_relative "support/tracing_helper"
 
@@ -74,6 +76,8 @@ class Minitest::Test
   include ::Test::Support::AssertHelper
   include ::Test::Support::BraintrustHelper
   include ::Test::Support::FixtureHelper
+  include ::Test::Support::LogHelper
+  include ::Test::Support::MockHelper
   include ::Test::Support::ProviderHelper
   include ::Test::Support::TracingHelper
 
