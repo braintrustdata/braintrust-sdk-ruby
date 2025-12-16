@@ -1,6 +1,10 @@
 # Development container for braintrust-sdk-ruby
 FROM debian:trixie-slim
 
+# Set UTF-8 locale
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
 # Install curl, ca-certificates, and git first (needed for install-deps.sh and mise)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -12,9 +16,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/install-deps.sh /tmp/install-deps.sh
 RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh && rm /tmp/install-deps.sh
 
-# Install mise
+# Create non-root user with configurable UID/GID
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g $GID dev && useradd -m -u $UID -g $GID dev
+
+# Create directories for mise and bundle cache
+RUN mkdir -p /home/dev/.local/share/mise /home/dev/.local/bin /usr/local/bundle \
+    && chown -R dev:dev /home/dev /usr/local/bundle
+
+# Switch to non-root user
+USER dev
+ENV HOME=/home/dev
+ENV PATH="/home/dev/.local/bin:$PATH"
+
+# Install mise as the dev user
 RUN curl https://mise.run | sh
-ENV PATH="/root/.local/bin:$PATH"
 
 # Configure git safe.directory for mounted volumes
 RUN git config --global --add safe.directory /app
