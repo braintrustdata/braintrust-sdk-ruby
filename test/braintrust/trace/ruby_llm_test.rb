@@ -409,4 +409,56 @@ class RubyLLMIntegrationTest < Minitest::Test
       assert_equal 0, spans_after_unwrap.length, "Expected 0 spans after unwrap"
     end
   end
+
+  # Test for frozen Hash bug in format_tool_schema
+  # This reproduces the issue where tool_params from provider's tool_for method
+  # returns a frozen hash, causing FrozenError when trying to delete keys
+  def test_format_tool_schema_handles_frozen_hash
+    # Create a mock tool object
+    mock_tool = Object.new
+    def mock_tool.name
+      "test_tool"
+    end
+
+    def mock_tool.description
+      "A test tool"
+    end
+
+    def mock_tool.params_schema
+      {
+        "type" => "object",
+        "properties" => {},
+        "required" => [],
+        "additionalProperties" => false,
+        "strict" => true
+      }.freeze
+    end
+
+    def mock_tool.respond_to?(method)
+      [:name, :description, :params_schema].include?(method)
+    end
+
+    # Test with basic tool schema (no provider)
+    # This will use build_basic_tool_schema which creates a tool schema
+    # with the frozen params_schema from the tool
+    result = Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.format_tool_schema(mock_tool, nil)
+
+    # Verify the result is returned (not raising FrozenError)
+    refute_nil result
+    assert_equal "function", result["type"]
+    assert_equal "test_tool", result["function"]["name"]
+    assert_equal "A test tool", result["function"]["description"]
+
+    # Verify the parameters don't contain RubyLLM-specific fields
+    params = result["function"]["parameters"]
+    refute params.key?("strict"), "strict should be removed"
+    refute params.key?(:strict), "strict (symbol) should be removed"
+    refute params.key?("additionalProperties"), "additionalProperties should be removed"
+    refute params.key?(:additionalProperties), "additionalProperties (symbol) should be removed"
+
+    # Verify the expected fields are still present
+    assert_equal "object", params["type"]
+    assert_equal({}, params["properties"])
+    assert_equal [], params["required"]
+  end
 end

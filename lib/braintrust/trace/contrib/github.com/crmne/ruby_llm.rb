@@ -350,10 +350,15 @@ module Braintrust
               if tool_schema && tool_schema[function_key]
                 tool_params = tool_schema[function_key][:parameters] || tool_schema[function_key]["parameters"]
                 if tool_params.is_a?(Hash)
+                  # Create a mutable copy if the hash is frozen
+                  tool_params = tool_params.dup if tool_params.frozen?
                   tool_params.delete("strict")
                   tool_params.delete(:strict)
                   tool_params.delete("additionalProperties")
                   tool_params.delete(:additionalProperties)
+                  # Assign the modified copy back
+                  params_key = tool_schema[function_key].key?(:parameters) ? :parameters : "parameters"
+                  tool_schema[function_key][params_key] = tool_params
                 end
               end
 

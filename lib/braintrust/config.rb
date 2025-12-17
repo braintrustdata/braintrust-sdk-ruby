@@ -39,7 +39,7 @@ module Braintrust
       end
 
       new(
-        api_key: api_key || ENV["BRAINTRUST_API_KEY"],
+        api_key: api_key || ((ENV["BRAINTRUST_API_KEY"] && ENV["BRAINTRUST_API_KEY"].empty?) ? nil : ENV["BRAINTRUST_API_KEY"]),
         org_name: org_name || ENV["BRAINTRUST_ORG_NAME"],
         default_project: default_project || ENV["BRAINTRUST_DEFAULT_PROJECT"],
         app_url: app_url || ENV["BRAINTRUST_APP_URL"] || "https://www.braintrust.dev",

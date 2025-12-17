@@ -4,8 +4,10 @@ require "test_helper"
 
 class Braintrust::StateLoginTest < Minitest::Test
   def setup
+    # Use real key for recording, fake key for playback (VCR doesn't need real keys)
+    # In forked PRs, secrets may be empty strings, so we check for both nil and empty
     @api_key = ENV["BRAINTRUST_API_KEY"]
-    assert @api_key, "BRAINTRUST_API_KEY environment variable is required for login tests"
+    @api_key = "test-key-for-vcr" if @api_key.nil? || @api_key.empty?
   end
 
   def test_login_fetches_org_info
