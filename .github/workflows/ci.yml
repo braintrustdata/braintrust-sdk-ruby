@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+# Security: Set minimal permissions by default
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -15,14 +19,19 @@ jobs:
         ruby-version: ['3.2', '3.3', '3.4']
 
     steps:
-    - uses: actions/checkout@v4
+    # Security: Pin to commit SHA instead of tag to prevent tag hijacking
+    # actions/checkout@v4.3.1
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
     - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
+      # Security: Pin to commit SHA instead of tag
+      # ruby/setup-ruby@v1.270.0
+      uses: ruby/setup-ruby@ac793fdd38cc468a4dd57246fa9d0e868aba9085
       with:
         ruby-version: ${{ matrix.ruby-version }}
         bundler-cache: true
 
+    # Security: Provide secrets only to the step that needs them, not all steps
     - name: Run CI verification
       run: bundle exec rake ci
       env:
