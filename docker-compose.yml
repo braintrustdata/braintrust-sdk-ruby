@@ -3,7 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
-      - dev-mise-data:/root/.local/share/mise
+      - dev-mise-data:/home/dev/.local/share/mise
       - dev-bundle-cache:/usr/local/bundle
     working_dir: /app
     environment:

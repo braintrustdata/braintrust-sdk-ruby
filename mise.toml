@@ -104,8 +104,10 @@ fi
 
 [hooks]
 postinstall = """
-echo "Installing gem dependencies..."
-bundle install
-echo "Setting up git pre-commit hook..."
-mise generate git-pre-commit --write --task=precommit
+if bundle --version > /dev/null 2>&1; then
+  echo "Installing gem dependencies..."
+  bundle install
+  echo "Setting up git pre-commit hook..."
+  mise generate git-pre-commit --write --task=precommit
+fi
 """
