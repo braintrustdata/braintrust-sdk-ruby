@@ -126,6 +126,8 @@ module TracingTestHelper
   # @param options [Hash] Options to pass to Braintrust.init (set_global and blocking_login are fixed)
   # @return [Braintrust::State]
   def get_integration_test_state(**options)
+    # Provide fallback API key for VCR playback (empty in forked PRs)
+    options[:api_key] ||= get_braintrust_key
     Braintrust.init(set_global: false, blocking_login: true, **options)
   end
 
@@ -179,9 +181,16 @@ module TracingTestHelper
     end
   end
 
-  # Get OpenAI API key for tests
+  # Get API key for tests
   # Uses real key for recording, fake key for playback
   # @return [String] API key
+  def get_braintrust_key
+    key = ENV["BRAINTRUST_API_KEY"]
+    # In forked PRs, secrets may be empty strings
+    key = nil if key&.empty?
+    key || "test-key-for-vcr"
+  end
+
   def get_openai_key
     ENV["OPENAI_API_KEY"] || "sk-test-key-for-vcr"
   end

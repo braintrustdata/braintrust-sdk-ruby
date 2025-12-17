@@ -18,7 +18,7 @@ class Braintrust::APITest < Minitest::Test
 
   def test_api_new_uses_global_state
     VCR.use_cassette("api/new_global_state") do
-      state = Braintrust.init(set_global: true, blocking_login: true)
+      state = Braintrust.init(api_key: get_braintrust_key, set_global: true, blocking_login: true)
 
       api = Braintrust::API.new
       assert_equal state, api.state
