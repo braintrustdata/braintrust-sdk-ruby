@@ -99,6 +99,11 @@ task default: :ci
 
 # Test-related tasks
 namespace :test do
+  desc "Run only contrib framework tests"
+  task :contrib do
+    sh "bundle exec ruby -Ilib:test test/braintrust/contrib/*_test.rb"
+  end
+
   desc "Run tests with verbose timing output"
   task :verbose do
     ENV["MT_VERBOSE"] = "1"
