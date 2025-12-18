@@ -40,6 +40,7 @@ Gem::Specification.new do |spec|
 
   # Development dependencies
   spec.add_development_dependency "minitest", "~> 5.0"
+  spec.add_development_dependency "minitest-stub-const", "~> 0.6"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "standard", "~> 1.0"
   spec.add_development_dependency "simplecov", "~> 0.22"
