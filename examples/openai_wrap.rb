@@ -30,6 +30,7 @@ Braintrust.init(blocking_login: true)
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
 # Wrap the client with Braintrust tracing
+# DEPRECATED: Use `Braintrust::Contrib.instrument!(:openai, target: client)` instead
 Braintrust::Trace::OpenAI.wrap(client)
 
 # Create a root span to capture the entire operation

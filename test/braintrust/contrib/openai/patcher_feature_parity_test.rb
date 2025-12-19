@@ -2,7 +2,10 @@
 
 require "test_helper"
 
-class Braintrust::Trace::OpenAITest < Minitest::Test
+# Explicitly load the patcher (lazy-loaded by integration)
+require "braintrust/contrib/openai/patcher"
+
+class Braintrust::Contrib::OpenAI::PatcherFeatureParityTest < Minitest::Test
   def setup
     # Skip all OpenAI tests if the gem is not available
     skip "OpenAI gem not available" unless defined?(OpenAI)
@@ -17,16 +20,21 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     end
   end
 
+  # No teardown needed - patchers are idempotent
+
   def test_wrap_creates_span_for_chat_completions
     VCR.use_cassette("openai/chat_completions") do
       require "openai"
 
       # Set up test rig (includes Braintrust processor)
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it with Braintrust tracing
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a simple chat completion request with additional params to test metadata capture
       response = client.chat.completions.create(
@@ -98,10 +106,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a vision request with content array (image_url + text)
       response = client.chat.completions.create(
@@ -166,10 +177,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # First request - model will use a tool
       tools = [
@@ -281,10 +295,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a request (ideally with a model that returns detailed metrics)
       # For now, we'll just make a normal request and verify the metrics structure
@@ -344,10 +361,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
       stream = client.chat.completions.stream_raw(
@@ -423,10 +443,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
       stream = client.chat.completions.stream_raw(
@@ -469,6 +492,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
       # Create OpenAI client with invalid API key to trigger an error
       client = OpenAI::Client.new(api_key: "invalid_key")
@@ -515,6 +539,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
       # Create OpenAI client with invalid API key to trigger an error
       client = OpenAI::Client.new(api_key: "invalid_key")
@@ -561,10 +586,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     VCR.use_cassette("openai_responses_create_non_streaming") do
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
       skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
@@ -617,10 +645,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     VCR.use_cassette("openai_responses_create_streaming") do
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
       skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
@@ -677,10 +708,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     VCR.use_cassette("openai_responses_stream_partial") do
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Skip if responses API not available
       skip "Responses API not available in this OpenAI gem version" unless client.respond_to?(:responses)
@@ -721,6 +755,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     VCR.use_cassette("openai_chat_and_responses_no_interference") do
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
       # Create OpenAI client and wrap it (wraps BOTH chat and responses)
       client = OpenAI::Client.new(api_key: get_openai_key)
@@ -786,6 +821,7 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
     VCR.use_cassette("openai_streaming_chat_and_responses_no_interference") do
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
       # Create OpenAI client and wrap it (wraps BOTH chat and responses)
       client = OpenAI::Client.new(api_key: get_openai_key)
@@ -870,10 +906,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .stream (not .stream_raw)
       stream = client.chat.completions.stream(
@@ -942,10 +981,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .stream
       stream = client.chat.completions.stream(
@@ -988,10 +1030,13 @@ class Braintrust::Trace::OpenAITest < Minitest::Test
 
       # Set up test rig
       rig = setup_otel_test_rig
+      Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
 
-      # Create OpenAI client and wrap it
+      # Patch OpenAI at class level (all new clients will be auto-traced)
+      Braintrust::Contrib::OpenAI::Integration.patch!
+
+      # Create OpenAI client AFTER patching
       client = OpenAI::Client.new(api_key: get_openai_key)
-      Braintrust::Trace::OpenAI.wrap(client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .stream
       stream = client.chat.completions.stream(

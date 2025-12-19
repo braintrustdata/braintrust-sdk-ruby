@@ -80,4 +80,7 @@ module Braintrust
 end
 
 # Load integration stubs (eager load minimal metadata).
-# These will be added in subsequent milestones.
+require_relative "contrib/openai/integration"
+
+# Register integrations
+Braintrust::Contrib::OpenAI::Integration.register!
