@@ -3,6 +3,189 @@
 require "test_helper"
 
 class Braintrust::ContribTest < Minitest::Test
+  # --- Braintrust.auto_instrument! ---
+
+  def test_auto_instrument_enabled_by_default
+    called_with = nil
+
+    Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+      Braintrust.auto_instrument!
+    end
+
+    assert_equal({only: nil, except: nil}, called_with)
+  end
+
+  def test_auto_instrument_disabled_when_config_false
+    called = false
+
+    Braintrust::Contrib.stub(:auto_instrument!, -> { called = true }) do
+      Braintrust.auto_instrument!(false)
+    end
+
+    refute called
+  end
+
+  def test_auto_instrument_enabled_when_config_true
+    called_with = nil
+
+    Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+      Braintrust.auto_instrument!(true)
+    end
+
+    assert_equal({only: nil, except: nil}, called_with)
+  end
+
+  def test_auto_instrument_disabled_via_env_var
+    called = false
+
+    ClimateControl.modify(BRAINTRUST_AUTO_INSTRUMENT: "false") do
+      Braintrust::Contrib.stub(:auto_instrument!, -> { called = true }) do
+        Braintrust.auto_instrument!
+      end
+    end
+
+    refute called
+  end
+
+  def test_auto_instrument_passes_only_from_hash
+    called_with = nil
+
+    Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+      Braintrust.auto_instrument!(only: [:openai, :anthropic])
+    end
+
+    assert_equal({only: [:openai, :anthropic], except: nil}, called_with)
+  end
+
+  def test_auto_instrument_passes_except_from_hash
+    called_with = nil
+
+    Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+      Braintrust.auto_instrument!(except: [:ruby_llm])
+    end
+
+    assert_equal({only: nil, except: [:ruby_llm]}, called_with)
+  end
+
+  def test_auto_instrument_reads_only_from_env
+    called_with = nil
+
+    ClimateControl.modify(BRAINTRUST_INSTRUMENT_ONLY: "openai,anthropic") do
+      Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+        Braintrust.auto_instrument!
+      end
+    end
+
+    assert_equal({only: [:openai, :anthropic], except: nil}, called_with)
+  end
+
+  def test_auto_instrument_reads_except_from_env
+    called_with = nil
+
+    ClimateControl.modify(BRAINTRUST_INSTRUMENT_EXCEPT: "ruby_llm") do
+      Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+        Braintrust.auto_instrument!
+      end
+    end
+
+    assert_equal({only: nil, except: [:ruby_llm]}, called_with)
+  end
+
+  def test_auto_instrument_hash_overrides_env
+    called_with = nil
+
+    ClimateControl.modify(BRAINTRUST_INSTRUMENT_ONLY: "from_env", BRAINTRUST_INSTRUMENT_EXCEPT: "from_env") do
+      Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+        Braintrust.auto_instrument!(only: [:from_hash], except: [:also_from_hash])
+      end
+    end
+
+    assert_equal({only: [:from_hash], except: [:also_from_hash]}, called_with)
+  end
+
+  # --- Contrib.auto_instrument! ---
+
+  def test_contrib_auto_instrument_instruments_available_integrations
+    integration1 = stub_integration(:openai)
+    integration2 = stub_integration(:anthropic)
+
+    mock_registry = Minitest::Mock.new
+    mock_registry.expect(:available, [integration1, integration2])
+
+    instrumented_names = []
+
+    Braintrust::Contrib::Registry.stub(:instance, mock_registry) do
+      Braintrust::Contrib.stub(:instrument!, ->(name, **_opts) {
+        instrumented_names << name
+        true
+      }) do
+        result = Braintrust::Contrib.auto_instrument!
+        assert_equal [:openai, :anthropic], result
+      end
+    end
+
+    assert_equal [:openai, :anthropic], instrumented_names
+  end
+
+  def test_contrib_auto_instrument_filters_with_only
+    integration1 = stub_integration(:openai)
+    integration2 = stub_integration(:anthropic)
+
+    mock_registry = Minitest::Mock.new
+    mock_registry.expect(:available, [integration1, integration2])
+
+    instrumented_names = []
+
+    Braintrust::Contrib::Registry.stub(:instance, mock_registry) do
+      Braintrust::Contrib.stub(:instrument!, ->(name, **_opts) {
+        instrumented_names << name
+        true
+      }) do
+        result = Braintrust::Contrib.auto_instrument!(only: [:openai])
+        assert_equal [:openai], result
+      end
+    end
+
+    assert_equal [:openai], instrumented_names
+  end
+
+  def test_contrib_auto_instrument_filters_with_except
+    integration1 = stub_integration(:openai)
+    integration2 = stub_integration(:anthropic)
+
+    mock_registry = Minitest::Mock.new
+    mock_registry.expect(:available, [integration1, integration2])
+
+    instrumented_names = []
+
+    Braintrust::Contrib::Registry.stub(:instance, mock_registry) do
+      Braintrust::Contrib.stub(:instrument!, ->(name, **_opts) {
+        instrumented_names << name
+        true
+      }) do
+        result = Braintrust::Contrib.auto_instrument!(except: [:anthropic])
+        assert_equal [:openai], result
+      end
+    end
+
+    assert_equal [:openai], instrumented_names
+  end
+
+  def test_contrib_auto_instrument_excludes_failed_instrumentations
+    integration1 = stub_integration(:openai)
+    integration2 = stub_integration(:anthropic)
+
+    mock_registry = Minitest::Mock.new
+    mock_registry.expect(:available, [integration1, integration2])
+
+    Braintrust::Contrib::Registry.stub(:instance, mock_registry) do
+      Braintrust::Contrib.stub(:instrument!, ->(name, **_opts) { name == :openai }) do
+        result = Braintrust::Contrib.auto_instrument!
+        assert_equal [:openai], result
+      end
+    end
+  end
+
   # --- Braintrust.instrument! delegation ---
 
   def test_braintrust_instrument_delegates_to_contrib
@@ -196,5 +379,13 @@ class Braintrust::ContribTest < Minitest::Test
 
     context_provider.verify
     mock_context.verify
+  end
+
+  private
+
+  def stub_integration(name)
+    Object.new.tap do |obj|
+      obj.define_singleton_method(:integration_name) { name }
+    end
   end
 end

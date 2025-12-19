@@ -6,6 +6,62 @@ require_relative "contrib/patcher"
 require_relative "contrib/context"
 
 module Braintrust
+  # Auto-instrument available integrations.
+  #
+  # Discovers which integrations have their target libraries loaded
+  # and instruments them automatically. This is the primary public API
+  # for enabling auto-instrumentation.
+  #
+  # @param config [nil, Boolean, Hash] Auto-instrumentation configuration:
+  #   - nil: use BRAINTRUST_AUTO_INSTRUMENT env var (defaults to enabled)
+  #   - true: explicitly enable auto-instrumentation
+  #   - false: explicitly disable auto-instrumentation
+  #   - Hash with :only or :except keys for filtering integrations
+  #
+  # Environment variables:
+  #   - BRAINTRUST_AUTO_INSTRUMENT: set to "false" to disable (default: enabled)
+  #   - BRAINTRUST_INSTRUMENT_ONLY: comma-separated list of integrations to include
+  #   - BRAINTRUST_INSTRUMENT_EXCEPT: comma-separated list of integrations to exclude
+  #
+  # @return [Array<Symbol>, nil] names of instrumented integrations, or nil if disabled
+  #
+  # @example Enable with defaults
+  #   Braintrust.auto_instrument!
+  #
+  # @example Explicitly enable
+  #   Braintrust.auto_instrument!(true)
+  #
+  # @example Disable
+  #   Braintrust.auto_instrument!(false)
+  #
+  # @example Only specific integrations
+  #   Braintrust.auto_instrument!(only: [:openai, :anthropic])
+  #
+  # @example Exclude specific integrations
+  #   Braintrust.auto_instrument!(except: [:ruby_llm])
+  def self.auto_instrument!(config = nil)
+    should_instrument = case config
+    when nil
+      Internal::Env.auto_instrument
+    when false
+      false
+    when true, Hash
+      true
+    end
+
+    return unless should_instrument
+
+    only = Internal::Env.instrument_only
+    except = Internal::Env.instrument_except
+
+    if config.is_a?(Hash)
+      only = config[:only] || only
+      except = config[:except] || except
+    end
+
+    Contrib.auto_instrument!(only: only, except: except)
+  end
+
   # Instrument a registered integration by name.
   # This is the main entry point for activating integrations.
   #
@@ -22,7 +78,7 @@ module Braintrust
   #   client = OpenAI::Client.new
   #   Braintrust.instrument!(:openai, target: client, tracer_provider: my_provider)
   def self.instrument!(name, **options)
-    Braintrust::Contrib.instrument!(name, **options)
+    Contrib.instrument!(name, **options)
   end
 
   # Contrib framework for auto-instrumentation integrations.
@@ -43,14 +99,39 @@ module Braintrust
         @default_tracer_provider = tracer_provider
       end
 
+      # Auto-instrument available integrations.
+      # Discovers which integrations have their target libraries loaded
+      # and instruments them automatically.
+      #
+      # @param only [Array<Symbol>] whitelist - only instrument these
+      # @param except [Array<Symbol>] blacklist - skip these
+      # @return [Array<Symbol>] names of integrations that were instrumented
+      #
+      # @example Instrument all available
+      #   Braintrust::Contrib.auto_instrument!
+      #
+      # @example Only specific integrations
+      #   Braintrust::Contrib.auto_instrument!(only: [:openai, :anthropic])
+      #
+      # @example Exclude specific integrations
+      #   Braintrust::Contrib.auto_instrument!(except: [:ruby_llm])
+      def auto_instrument!(only: nil, except: nil)
+        targets = registry.available
+        targets = targets.select { |i| only.include?(i.integration_name) } if only
+        targets = targets.reject { |i| except.include?(i.integration_name) } if except
+
+        targets.each_with_object([]) do |integration, instrumented|
+          instrumented << integration.integration_name if instrument!(integration.integration_name)
+        end
+      end
+
       # Instrument a registered integration by name.
-      # This is the main entry point for activating integrations.
       #
       # @param name [Symbol] The integration name (e.g., :openai, :anthropic)
       # @param options [Hash] Optional configuration
       # @option options [Object] :target Optional target instance to instrument specifically
       # @option options [OpenTelemetry::SDK::Trace::TracerProvider] :tracer_provider Optional tracer provider
-      # @return [void]
+      # @return [Boolean] true if instrumentation succeeded
       #
       # @example Instrument all OpenAI clients
       #   Braintrust::Contrib.instrument!(:openai)
@@ -63,6 +144,7 @@ module Braintrust
           integration.instrument!(**options)
         else
           Braintrust::Log.error("No integration for '#{name}' is defined!")
+          false
         end
       end
 
