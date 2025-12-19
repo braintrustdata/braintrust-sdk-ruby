@@ -6,6 +6,7 @@ require_relative "braintrust/state"
 require_relative "braintrust/trace"
 require_relative "braintrust/api"
 require_relative "braintrust/internal/experiments"
+require_relative "braintrust/internal/env"
 require_relative "braintrust/eval"
 require_relative "braintrust/contrib"
 
@@ -41,8 +42,13 @@ module Braintrust
   # @param filter_ai_spans [Boolean, nil] Enable AI span filtering (overrides BRAINTRUST_OTEL_FILTER_AI_SPANS env var)
   # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
   # @param exporter [Exporter, nil] Optional exporter override (for testing)
+  # @param auto_instrument [Boolean, Hash, nil] Auto-instrumentation config:
+  #   - nil (default): use BRAINTRUST_AUTO_INSTRUMENT env var, default true if not set
+  #   - true: explicitly enable
+  #   - false: explicitly disable
+  #   - Hash with :only or :except keys for filtering
   # @return [State] the created state
-  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
+  def self.init(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, set_global: true, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil, auto_instrument: nil)
     state = State.from_env(
       api_key: api_key,
       org_name: org_name,
@@ -58,6 +64,8 @@ module Braintrust
     )
 
     State.global = state if set_global
+
+    auto_instrument!(auto_instrument)
 
     state
   end
