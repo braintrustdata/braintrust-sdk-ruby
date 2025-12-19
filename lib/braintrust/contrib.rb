@@ -25,13 +25,12 @@ module Braintrust
       end
 
       # Instrument a registered integration by name.
-      # This is the main entry point for activating integrations.
       #
       # @param name [Symbol] The integration name (e.g., :openai, :anthropic)
       # @param options [Hash] Optional configuration
       # @option options [Object] :target Optional target instance to instrument specifically
       # @option options [OpenTelemetry::SDK::Trace::TracerProvider] :tracer_provider Optional tracer provider
-      # @return [void]
+      # @return [Boolean] true if instrumentation succeeded
       #
       # @example Instrument all OpenAI clients
       #   Braintrust::Contrib.instrument!(:openai)
@@ -44,6 +43,33 @@ module Braintrust
           integration.instrument!(**options)
         else
           Braintrust::Log.error("No integration for '#{name}' is defined!")
+          false
+        end
+      end
+
+      # Auto-instrument available integrations.
+      # Discovers which integrations have their target libraries loaded
+      # and instruments them automatically.
+      #
+      # @param only [Array<Symbol>] whitelist - only instrument these
+      # @param except [Array<Symbol>] blacklist - skip these
+      # @return [Array<Symbol>] names of integrations that were instrumented
+      #
+      # @example Instrument all available
+      #   Braintrust::Contrib.auto_instrument!
+      #
+      # @example Only specific integrations
+      #   Braintrust::Contrib.auto_instrument!(only: [:openai, :anthropic])
+      #
+      # @example Exclude specific integrations
+      #   Braintrust::Contrib.auto_instrument!(except: [:ruby_llm])
+      def auto_instrument!(only: nil, except: nil)
+        targets = registry.available
+        targets = targets.select { |i| only.include?(i.integration_name) } if only
+        targets = targets.reject { |i| except.include?(i.integration_name) } if except
+
+        targets.each_with_object([]) do |integration, instrumented|
+          instrumented << integration.integration_name if instrument!(integration.integration_name)
         end
       end
 
