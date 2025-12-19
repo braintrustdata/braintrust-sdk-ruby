@@ -49,6 +49,7 @@ GEM
       builder
       minitest (>= 5.0)
       ruby-progressbar
+    minitest-stub-const (0.6)
     minitest-stub_any_instance (1.0.3)
     openssl (3.3.1)
     opentelemetry-api (1.7.0)
@@ -144,6 +145,7 @@ DEPENDENCIES
   kramdown (~> 2.0)
   minitest (~> 5.0)
   minitest-reporters (~> 1.6)
+  minitest-stub-const (~> 0.6)
   minitest-stub_any_instance (~> 1.0)
   rake (~> 13.0)
   simplecov (~> 0.22)
