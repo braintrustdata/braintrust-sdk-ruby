@@ -103,6 +103,13 @@ namespace :test do
     sh "bundle exec ruby -Ilib:test -e \"Dir.glob('test/braintrust/contrib{_test.rb,/**/*_test.rb}').each { |f| require_relative f }\""
   end
 
+  namespace :contrib do
+    desc "Run OpenAI contrib tests"
+    task :openai do
+      sh "bundle exec appraisal openai ruby -Ilib:test -e \"Dir.glob('test/braintrust/contrib/openai/**/*_test.rb').each { |f| require_relative f }\""
+    end
+  end
+
   desc "Run tests with verbose timing output"
   task :verbose do
     ENV["MT_VERBOSE"] = "1"

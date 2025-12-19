@@ -27,7 +27,7 @@ require "json"
 # This example validates that the Ruby SDK captures the same data as TypeScript/Go SDKs.
 #
 # Usage:
-#   OPENAI_API_KEY=key bundle exec ruby examples/internal/openai.rb
+#   OPENAI_API_KEY=key bundle exec ruby examples/internal/contrib/openai/golden.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
@@ -42,16 +42,16 @@ Braintrust.init(
 # Get a tracer for this example
 tracer = OpenTelemetry.tracer_provider.tracer("openai-comprehensive-example")
 
-# Create OpenAI client and wrap it
+# Create OpenAI client and instrument it
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
-Braintrust::Trace::OpenAI.wrap(client)
+Braintrust.instrument!(:openai)
 
 puts "OpenAI Comprehensive Features Example"
 puts "=" * 50
 
 # Wrap all examples under a single parent trace
 root_span = nil
-tracer.in_span("examples/internal/openai.rb") do |span|
+tracer.in_span("examples/internal/contrib/openai/golden.rb") do |span|
   root_span = span
   # Example 1: Vision - Image Understanding
   puts "\n1. Vision (Image Understanding)"
