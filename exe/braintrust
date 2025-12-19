@@ -1,0 +1,143 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Braintrust CLI - Auto-instrument Ruby applications
+#
+# Usage:
+#   braintrust exec -- ruby app.rb
+#   braintrust exec -- bundle exec rails server
+#   braintrust exec --only openai,anthropic -- ruby app.rb
+
+require "optparse"
+
+module Braintrust
+  module CLI
+    class << self
+      def run(args)
+        command = parse_args(args)
+
+        case command
+        when :exec
+          exec_command
+        when :help, nil
+          print_help
+          exit((command == :help) ? 0 : 1)
+        else
+          puts "Unknown command: #{command}"
+          print_help
+          exit 1
+        end
+      end
+
+      private
+
+      def parse_args(args)
+        @options = {}
+        @remaining_args = []
+
+        # Find -- separator
+        separator_index = args.index("--")
+        if separator_index
+          to_parse = args[0...separator_index]
+          @remaining_args = args[(separator_index + 1)..]
+        else
+          to_parse = args.dup
+        end
+
+        parser = OptionParser.new do |opts|
+          opts.banner = "Usage: braintrust <command> [options] -- COMMAND"
+
+          opts.on("--only INTEGRATIONS", "Only instrument these (comma-separated)") do |v|
+            @options[:only] = v
+          end
+
+          opts.on("--except INTEGRATIONS", "Skip these integrations (comma-separated)") do |v|
+            @options[:except] = v
+          end
+
+          opts.on("-h", "--help", "Show this help") do
+            return :help
+          end
+
+          opts.on("-v", "--version", "Show version") do
+            require_relative "../lib/braintrust/version"
+            puts "braintrust #{Braintrust::VERSION}"
+            exit 0
+          end
+        end
+
+        parser.parse!(to_parse)
+
+        return nil if to_parse.empty?
+        to_parse.first.to_sym
+      end
+
+      def exec_command
+        if @remaining_args.empty?
+          puts "Error: No command specified after --"
+          puts "Usage: braintrust exec [options] -- COMMAND"
+          exit 1
+        end
+
+        # Set environment variables for filtering
+        ENV["BRAINTRUST_INSTRUMENT_ONLY"] = @options[:only] if @options[:only]
+        ENV["BRAINTRUST_INSTRUMENT_EXCEPT"] = @options[:except] if @options[:except]
+
+        # Inject auto-instrument via RUBYOPT
+        set_rubyopt!
+
+        # Execute the command with error handling
+        exec_with_error_handling(@remaining_args)
+      end
+
+      def rubyopts
+        ["-rbraintrust/auto_instrument"]
+      end
+
+      def set_rubyopt!
+        existing = ENV["RUBYOPT"]
+        ENV["RUBYOPT"] = existing ? "#{existing} #{rubyopts.join(" ")}" : rubyopts.join(" ")
+      end
+
+      def exec_with_error_handling(args)
+        Kernel.exec(*args)
+      rescue Errno::ENOENT => e
+        Kernel.warn "braintrust exec failed: #{e.class.name} #{e.message}"
+        Kernel.exit 127
+      rescue Errno::EACCES, Errno::ENOEXEC => e
+        Kernel.warn "braintrust exec failed: #{e.class.name} #{e.message}"
+        Kernel.exit 126
+      end
+
+      def print_help
+        puts <<~HELP
+          Braintrust CLI - Auto-instrument Ruby applications
+
+          Usage:
+            braintrust exec [options] -- COMMAND
+
+          Commands:
+            exec    Run a command with auto-instrumentation enabled
+
+          Options:
+            --only INTEGRATIONS     Only instrument these (comma-separated)
+            --except INTEGRATIONS   Skip these integrations (comma-separated)
+            -h, --help              Show this help
+            -v, --version           Show version
+
+          Examples:
+            braintrust exec -- ruby app.rb
+            braintrust exec -- rails server
+            braintrust exec --only openai -- ruby app.rb
+
+          Environment Variables:
+            BRAINTRUST_API_KEY              API key for Braintrust
+            BRAINTRUST_INSTRUMENT_ONLY      Comma-separated whitelist
+            BRAINTRUST_INSTRUMENT_EXCEPT    Comma-separated blacklist
+        HELP
+      end
+    end
+  end
+end
+
+Braintrust::CLI.run(ARGV)
