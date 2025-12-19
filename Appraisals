@@ -79,3 +79,9 @@ appraise "contrib" do
   gem "ruby_llm", ">= 1.9"
   gem "base64" # needed for openai gem on Ruby 3.4+
 end
+
+# Rails integration testing (minimal dependencies)
+appraise "rails" do
+  gem "activesupport", "~> 8.0"
+  gem "railties", "~> 8.0"
+end
