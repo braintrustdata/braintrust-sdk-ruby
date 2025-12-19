@@ -99,7 +99,7 @@ class Braintrust::ContribTest < Minitest::Test
     target = Object.new
     mock_context = Object.new
 
-    Braintrust::Contrib::Context.stub(:from, ->(t) { t == target ? mock_context : nil }) do
+    Braintrust::Contrib::Context.stub(:from, ->(t) { (t == target) ? mock_context : nil }) do
       assert_same mock_context, Braintrust::Contrib.context_for(target)
     end
   end

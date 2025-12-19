@@ -63,3 +63,9 @@ appraise "opentelemetry-latest" do
   gem "opentelemetry-sdk", ">= 1.10"
   gem "opentelemetry-exporter-otlp", ">= 0.31"
 end
+
+# Both OpenAI gems installed - tests that loaded? correctly distinguishes them
+appraise "openai-ruby-openai" do
+  gem "openai", ">= 0.34"
+  gem "ruby-openai", ">= 8.0"
+end
