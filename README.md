@@ -111,7 +111,10 @@ Braintrust.init
 
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
-Braintrust::Trace::OpenAI.wrap(client)
+# Instrument all clients
+Braintrust.instrument!(:openai)
+# OR instrument a single client
+Braintrust.instrument!(:openai, target: client)
 
 tracer = OpenTelemetry.tracer_provider.tracer("openai-app")
 root_span = nil
