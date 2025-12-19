@@ -16,15 +16,15 @@ class WithoutOpenAITest < Minitest::Test
     skip "Test only runs in without-openai appraisal" if openai_available?
 
     # Test that we can initialize Braintrust without tracing (no OpenAI needed)
+    # Note: "test-api-key" triggers fake auth to avoid HTTP requests
     state = Braintrust.init(
-      api_key: "test-key",
+      api_key: "test-api-key",
       set_global: false,
-      blocking_login: false,
       enable_tracing: false
     )
 
     assert_instance_of Braintrust::State, state
-    assert_equal "test-key", state.api_key
+    assert_equal "test-api-key", state.api_key
   end
 
   def test_openai_require_fails_without_gem

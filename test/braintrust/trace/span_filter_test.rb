@@ -11,9 +11,8 @@ class SpanFilterTest < Minitest::Test
     tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
     Braintrust.init(
-      api_key: "test-key",
+      api_key: "test-api-key",
       set_global: false,
-      blocking_login: false,
       enable_tracing: true,
       tracer_provider: tracer_provider,
       exporter: exporter,
@@ -214,9 +213,8 @@ class SpanFilterTest < Minitest::Test
     tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
     Braintrust.init(
-      api_key: "test-key",
+      api_key: "test-api-key",
       set_global: false,
-      blocking_login: false,
       enable_tracing: true,
       tracer_provider: tracer_provider,
       exporter: exporter,

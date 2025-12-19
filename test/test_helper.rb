@@ -64,6 +64,29 @@ end
 
 # Test helpers for OpenTelemetry tracing
 module TracingTestHelper
+  # =============================================================================
+  # IMPORTANT: Magic Test API Key
+  # =============================================================================
+  #
+  # When calling Braintrust.init in tests, use api_key: "test-api-key" to trigger
+  # fake authentication that avoids HTTP requests. This magic key is handled in
+  # lib/braintrust/api/internal/auth.rb and returns fake org info immediately.
+  #
+  # Without this magic key, Braintrust.init spawns a background login thread that
+  # can cause WebMock errors after tests complete (orphan thread race condition).
+  #
+  # Example:
+  #   Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true)
+  #
+  # TODO: Future work - move this magic key handling out of production code and into
+  # test helpers instead. Options include:
+  #   1. A test-only initializer that provides org_id directly (skips login entirely)
+  #   2. Dependency injection for the Auth module in tests
+  #   3. Environment-based test mode detection
+  #
+  # See: lib/braintrust/api/internal/auth.rb for the magic key implementation
+  # =============================================================================
+
   # Wrapper for OpenTelemetry test setup
   class OtelTestRig
     attr_reader :tracer_provider, :exporter, :state
