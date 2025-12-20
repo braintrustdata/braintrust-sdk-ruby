@@ -6,22 +6,23 @@ require_relative "summary"
 module Braintrust
   module Eval
     # Result represents the outcome of an evaluation run
-    # Contains experiment metadata, errors, timing information, and raw score data
+    # Contains experiment metadata, errors, timing information, and summary data
     class Result
       attr_reader :experiment_id, :experiment_name, :project_id, :project_name,
-        :permalink, :errors, :duration, :scores
+        :permalink, :errors, :duration, :scores, :summary
 
       # Create a new result
-      # @param experiment_id [String] The experiment ID
+      # @param experiment_id [String, nil] The experiment ID (nil for local-only mode)
       # @param experiment_name [String] The experiment name
-      # @param project_id [String] The project ID
+      # @param project_id [String, nil] The project ID (nil for local-only mode)
       # @param project_name [String] The project name
-      # @param permalink [String] Link to view the experiment in Braintrust UI
+      # @param permalink [String, nil] Link to view the experiment in Braintrust UI
       # @param errors [Array<String>] List of errors that occurred
       # @param duration [Float] Duration in seconds
       # @param scores [Hash, nil] Raw score data { scorer_name => Array<Numeric> }
+      # @param summary [ExperimentSummary, nil] Pre-computed summary (if nil, computed lazily)
       def initialize(experiment_id:, experiment_name:, project_id:, project_name:,
-        permalink:, errors:, duration:, scores: nil)
+        permalink:, errors:, duration:, scores: nil, summary: nil)
         @experiment_id = experiment_id
         @experiment_name = experiment_name
         @project_id = project_id
@@ -30,6 +31,7 @@ module Braintrust
         @errors = errors
         @duration = duration
         @scores = scores
+        @summary = summary || build_summary_without_comparison
       end
 
       # Check if the evaluation was successful (no errors)
@@ -44,23 +46,18 @@ module Braintrust
         !success?
       end
 
-      # Get the experiment summary (lazily computed)
-      # @return [ExperimentSummary] Summary view model for Formatter
-      def summary
-        @summary ||= build_summary
-      end
-
       # Format the result as a human-readable string (Go SDK format)
       # @return [String]
       def to_s
-        [
+        lines = [
           "Experiment: #{experiment_name}",
-          "Project: #{project_name}",
-          "ID: #{experiment_id}",
-          "Link: #{permalink}",
-          "Duration: #{duration.round(4)}s",
-          "Errors: #{errors.length}"
-        ].join("\n")
+          "Project: #{project_name}"
+        ]
+        lines << "ID: #{experiment_id}" if experiment_id
+        lines << "Link: #{permalink}" if permalink
+        lines << "Duration: #{duration.round(4)}s"
+        lines << "Errors: #{errors.length}"
+        lines.join("\n")
       end
 
       # Format the result as a pretty CLI output with box drawing and colors
@@ -69,40 +66,22 @@ module Braintrust
         Formatter.format_experiment_summary(summary)
       end
 
-      # Get statistics for all scorers (lazily computed from scores)
-      # @return [Hash<String, ScorerStats>] Scorer stats keyed by scorer name
-      def scorer_stats
-        @scorer_stats ||= build_scorer_stats
-      end
-
       private
 
-      # Build scorer statistics from raw score data
-      # @return [Hash<String, ScorerStats>] Scorer stats keyed by scorer name
-      def build_scorer_stats
-        return {} if scores.nil? || scores.empty?
-
-        stats = {}
-        scores.each do |name, score_values|
-          next if score_values.empty?
-          mean = score_values.sum.to_f / score_values.size
-          stats[name] = ScorerStats.new(name: name, score_mean: mean)
-        end
-        stats
-      end
-
-      # Build experiment summary view model
-      # @return [ExperimentSummary] Summary with all data for Formatter
-      def build_summary
-        ExperimentSummary.new(
-          project_name: project_name,
-          experiment_name: experiment_name,
-          experiment_id: experiment_id,
-          experiment_url: permalink,
-          scores: scorer_stats,
-          duration: duration,
-          error_count: errors.length,
-          errors: errors
+      # Build summary from raw scores when comparison data is unavailable
+      # @return [ExperimentSummary]
+      def build_summary_without_comparison
+        ExperimentSummary.from_raw_scores(
+          scores || {},
+          {
+            project_name: project_name,
+            experiment_name: experiment_name,
+            experiment_id: experiment_id,
+            experiment_url: permalink,
+            duration: duration,
+            error_count: errors.length,
+            errors: errors
+          }
         )
       end
     end

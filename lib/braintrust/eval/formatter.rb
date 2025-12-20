@@ -30,6 +30,15 @@ module Braintrust
       # Maximum length for error messages before truncation
       MAX_ERROR_LENGTH = 150
 
+      # Column widths for comparison table
+      COLUMN_WIDTHS = {
+        name: 22,
+        value: 12,
+        change: 10,
+        improvements: 14,
+        regressions: 12
+      }.freeze
+
       class << self
         # Format an experiment summary for CLI output
         # @param summary [ExperimentSummary] The experiment summary
@@ -39,24 +48,41 @@ module Braintrust
 
           lines = []
 
-          # Metadata section
-          lines << format_metadata_row("Project", summary.project_name)
-          lines << format_metadata_row("Experiment", summary.experiment_name)
-          lines << format_metadata_row("ID", summary.experiment_id)
-          lines << format_metadata_row("Duration", format_duration(summary.duration))
-          lines << format_metadata_row("Errors", summary.error_count.to_s)
-
-          # Scores section (if any)
-          if summary.scores&.any?
+          # Comparison header (if comparing)
+          if summary.comparison&.baseline_experiment_name
+            lines << format_comparison_header(
+              summary.comparison.baseline_experiment_name,
+              summary.experiment_name
+            )
             lines << ""
+          end
+
+          # Scores section
+          if summary.scores&.any?
             lines << colorize("Scores", :white)
 
-            # Calculate max scorer name length for alignment
-            max_name_len = summary.scores.values.map { |s| s.name.length }.max || 0
-            name_width = [max_name_len + 2, 20].max # +2 for "◯ " prefix
+            if has_comparison_data?(summary.scores)
+              lines << format_scores_table_header
+              summary.scores.each_value do |score|
+                lines << format_comparison_score_row(score)
+              end
+            else
+              # Simple format without comparison columns
+              max_name_len = summary.scores.values.map { |s| s.name.length }.max || 0
+              name_width = [max_name_len + 2, 20].max
+              summary.scores.each_value do |score|
+                lines << format_simple_score_row(score, name_width)
+              end
+            end
+          end
 
-            summary.scores.each_value do |score|
-              lines << format_score_row(score, name_width)
+          # Metrics section (only if present - comparison mode)
+          if summary.metrics&.any?
+            lines << ""
+            lines << colorize("Metrics", :white)
+            lines << format_metrics_table_header
+            summary.metrics.each_value do |metric|
+              lines << format_metric_row(metric)
             end
           end
 
@@ -64,7 +90,6 @@ module Braintrust
           if summary.errors&.any?
             lines << ""
             lines << colorize("Errors", :white)
-
             summary.errors.each do |error|
               lines << format_error_row(error)
             end
@@ -79,22 +104,151 @@ module Braintrust
           wrap_in_box(lines, "Experiment summary")
         end
 
-        # Format a metadata row (label: value)
-        # @param label [String] Row label
-        # @param value [String] Row value
-        # @return [String] Formatted row
-        def format_metadata_row(label, value)
-          "#{colorize(label + ":", :dim)} #{value}"
+        # Format comparison header line
+        # @param baseline [String] Baseline experiment name
+        # @param comparison [String] Comparison (current) experiment name
+        # @return [String] Formatted header
+        def format_comparison_header(baseline, comparison)
+          "#{baseline} (baseline) #{colorize("←", :gray)} #{comparison} (comparison)"
         end
 
-        # Format duration for display
-        # @param duration [Float] Duration in seconds
-        # @return [String] Formatted duration (e.g., "1.2345s" or "123ms")
-        def format_duration(duration)
-          if duration < 1
-            "#{(duration * 1000).round(0)}ms"
+        # Format table header for scores section (5 columns)
+        # @return [String] Header row
+        def format_scores_table_header
+          name = pad_cell("Name", COLUMN_WIDTHS[:name], :left)
+          value = pad_cell("Value", COLUMN_WIDTHS[:value], :right)
+          change = pad_cell("Change", COLUMN_WIDTHS[:change], :right)
+          improvements = pad_cell("Improvements", COLUMN_WIDTHS[:improvements], :right)
+          regressions = pad_cell("Regressions", COLUMN_WIDTHS[:regressions], :right)
+          colorize("#{name}#{value}#{change}#{improvements}#{regressions}", :dim)
+        end
+
+        # Format table header for metrics section (3 columns)
+        # @return [String] Header row
+        def format_metrics_table_header
+          name = pad_cell("Name", COLUMN_WIDTHS[:name], :left)
+          value = pad_cell("Value", COLUMN_WIDTHS[:value], :right)
+          change = pad_cell("Change", COLUMN_WIDTHS[:change], :right)
+          colorize("#{name}#{value}#{change}", :dim)
+        end
+
+        # Format a score row with all comparison columns (5 columns)
+        # @param score [ScoreSummary] The score summary
+        # @return [String] Formatted row
+        def format_comparison_score_row(score)
+          name = "#{colorize("◯", :blue)} #{score.name}"
+          value = format_score_value(score.score)
+          change = format_change(score.diff)
+          improvements = format_count(score.improvements, :green)
+          regressions = format_count(score.regressions, :red)
+
+          pad_cell(name, COLUMN_WIDTHS[:name], :left) +
+            pad_cell(value, COLUMN_WIDTHS[:value], :right) +
+            pad_cell(change, COLUMN_WIDTHS[:change], :right) +
+            pad_cell(improvements, COLUMN_WIDTHS[:improvements], :right) +
+            pad_cell(regressions, COLUMN_WIDTHS[:regressions], :right)
+        end
+
+        # Format a simple score row without comparison columns
+        # @param score [ScoreSummary] The score summary
+        # @param name_width [Integer] Width for the name column
+        # @return [String] Formatted row
+        def format_simple_score_row(score, name_width = 20)
+          name = "#{colorize("◯", :blue)} #{score.name}"
+          value = format_score_value(score.score)
+          pad_cell(name, name_width, :left) + " " + pad_cell(value, 10, :right)
+        end
+
+        # Format a metric row (3 columns)
+        # @param metric [MetricSummary] The metric summary
+        # @return [String] Formatted row
+        def format_metric_row(metric)
+          name = "#{colorize("◯", :magenta)} #{metric.name}"
+          value = format_metric_value(metric.metric, metric.unit)
+          change = format_change(metric.diff)
+
+          pad_cell(name, COLUMN_WIDTHS[:name], :left) +
+            pad_cell(value, COLUMN_WIDTHS[:value], :right) +
+            pad_cell(change, COLUMN_WIDTHS[:change], :right)
+        end
+
+        # Format a score value as percentage
+        # @param score [Float] Score value (0.0 to 1.0)
+        # @return [String] Formatted percentage
+        def format_score_value(score)
+          return colorize("-", :gray) if score.nil?
+          colorize("#{(score * 100).round(2)}%", :white)
+        end
+
+        # Format a metric value with unit
+        # @param value [Float] Metric value
+        # @param unit [String] Unit suffix
+        # @return [String] Formatted value with unit
+        def format_metric_value(value, unit)
+          return colorize("-", :gray) if value.nil?
+
+          # Format based on magnitude and type
+          formatted = if value == value.to_i
+            value.to_i.to_s
+          elsif value < 0.01
+            value.round(4).to_s
           else
-            "#{duration.round(4)}s"
+            value.round(2).to_s
+          end
+
+          colorize("#{formatted}#{unit}", :white)
+        end
+
+        # Format a change value (diff)
+        # @param diff [Float, nil] Difference value (as ratio, e.g., 0.05 = +5%)
+        # @return [String] Formatted change with color
+        def format_change(diff)
+          return colorize("-", :gray) if diff.nil?
+
+          # diff is already a ratio, convert to percentage
+          percentage = (diff * 100).round(2)
+          sign = (percentage >= 0) ? "+" : ""
+          formatted = "#{sign}#{percentage}%"
+
+          if percentage > 0
+            colorize(formatted, :green)
+          elsif percentage < 0
+            colorize(formatted, :red)
+          else
+            colorize(formatted, :gray)
+          end
+        end
+
+        # Format an improvement/regression count
+        # @param count [Integer, nil] Count value
+        # @param color [Symbol] Color to apply if non-zero
+        # @return [String] Formatted count
+        def format_count(count, color = nil)
+          return colorize("-", :gray) if count.nil? || count == 0
+
+          if color
+            colorize(count.to_s, :dim, color)
+          else
+            count.to_s
+          end
+        end
+
+        # Check if any scores have comparison data
+        # @param scores [Hash<String, ScoreSummary>] Scores to check
+        # @return [Boolean] True if any score has diff data
+        def has_comparison_data?(scores)
+          scores&.values&.any? { |s| !s.diff.nil? }
+        end
+
+        # Format a duration value for display
+        # Shows milliseconds for < 1 second, seconds otherwise
+        # @param seconds [Float] Duration in seconds
+        # @return [String] Formatted duration (e.g., "500ms" or "1.2345s")
+        def format_duration(seconds)
+          if seconds < 1
+            "#{(seconds * 1000).round}ms"
+          else
+            "#{seconds.round(4)}s"
           end
         end
 
@@ -125,16 +279,6 @@ module Braintrust
           "#{codes}#{text}#{COLORS[:reset]}"
         end
 
-        # Format a score row for display
-        # @param score [ScorerStats] The scorer statistics
-        # @param name_width [Integer] Width for the name column
-        # @return [String] Formatted row
-        def format_score_row(score, name_width = 20)
-          name = "#{colorize("◯", :blue)} #{score.name}"
-          value = colorize("#{(score.score_mean * 100).round(2)}%", :white)
-          pad_cell(name, name_width, :left) + " " + pad_cell(value, 10, :right)
-        end
-
         # Pad a cell to a given width, accounting for ANSI codes
         # @param text [String] Cell text (may contain ANSI codes)
         # @param width [Integer] Target width
@@ -156,8 +300,6 @@ module Braintrust
         # @param text [String] Text that may contain escape sequences
         # @return [Integer] Visible character count
         def visible_text_length(text)
-          # Strip ANSI color codes: \e[...m
-          # Strip OSC 8 hyperlinks: \e]8;;...\e\\ (the URL part is invisible)
           text
             .gsub(/\e\[[0-9;]*m/, "")           # ANSI color codes
             .gsub(/\e\]8;;[^\e]*\e\\/, "")      # OSC 8 hyperlink sequences
