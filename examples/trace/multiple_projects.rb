@@ -40,13 +40,16 @@ end
 state_a = Braintrust.init(
   default_project: project1,
   set_global: false,
-  enable_tracing: false  # We'll manually set up tracing
+  enable_tracing: false,  # We'll manually set up tracing
+  blocking_login: true    # Ensure login completes before tracing setup
+  # Not required if only tracing, login is async by default and can lead to a broken permalink if not synchronous
 )
 # Create second state for Project B (non-global)
 state_b = Braintrust.init(
   default_project: project2,
   set_global: false,
-  enable_tracing: false  # We'll manually set up tracing
+  enable_tracing: false,
+  blocking_login: true 
 )
 
 # Wrap all instances of RubyLLM client
@@ -142,9 +145,9 @@ puts "\nProject B: Describe Image"
 puts "=" * 50
 
 # chat completion should automatically nest
-root_span = nil
+root_span_b = nil
 tracer_b.in_span("vision") do |span|
-  root_span = span
+  root_span_b = span
   # Example 1: Vision - Image Understanding
   puts "\n Vision (Image Understanding)"
   puts "-" * 50
@@ -178,7 +181,7 @@ end
 
 puts "\n✓ Vision example completed"
 puts "\n✓ View Project B trace in Braintrust:"
-puts "  #{Braintrust::Trace.permalink(root_span)}"
+puts "  #{Braintrust::Trace.permalink(root_span_b)}"
 
 # Shutdown both tracer providers to flush spans
 tracer_provider_a.shutdown
