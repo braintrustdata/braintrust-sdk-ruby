@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-# frozen_string_literal: true
 
 require "bundler/setup"
 require "braintrust"
@@ -43,13 +42,14 @@ state_a = Braintrust.init(
   set_global: false,
   enable_tracing: false  # We'll manually set up tracing
 )
-  # Create second state for Project B (non-global)
+# Create second state for Project B (non-global)
 state_b = Braintrust.init(
   default_project: project2,
   set_global: false,
   enable_tracing: false  # We'll manually set up tracing
 )
 
+# Wrap all instances of RubyLLM client
 Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
 
 RubyLLM.configure do |config|
@@ -68,61 +68,85 @@ tracer_provider_a = OpenTelemetry::SDK::Trace::TracerProvider.new
 Braintrust::Trace.setup(state_a, tracer_provider_a)
 
 # Get tracer for Project A
-tracer_a = tracer_provider_a.tracer("Feature A")
+tracer_a = tracer_provider_a.tracer("MultiTurn")
 
 # Note: You can also use Trace.enable instead of Trace.setup:
 # Braintrust::Trace.enable(tracer_provider_a, state: state_a)
 # Braintrust::Trace.enable(tracer_provider_b, state: state_b)
 # Both work the same when you provide explicit providers
 
-# Now create spans in both projects
+# Now create spans in first project
+puts "\nProject A: Multi-turn conversation"
+puts "=" * 50
 root_span_a = nil
 tracer_a.in_span("chat_ask") do |span|
   root_span_a = span
-  span.set_attribute("project", "A")
+  span.set_attribute("project", project1)
 
-  # Nested span in Project A
+  # Nested spans for multi-turn convo
   tracer_a.in_span("turn1") do |nested_t1|
+    # Using OTEL GenAI Semantic Conventions for properties
+    # https://www.braintrust.dev/docs/integrations/sdk-integrations/opentelemetry#manual-tracing
+    # Braintrust automatically maps `gen_ai.*` attributes to native Braintrust fields
+    # tracer_b will use native fields
     nested_t1.set_attribute("gen_ai.operation.name", "chat")
     nested_t1.set_attribute("gen_ai.request.model", model1)
     input = "What is the best season to visit Japan?"
+    puts "\nTurn 1 (#{model1}):"
+    puts "Q: #{input}"
     output = chat_openai.ask(input)
 
-    #gen_ai.prompt would work too
     nested_t1.set_attribute("gen_ai.prompt", input)
-    nested_t1.set_attribute("braintrust.output", output.content)
+    nested_t1.set_attribute("gen_ai.completion", output.content)
+    puts "A: #{output.content[0..100]}..."
+    puts "  Tokens: #{output.to_h[:input_tokens]} in, #{output.to_h[:output_tokens]} out"
 
     tracer_a.in_span("turn2") do |nested_t2|
-      nested_t2.set_attribute("braintrust.span_attributes.type", "llm")
-      nested_t2.set_attribute("braintrust.metadata.model", model2)
+      nested_t2.set_attribute("gen_ai.operation.name", "chat")
+      nested_t2.set_attribute("gen_ai.request.model", model2)
       input = "Which airlines fly to Japan from SFO?"
+      puts "\nTurn 2 (#{model2}):"
+      puts "Q: #{input}"
       output = chat_anthropic.ask(input)
 
-      nested_t2.set_attribute("braintrust.input", input)
-      nested_t2.set_attribute("braintrust.output", output.content)
+      nested_t2.set_attribute("gen_ai.prompt", input)
+      nested_t2.set_attribute("gen_ai.completion", output.content)
+      puts "A: #{output.content[0..100]}..."
+      puts "  Tokens: #{output.to_h[:input_tokens]} in, #{output.to_h[:output_tokens]} out"
     end
   end
 end
 
+puts "\n✓ Multi-turn conversation completed"
+puts "\n✓ View Project A trace in Braintrust:"
+puts "  #{Braintrust::Trace.permalink(root_span_a)}"
 
-client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 url = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Tokyo_Tower_during_daytime.jpg/330px-Tokyo_Tower_during_daytime.jpg"
+
+# For second project, we'll use the Ruby OpenAI client
+# You can log to multiple projects even if your clients use different client libs
+client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
+
 # Create second tracer provider
 tracer_provider_b = OpenTelemetry::SDK::Trace::TracerProvider.new
 Braintrust::Trace.setup(state_b, tracer_provider_b)
 
 # Get tracer for Project A
-tracer_b = tracer_provider_b.tracer("Feature B")
+tracer_b = tracer_provider_b.tracer("ImageUpload")
 
-
+# Wrapping OpenAI client with second trace provider
+# We could simply call `wrap` without tracer_provider, but then it would be bound to our global state
 Braintrust::Trace::OpenAI.wrap(client, tracer_provider: tracer_provider_b)
 
-# Wrap all examples under a single parent trace
+puts "\nProject B: Describe Image"
+puts "=" * 50
+
+# chat completion should automatically nest
 root_span = nil
 tracer_b.in_span("vision") do |span|
   root_span = span
   # Example 1: Vision - Image Understanding
-  puts "\n1. Vision (Image Understanding)"
+  puts "\n Vision (Image Understanding)"
   puts "-" * 50
   tracer_b.in_span("example-vision") do
     response = client.chat.completions.create(
@@ -152,5 +176,10 @@ tracer_b.in_span("vision") do |span|
   end
 end
 
+puts "\n✓ Vision example completed"
+puts "\n✓ View Project B trace in Braintrust:"
+puts "  #{Braintrust::Trace.permalink(root_span)}"
+
+# Shutdown both tracer providers to flush spans
 tracer_provider_a.shutdown
 tracer_provider_b.shutdown
