@@ -49,3 +49,9 @@ appraise "opentelemetry-latest" do
   gem "opentelemetry-sdk", ">= 1.10"
   gem "opentelemetry-exporter-otlp", ">= 0.31"
 end
+
+# for multiple_projects.rb only, test both openai and ruby_llm
+appraise "ruby-llm-openai" do
+  gem "openai", ">= 0.34"
+  gem "ruby_llm", ">= 1.9"
+end
