@@ -50,15 +50,15 @@ state_b = Braintrust.init(
   default_project: project2,
   set_global: false,
   enable_tracing: false,
-  blocking_login: true 
+  blocking_login: true
 )
 
 # Wrap all instances of RubyLLM client
 Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
 
 RubyLLM.configure do |config|
-    config.openai_api_key = ENV["OPENAI_API_KEY"]
-    config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
 end
 
 chat_openai = RubyLLM.chat(model: model1)
@@ -180,7 +180,7 @@ tracer_b.in_span("vision") do |span|
     nested.set_attribute("braintrust.span_attributes.type", "llm")
     nested.set_attribute("metadata.model", model1)
     nested.set_attribute("braintrust.input", input)
-    nested.set_attribute("braintrust.output", "#{response.choices[0].message.content}")
+    nested.set_attribute("braintrust.output", response.choices[0].message.content.to_s)
 
     puts "✓ Vision response: #{response.choices[0].message.content[0..100]}..."
     puts "  Tokens: #{response.usage.total_tokens}"
