@@ -14,24 +14,57 @@ export BRAINTRUST_API_KEY="your-api-key-here"
 
 ## Running Examples
 
+### Using Rake (Recommended)
+
+The rake task automatically uses the correct gemfile for each example:
+
+```bash
+# Run a single example
+rake 'example[examples/trace/multiple_projects.rb]'
+
+# Run all examples
+rake examples
+```
+
+### Running Directly
+
 From the project root:
 
 ```bash
 # Run a specific example
-ruby examples/login/login_basic.rb
+ruby examples/login.rb
 
 # Enable debug logging
-BRAINTRUST_DEBUG=true ruby examples/login/login_basic.rb
+BRAINTRUST_DEBUG=true ruby examples/login.rb
 ```
 
 ## Available Examples
 
 ### Login Examples
 
-- **`login/login_basic.rb`**: Basic login example showing how to authenticate and retrieve organization information
+- **`login.rb`**: Basic login example showing how to authenticate and retrieve organization information
 
-## Coming Soon
 
-- OpenTelemetry tracing examples
-- OpenAI integration examples
-- Eval framework examples
+### Tracing Examples
+
+- **`trace.rb`**: Basic OpenTelemetry tracing example
+- **`trace/span_filtering.rb`**: Example of filtering out non-AI spans in traces to reduce noise
+- **`trace/trace_attachments.rb`**: Example of adding attachments (images, PDFs, BLOBs) to traces
+- **`trace/multiple_projects.rb`**: Example of logging traces to multiple Braintrust projects simultaneously
+
+### LLM Integration Examples
+
+- **`openai.rb`**: OpenAI integration example
+- **`anthropic.rb`**: Anthropic integration example
+- **`ruby_llm.rb`**: Ruby LLM integration example
+- **`alexrudall_openai.rb`**: Alexrudall's ruby-openai gem integration example
+
+### Evaluation Examples
+
+- **`eval.rb`**: Defining scorers and running evals
+- **`eval/dataset.rb`**: Running an evaluation against a dataset
+- **`eval/remote_functions.rb`**: Using remote functions (server-side prompts) in evaluations
+
+### API Examples
+
+- **`api/dataset.rb`**: Dataset API usage example
