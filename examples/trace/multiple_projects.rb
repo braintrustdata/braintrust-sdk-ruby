@@ -16,7 +16,7 @@ unless ENV["OPENAI_API_KEY"] && ENV["ANTHROPIC_API_KEY"]
   puts "Error: Both OPENAI_API_KEY and ANTHROPIC_API_KEY environment variables are required"
   puts "Get your API key from: https://platform.openai.com/api-keys"
   puts "Get your Anthropic API key from: https://console.anthropic.com/"
-  puts "Set with `export OPENAI_API_KEY=<your_key>`"
+  puts "Set with `export OPENAI_API_KEY=<your_key> and export ANTHROPIC_API_KEY=<your_key>`"
   exit 1
 end
 
@@ -151,14 +151,16 @@ tracer_b.in_span("vision") do |span|
   # Example 1: Vision - Image Understanding
   puts "\n Vision (Image Understanding)"
   puts "-" * 50
-  tracer_b.in_span("example-vision") do
+
+  input = "Tell me about this landmark."
+  tracer_b.in_span("example-vision") do |nested|
     response = client.chat.completions.create(
       model: model1,
       messages: [
         {
           role: "user",
           content: [
-            {type: "text", text: "Tell me about this landmark."},
+            {type: "text", text: input},
             {
               type: "image_url",
               image_url: {
@@ -170,6 +172,15 @@ tracer_b.in_span("vision") do |span|
       ],
       max_tokens: 100
     )
+
+    # Using Braintrust native span attributes
+    # For comparisons with OTEL GenAI semantic convention properties,
+    # see https://www.braintrust.dev/docs/integrations/sdk-integrations/opentelemetry#manual-tracing
+    nested.set_attribute("braintrust.span_attributes.type", "llm")
+    nested.set_attribute("metadata.model", model1)
+    nested.set_attribute("braintrust.input", input)
+    nested.set_attribute("braintrust.output", "#{response.choices[0].message.content}")
+
     puts "✓ Vision response: #{response.choices[0].message.content[0..100]}..."
     puts "  Tokens: #{response.usage.total_tokens}"
   rescue OpenAI::Errors::BadRequestError => e
