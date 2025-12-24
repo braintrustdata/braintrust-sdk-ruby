@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     braintrust (0.0.11)
+      base64 (~> 0.2)
       openssl (~> 3.3.1)
       opentelemetry-exporter-otlp (~> 0.28)
       opentelemetry-sdk (~> 1.3)
@@ -50,7 +51,7 @@ GEM
       builder
       minitest (>= 5.0)
       ruby-progressbar
-    openssl (3.3.1)
+    openssl (3.3.2)
     opentelemetry-api (1.7.0)
     opentelemetry-common (0.23.0)
       opentelemetry-api (~> 1.0)
@@ -153,4 +154,4 @@ DEPENDENCIES
   yard (~> 0.9)
 
 BUNDLED WITH
-   2.4.19
+  4.0.3
