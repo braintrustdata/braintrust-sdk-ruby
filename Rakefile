@@ -32,6 +32,7 @@ end
 
 def appraisal_for(example)
   case example
+  when /multiple_projects/ then "ruby-llm-openai"
   when /ruby_llm/ then "ruby_llm"
   when /ruby-openai/, /ruby_openai/, /alexrudall/ then "ruby-openai"
   when /anthropic/ then "anthropic"

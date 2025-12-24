@@ -31,6 +31,10 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_runtime_dependency "opentelemetry-sdk", "~> 1.3"
   spec.add_runtime_dependency "opentelemetry-exporter-otlp", "~> 0.28"
+  # Ruby 3.4+ considers this a bundled gem, removed from default gems
+  # bundler should use default base64 lib in Ruby <3.4
+  # https://stdgems.org/base64/
+  spec.add_runtime_dependency "base64", "~> 0.2"
 
   # OpenSSL 3.3.1+ fixes macOS CRL (Certificate Revocation List) verification issues
   # that occur with OpenSSL 3.6 + Ruby (certificate verify failed: unable to get certificate CRL).
