@@ -1,38 +1,16 @@
 # frozen_string_literal: true
 
-require "json"
-
-require_relative "../../../trace/tokens"
-
 module Braintrust
   module Contrib
     module OpenAI
       module Instrumentation
-        # Chat completions instrumentation for OpenAI.
-        # Provides modules that can be prepended to OpenAI::Client to instrument chat.completions API.
+        # Aggregation utilities for official OpenAI SDK instrumentation.
+        # These are specific to the official openai gem's data structures (symbol keys, SDK objects).
         module Common
-          # Helper to safely set a JSON attribute on a span
-          # Only sets the attribute if obj is present
-          # @param span [OpenTelemetry::Trace::Span] the span to set attribute on
-          # @param attr_name [String] the attribute name (e.g., "braintrust.output_json")
-          # @param obj [Object] the object to serialize to JSON
-          # @return [void]
-          def self.set_json_attr(span, attr_name, obj)
-            return unless obj
-            span.set_attribute(attr_name, JSON.generate(obj))
-          end
-
-          # Parse usage tokens from OpenAI API response
-          # @param usage [Hash, Object] usage object from OpenAI response
-          # @return [Hash<String, Integer>] metrics hash with normalized names
-          def self.parse_usage_tokens(usage)
-            Braintrust::Trace.parse_openai_usage_tokens(usage)
-          end
-
-          # Aggregate streaming chunks into a single response structure
-          # Follows the Go SDK logic for aggregating deltas
-          # @param chunks [Array<Hash>] array of chunk hashes from stream
-          # @return [Hash] aggregated response with choices, usage, etc.
+          # Aggregate streaming chunks into a single response structure.
+          # Specific to official OpenAI SDK which uses symbol keys and SDK objects.
+          # @param chunks [Array<Hash>] array of chunk hashes from stream (symbol keys)
+          # @return [Hash] aggregated response with choices, usage, etc. (symbol keys)
           def self.aggregate_streaming_chunks(chunks)
             return {} if chunks.empty?
 
@@ -57,9 +35,7 @@ module Braintrust
               aggregated[:system_fingerprint] ||= chunk[:system_fingerprint]
 
               # Aggregate usage (usually only in last chunk if stream_options.include_usage is set)
-              if chunk[:usage]
-                aggregated[:usage] = chunk[:usage]
-              end
+              aggregated[:usage] = chunk[:usage] if chunk[:usage]
 
               # Process choices
               next unless chunk[:choices].is_a?(Array)
@@ -79,14 +55,11 @@ module Braintrust
                 choice_data[index][:role] ||= delta[:role]
 
                 # Aggregate content
-                if delta[:content]
-                  choice_data[index][:content] << delta[:content]
-                end
+                choice_data[index][:content] << delta[:content] if delta[:content]
 
-                # Aggregate tool_calls (similar to Go SDK logic)
+                # Aggregate tool_calls
                 if delta[:tool_calls].is_a?(Array) && delta[:tool_calls].any?
                   delta[:tool_calls].each do |tool_call_delta|
-                    # Check if this is a new tool call or continuation
                     if tool_call_delta[:id] && !tool_call_delta[:id].empty?
                       # New tool call (dup strings to avoid mutating input)
                       choice_data[index][:tool_calls] << {
@@ -108,9 +81,7 @@ module Braintrust
                 end
 
                 # Capture finish_reason
-                if choice[:finish_reason]
-                  choice_data[index][:finish_reason] = choice[:finish_reason]
-                end
+                choice_data[index][:finish_reason] = choice[:finish_reason] if choice[:finish_reason]
               end
             end
 
@@ -134,8 +105,8 @@ module Braintrust
             aggregated
           end
 
-          # Aggregate responses streaming events into a single response structure
-          # Follows similar logic to Python SDK's _postprocess_streaming_results
+          # Aggregate responses streaming events into a single response structure.
+          # Specific to official OpenAI SDK which returns typed event objects.
           # @param events [Array] array of event objects from stream
           # @return [Hash] aggregated response with output, usage, etc.
           def self.aggregate_responses_events(events)
@@ -146,7 +117,6 @@ module Braintrust
 
             if completed_event&.respond_to?(:response)
               response = completed_event.response
-              # Convert the response object to a hash-like structure for logging
               return {
                 id: response.respond_to?(:id) ? response.id : nil,
                 output: response.respond_to?(:output) ? response.output : nil,
