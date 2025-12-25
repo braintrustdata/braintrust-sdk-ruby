@@ -37,9 +37,9 @@ Braintrust.init(blocking_login: true)
 # Get a tracer for this example
 tracer = OpenTelemetry.tracer_provider.tracer("alexrudall-ruby-openai-comprehensive-example")
 
-# Create OpenAI client (ruby-openai style) and wrap it
+# Create OpenAI client (ruby-openai style) and instrument it
 client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
-Braintrust::Trace::AlexRudall::RubyOpenAI.wrap(client)
+Braintrust.instrument!(:ruby_openai, target: client)
 
 puts "ruby-openai (alexrudall) Comprehensive Features Example"
 puts "=" * 60

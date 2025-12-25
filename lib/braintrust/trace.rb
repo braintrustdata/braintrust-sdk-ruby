@@ -6,32 +6,6 @@ require_relative "trace/span_processor"
 require_relative "trace/span_filter"
 require_relative "logger"
 
-# OpenAI integrations - both ruby-openai and openai gems use require "openai"
-# so we detect which one actually loaded the code and require the appropriate integration
-begin
-  require "openai"
-
-  # Check which OpenAI gem's code is actually loaded by inspecting $LOADED_FEATURES
-  # (both gems can be in Gem.loaded_specs, but only one's code can be loaded)
-  openai_load_path = $LOADED_FEATURES.find { |f| f.end_with?("/openai.rb") }
-
-  if openai_load_path&.include?("ruby-openai")
-    # alexrudall/ruby-openai gem (path contains "ruby-openai-X.Y.Z")
-    require_relative "trace/contrib/github.com/alexrudall/ruby-openai/ruby-openai"
-  elsif openai_load_path&.include?("/openai-")
-    # Official openai gem (path contains "openai-X.Y.Z")
-    require_relative "trace/contrib/openai"
-  elsif Gem.loaded_specs["ruby-openai"]
-    # Fallback: ruby-openai in loaded_specs (for unusual installation paths)
-    require_relative "trace/contrib/github.com/alexrudall/ruby-openai/ruby-openai"
-  elsif Gem.loaded_specs["openai"]
-    # Fallback: official openai in loaded_specs (for unusual installation paths)
-    require_relative "trace/contrib/openai"
-  end
-rescue LoadError
-  # No OpenAI gem installed - integration will not be available
-end
-
 # Anthropic integration is optional - automatically loaded if anthropic gem is available
 begin
   require "anthropic"
