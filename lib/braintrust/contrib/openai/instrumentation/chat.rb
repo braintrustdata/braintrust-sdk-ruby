@@ -4,6 +4,8 @@ require "opentelemetry/sdk"
 require "json"
 
 require_relative "common"
+require_relative "../../support/otel"
+require_relative "../../support/openai"
 
 module Braintrust
   module Contrib
@@ -103,23 +105,23 @@ module Braintrust
                 return unless params[:messages]
 
                 messages_array = params[:messages].map(&:to_h)
-                Common.set_json_attr(span, "braintrust.input_json", messages_array)
+                Support::OTel.set_json_attr(span, "braintrust.input_json", messages_array)
               end
 
               def set_output(span, response)
                 return unless response.respond_to?(:choices) && response.choices&.any?
 
                 choices_array = response.choices.map(&:to_h)
-                Common.set_json_attr(span, "braintrust.output_json", choices_array)
+                Support::OTel.set_json_attr(span, "braintrust.output_json", choices_array)
               end
 
               def set_metrics(span, response, time_to_first_token)
                 metrics = {}
                 if response.respond_to?(:usage) && response.usage
-                  metrics = Common.parse_usage_tokens(response.usage)
+                  metrics = Support::OpenAI.parse_usage_tokens(response.usage)
                 end
                 metrics["time_to_first_token"] = time_to_first_token
-                Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
               end
 
               def finalize_metadata(span, metadata, response)
@@ -128,7 +130,7 @@ module Braintrust
                 metadata["model"] = response.model if response.respond_to?(:model) && response.model
                 metadata["system_fingerprint"] = response.system_fingerprint if response.respond_to?(:system_fingerprint) && response.system_fingerprint
                 metadata["service_tier"] = response.service_tier if response.respond_to?(:service_tier) && response.service_tier
-                Common.set_json_attr(span, "braintrust.metadata", metadata)
+                Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
               end
             end
           end
@@ -177,7 +179,7 @@ module Braintrust
 
                 tracer.in_span("Chat Completion") do |span|
                   completions_instance.send(:set_input, span, params)
-                  Common.set_json_attr(span, "braintrust.metadata", metadata)
+                  Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
 
                   yield
 
@@ -195,16 +197,16 @@ module Braintrust
                   # Set output from accumulated choices
                   if snapshot.choices&.any?
                     choices_array = snapshot.choices.map(&:to_h)
-                    Common.set_json_attr(span, "braintrust.output_json", choices_array)
+                    Support::OTel.set_json_attr(span, "braintrust.output_json", choices_array)
                   end
 
                   # Set metrics
                   metrics = {}
                   if snapshot.usage
-                    metrics = Common.parse_usage_tokens(snapshot.usage)
+                    metrics = Support::OpenAI.parse_usage_tokens(snapshot.usage)
                   end
                   metrics["time_to_first_token"] = time_to_first_token
-                  Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                  Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
 
                   # Update metadata with response fields
                   metadata["id"] = snapshot.id if snapshot.respond_to?(:id) && snapshot.id
@@ -212,7 +214,7 @@ module Braintrust
                   metadata["model"] = snapshot.model if snapshot.respond_to?(:model) && snapshot.model
                   metadata["system_fingerprint"] = snapshot.system_fingerprint if snapshot.respond_to?(:system_fingerprint) && snapshot.system_fingerprint
                   metadata["service_tier"] = snapshot.service_tier if snapshot.respond_to?(:service_tier) && snapshot.service_tier
-                  Common.set_json_attr(span, "braintrust.metadata", metadata)
+                  Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
                 rescue => e
                   Braintrust::Log.debug("Failed to get completion snapshot: #{e.message}")
                 end
@@ -249,7 +251,7 @@ module Braintrust
 
                 tracer.in_span("Chat Completion") do |span|
                   completions_instance.send(:set_input, span, params)
-                  Common.set_json_attr(span, "braintrust.metadata", metadata)
+                  Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
 
                   super do |chunk|
                     time_to_first_token ||= Time.now - start_time
@@ -267,15 +269,15 @@ module Braintrust
                 return if aggregated_chunks.empty?
 
                 aggregated_output = Common.aggregate_streaming_chunks(aggregated_chunks)
-                Common.set_json_attr(span, "braintrust.output_json", aggregated_output[:choices])
+                Support::OTel.set_json_attr(span, "braintrust.output_json", aggregated_output[:choices])
 
                 # Set metrics
                 metrics = {}
                 if aggregated_output[:usage]
-                  metrics = Common.parse_usage_tokens(aggregated_output[:usage])
+                  metrics = Support::OpenAI.parse_usage_tokens(aggregated_output[:usage])
                 end
                 metrics["time_to_first_token"] = time_to_first_token
-                Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
 
                 # Update metadata with response fields
                 metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
@@ -283,7 +285,7 @@ module Braintrust
                 metadata["model"] = aggregated_output[:model] if aggregated_output[:model]
                 metadata["system_fingerprint"] = aggregated_output[:system_fingerprint] if aggregated_output[:system_fingerprint]
                 metadata["service_tier"] = aggregated_output[:service_tier] if aggregated_output[:service_tier]
-                Common.set_json_attr(span, "braintrust.metadata", metadata)
+                Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
               end
             end
           end
