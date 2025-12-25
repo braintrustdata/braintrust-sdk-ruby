@@ -25,7 +25,7 @@ require "json"
 # as the openai gem integration for identical inputs.
 #
 # Usage:
-#   OPENAI_API_KEY=key bundle exec appraisal ruby-openai ruby examples/internal/alexrudall_ruby_openai.rb
+#   OPENAI_API_KEY=key bundle exec appraisal ruby-openai ruby examples/internal/contrib/ruby_openai/golden.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
@@ -37,16 +37,16 @@ Braintrust.init(blocking_login: true)
 # Get a tracer for this example
 tracer = OpenTelemetry.tracer_provider.tracer("alexrudall-ruby-openai-comprehensive-example")
 
-# Create OpenAI client (ruby-openai style) and wrap it
+# Create OpenAI client (ruby-openai style) and instrument it
 client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
-Braintrust::Trace::AlexRudall::RubyOpenAI.wrap(client)
+Braintrust.instrument!(:ruby_openai, target: client)
 
 puts "ruby-openai (alexrudall) Comprehensive Features Example"
 puts "=" * 60
 
 # Wrap all examples under a single parent trace
 root_span = nil
-tracer.in_span("examples/internal/alexrudall_ruby_openai.rb") do |span|
+tracer.in_span("examples/internal/contrib/ruby_openai/golden.rb") do |span|
   root_span = span
 
   # Example 1: Vision - Image Understanding [SKIPPED]
