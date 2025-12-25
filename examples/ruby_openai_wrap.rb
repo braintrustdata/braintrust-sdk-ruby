@@ -8,6 +8,11 @@ require "opentelemetry/sdk"
 
 # Example: ruby-openai (alexrudall) chat completion with Braintrust tracing
 #
+# DEPRECATED: This example uses the old wrap() API which is deprecated.
+# Please use the new instrument!() API instead:
+#   - examples/ruby_openai_instrument.rb - Class-level instrumentation (all clients)
+#   - examples/ruby_openai_instrument_target.rb - Instance-level instrumentation (specific client)
+#
 # This example demonstrates how to automatically trace OpenAI API calls using
 # the ruby-openai gem (by alexrudall) with Braintrust.
 #
