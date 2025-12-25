@@ -6,52 +6,6 @@ require "braintrust/contrib/openai/instrumentation/common"
 class Braintrust::Contrib::OpenAI::Instrumentation::CommonTest < Minitest::Test
   Common = Braintrust::Contrib::OpenAI::Instrumentation::Common
 
-  # --- .set_json_attr ---
-
-  def test_set_json_attr_sets_attribute_with_json
-    span = Minitest::Mock.new
-    span.expect(:set_attribute, nil, ["braintrust.output", '{"foo":"bar"}'])
-
-    Common.set_json_attr(span, "braintrust.output", {foo: "bar"})
-
-    span.verify
-  end
-
-  def test_set_json_attr_skips_nil_object
-    span = Minitest::Mock.new
-    # No expectations - set_attribute should not be called
-
-    Common.set_json_attr(span, "braintrust.output", nil)
-
-    span.verify
-  end
-
-  def test_set_json_attr_handles_array
-    span = Minitest::Mock.new
-    span.expect(:set_attribute, nil, ["braintrust.input", "[1,2,3]"])
-
-    Common.set_json_attr(span, "braintrust.input", [1, 2, 3])
-
-    span.verify
-  end
-
-  # --- .parse_usage_tokens ---
-
-  def test_parse_usage_tokens_delegates_to_trace
-    usage = {prompt_tokens: 10, completion_tokens: 5}
-    expected_result = {"prompt_tokens" => 10, "completion_tokens" => 5, "tokens" => 15}
-
-    mock = Minitest::Mock.new
-    mock.expect(:call, expected_result, [usage])
-
-    Braintrust::Trace.stub(:parse_openai_usage_tokens, mock) do
-      result = Common.parse_usage_tokens(usage)
-      assert_equal expected_result, result
-    end
-
-    mock.verify
-  end
-
   # --- .aggregate_streaming_chunks ---
 
   def test_aggregate_streaming_chunks_returns_empty_hash_for_empty_array

@@ -4,6 +4,8 @@ require "opentelemetry/sdk"
 require "json"
 
 require_relative "common"
+require_relative "../../support/otel"
+require_relative "../../support/openai"
 
 module Braintrust
   module Contrib
@@ -73,7 +75,7 @@ module Braintrust
                 # Set metrics (token usage + time_to_first_token)
                 metrics = {}
                 if response.respond_to?(:usage) && response.usage
-                  metrics = Common.parse_usage_tokens(response.usage)
+                  metrics = Support::OpenAI.parse_usage_tokens(response.usage)
                   span.set_attribute("braintrust.metrics", JSON.generate(metrics)) unless metrics.empty?
                 end
                 metrics["time_to_first_token"] = time_to_first_token
@@ -155,20 +157,20 @@ module Braintrust
                 # Always aggregate whatever events we collected and finish span
                 unless aggregated_events.empty?
                   aggregated_output = Common.aggregate_responses_events(aggregated_events)
-                  Common.set_json_attr(span, "braintrust.output_json", aggregated_output[:output]) if aggregated_output[:output]
+                  Support::OTel.set_json_attr(span, "braintrust.output_json", aggregated_output[:output]) if aggregated_output[:output]
 
                   # Set metrics (token usage + time_to_first_token)
                   metrics = {}
                   if aggregated_output[:usage]
-                    metrics = Common.parse_usage_tokens(aggregated_output[:usage])
-                    Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                    metrics = Support::OpenAI.parse_usage_tokens(aggregated_output[:usage])
+                    Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
                   end
                   metrics["time_to_first_token"] = time_to_first_token || 0.0
-                  Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                  Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
 
                   # Update metadata with response fields
                   metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
-                  Common.set_json_attr(span, "braintrust.metadata", metadata)
+                  Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
                 end
 
                 span.finish

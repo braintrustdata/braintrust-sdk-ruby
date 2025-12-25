@@ -4,6 +4,8 @@ require "opentelemetry/sdk"
 require "json"
 
 require_relative "common"
+require_relative "../../support/otel"
+require_relative "../../support/openai"
 
 module Braintrust
   module Contrib
@@ -77,7 +79,7 @@ module Braintrust
                   # Set metrics (token usage with advanced details)
                   metrics = {}
                   if response.respond_to?(:usage) && response.usage
-                    metrics = Common.parse_usage_tokens(response.usage)
+                    metrics = Support::OpenAI.parse_usage_tokens(response.usage)
                   end
                   # Add time_to_first_token metric
                   metrics["time_to_first_token"] = time_to_first_token
@@ -163,16 +165,16 @@ module Braintrust
                   # Always aggregate whatever chunks we collected and finish span
                   unless aggregated_chunks.empty?
                     aggregated_output = Common.aggregate_streaming_chunks(aggregated_chunks)
-                    Common.set_json_attr(span, "braintrust.output_json", aggregated_output[:choices])
+                    Support::OTel.set_json_attr(span, "braintrust.output_json", aggregated_output[:choices])
 
                     # Set metrics if usage is included
                     metrics = {}
                     if aggregated_output[:usage]
-                      metrics = Common.parse_usage_tokens(aggregated_output[:usage])
+                      metrics = Support::OpenAI.parse_usage_tokens(aggregated_output[:usage])
                     end
                     # Add time_to_first_token metric
                     metrics["time_to_first_token"] = time_to_first_token || 0.0
-                    Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+                    Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
 
                     # Update metadata with response fields
                     metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
@@ -180,7 +182,7 @@ module Braintrust
                     metadata["model"] = aggregated_output[:model] if aggregated_output[:model]
                     metadata["system_fingerprint"] = aggregated_output[:system_fingerprint] if aggregated_output[:system_fingerprint]
                     metadata["service_tier"] = aggregated_output[:service_tier] if aggregated_output[:service_tier]
-                    Common.set_json_attr(span, "braintrust.metadata", metadata)
+                    Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
                   end
 
                   span.finish
@@ -237,7 +239,7 @@ module Braintrust
                 end
 
                 # Local helper for setting JSON attributes
-                set_json_attr = ->(attr_name, obj) { Common.set_json_attr(span, attr_name, obj) }
+                set_json_attr = ->(attr_name, obj) { Support::OTel.set_json_attr(span, attr_name, obj) }
 
                 # Helper to extract metadata from SDK's internal snapshot
                 extract_stream_metadata = lambda do
@@ -254,7 +256,7 @@ module Braintrust
                   # Set metrics if usage is available
                   metrics = {}
                   if snapshot.usage
-                    metrics = Common.parse_usage_tokens(snapshot.usage)
+                    metrics = Support::OpenAI.parse_usage_tokens(snapshot.usage)
                   end
                   # Add time_to_first_token metric
                   metrics["time_to_first_token"] = time_to_first_token || 0.0
