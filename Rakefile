@@ -104,9 +104,19 @@ namespace :test do
   end
 
   namespace :contrib do
-    desc "Run OpenAI contrib tests"
-    task :openai do
-      sh "bundle exec appraisal openai ruby -Ilib:test -e \"Dir.glob('test/braintrust/contrib/openai/**/*_test.rb').each { |f| require_relative f }\""
+    # Tasks per integration
+    [
+      {name: :openai},
+      {name: :ruby_openai, appraisal: "ruby-openai"}
+    ].each do |integration|
+      name = integration[:name]
+      appraisal = integration[:appraisal] || integration[:name]
+      folder = integration[:name]
+
+      desc "Run #{name} contrib tests"
+      task name do
+        sh "bundle exec appraisal #{appraisal} ruby -Ilib:test -e \"Dir.glob('test/braintrust/contrib/#{folder}/**/*_test.rb').each { |f| require_relative f }\""
+      end
     end
   end
 
