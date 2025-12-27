@@ -77,3 +77,28 @@ for more details.
 ```bash
 rake -T test:vcr
 ```
+
+### Testing with Different Ruby Versions
+
+CI tests against Ruby 3.2, 3.3, and 3.4. To test locally with a different Ruby version:
+
+```bash
+# Install a different Ruby version
+mise install ruby@3.4
+
+# Run tests with that version
+mise exec ruby@3.4 -- bundle install
+mise exec ruby@3.4 -- bundle exec rake test
+
+# Run appraisal tests with that version
+mise exec ruby@3.4 -- bundle exec appraisal install
+mise exec ruby@3.4 -- bundle exec appraisal openai-0-33 rake test
+```
+
+To temporarily switch your shell to a different Ruby:
+
+```bash
+mise use ruby@3.4
+ruby --version  # => 3.4.x
+bundle exec rake test
+```
