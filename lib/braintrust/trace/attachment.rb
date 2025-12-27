@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "base64"
 require "net/http"
+require_relative "../internal/encoding"
 require "uri"
 
 module Braintrust
@@ -110,7 +110,7 @@ module Braintrust
       #   att.to_data_url
       #   # => "data:image/png;base64,iVBORw0KGgo..."
       def to_data_url
-        encoded = Base64.strict_encode64(@data)
+        encoded = Internal::Encoding::Base64.strict_encode64(@data)
         "data:#{@content_type};base64,#{encoded}"
       end
 

@@ -17,7 +17,6 @@ GEM
       rake
       thor (>= 0.14.0)
     ast (2.4.3)
-    base64 (0.3.0)
     bigdecimal (3.3.1)
     builder (3.3.0)
     crack (1.0.1)
@@ -122,8 +121,7 @@ GEM
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.1.0)
-    vcr (6.3.1)
-      base64
+    vcr (6.4.0)
     webmock (3.25.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
