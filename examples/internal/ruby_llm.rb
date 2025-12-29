@@ -30,8 +30,8 @@ Braintrust.init(
   blocking_login: true
 )
 
-# Wrap RubyLLM module with Braintrust tracing (applies to all instances)
-Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
+# Instrument all RubyLLM chats with Braintrust tracing
+Braintrust.instrument!(:ruby_llm)
 
 # Configure RubyLLM with both providers
 RubyLLM.configure do |config|

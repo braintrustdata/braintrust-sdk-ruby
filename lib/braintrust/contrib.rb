@@ -101,7 +101,9 @@ end
 # Load integration stubs (eager load minimal metadata).
 require_relative "contrib/openai/integration"
 require_relative "contrib/ruby_openai/integration"
+require_relative "contrib/ruby_llm/integration"
 
 # Register integrations
 Braintrust::Contrib::OpenAI::Integration.register!
 Braintrust::Contrib::RubyOpenAI::Integration.register!
+Braintrust::Contrib::RubyLLM::Integration.register!
