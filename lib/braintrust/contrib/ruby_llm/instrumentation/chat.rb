@@ -4,7 +4,7 @@ require "opentelemetry/sdk"
 require "json"
 
 require_relative "../../support/otel"
-require_relative "../../../trace/tokens"
+require_relative "../../support/anthropic"
 
 module Braintrust
   module Contrib
@@ -304,7 +304,7 @@ module Braintrust
 
               # Try to extract usage from the result
               if result.respond_to?(:usage) && result.usage
-                metrics = Braintrust::Trace.parse_anthropic_usage_tokens(result.usage)
+                metrics = Braintrust::Contrib::Support::Anthropic.parse_usage_tokens(result.usage)
                 Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
               end
             end
@@ -353,7 +353,7 @@ module Braintrust
                 }.compact
 
                 unless usage.empty?
-                  metrics = Braintrust::Trace.parse_anthropic_usage_tokens(usage)
+                  metrics = Braintrust::Contrib::Support::Anthropic.parse_usage_tokens(usage)
                   Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
                 end
               end
