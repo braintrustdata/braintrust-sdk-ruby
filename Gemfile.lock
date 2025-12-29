@@ -19,6 +19,7 @@ GEM
     ast (2.4.3)
     bigdecimal (4.0.1)
     builder (3.3.0)
+    climate_control (1.2.0)
     crack (1.0.1)
       bigdecimal
       rexml
@@ -126,6 +127,7 @@ PLATFORMS
 DEPENDENCIES
   appraisal (~> 2.5)
   braintrust!
+  climate_control (~> 1.2)
   kramdown (~> 2.0)
   minitest (~> 5.0)
   minitest-reporters (~> 1.6)
