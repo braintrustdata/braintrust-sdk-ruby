@@ -30,8 +30,8 @@ Braintrust.init(
   blocking_login: true
 )
 
-# Wrap RubyLLM module with Braintrust tracing (applies to all instances)
-Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
+# Instrument all RubyLLM chats with Braintrust tracing
+Braintrust.instrument!(:ruby_llm)
 
 # Configure RubyLLM with both providers
 RubyLLM.configure do |config|
@@ -81,7 +81,7 @@ root_span = nil
 puts "Running comprehensive RubyLLM integration tests..."
 puts "Testing features across OpenAI and Anthropic providers"
 
-tracer.in_span("examples/internal/ruby_llm.rb") do |span|
+tracer.in_span("examples/internal/contrib/ruby_llm/golden.rb") do |span|
   root_span = span
 
   # Feature 1: Basic Chat
