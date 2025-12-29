@@ -6,14 +6,6 @@ require_relative "trace/span_processor"
 require_relative "trace/span_filter"
 require_relative "logger"
 
-# Anthropic integration is optional - automatically loaded if anthropic gem is available
-begin
-  require "anthropic"
-  require_relative "trace/contrib/anthropic"
-rescue LoadError
-  # Anthropic gem not installed - integration will not be available
-end
-
 module Braintrust
   module Trace
     # Set up OpenTelemetry tracing with Braintrust

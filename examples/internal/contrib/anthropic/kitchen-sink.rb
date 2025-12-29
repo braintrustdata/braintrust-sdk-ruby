@@ -29,7 +29,7 @@ Braintrust.init(
 
 # Create an Anthropic client with tracing
 client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
-Braintrust::Trace::Anthropic.wrap(client)
+Braintrust.instrument!(:anthropic)
 
 # Get a tracer instance
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-examples")
