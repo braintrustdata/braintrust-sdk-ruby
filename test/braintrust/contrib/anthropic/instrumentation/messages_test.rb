@@ -2,22 +2,23 @@
 
 require "test_helper"
 
-class Braintrust::Trace::AnthropicTest < Minitest::Test
+# Explicitly load the patcher (lazy-loaded by integration)
+require "braintrust/contrib/anthropic/patcher"
+
+class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::Test
   def setup
     # Skip all Anthropic tests if the gem is not available
     skip "Anthropic gem not available" unless defined?(Anthropic)
   end
 
-  def test_wrap_creates_span_for_basic_message
+  def test_creates_span_for_basic_message
     VCR.use_cassette("anthropic/basic_message") do
-      require "anthropic"
-
       # Set up test rig (includes Braintrust processor)
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it with Braintrust tracing
+      # Create Anthropic client and instrument it
       client = Anthropic::Client.new(api_key: get_anthropic_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a simple message request
       message = client.messages.create(
@@ -71,16 +72,53 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_system_prompt
-    VCR.use_cassette("anthropic/system_prompt") do
-      require "anthropic"
-
+  def test_creates_span_with_class_level_patching
+    VCR.use_cassette("anthropic/basic_message") do
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # For class-level patching, set the default tracer provider via Braintrust.init
+      # (instance-level patching uses target: which stores tracer_provider in context)
+      Braintrust.init(tracer_provider: rig.tracer_provider)
+
+      # Instrument at class level (no target:) - patches Anthropic::Resources::Messages
+      Braintrust.instrument!(:anthropic)
+
+      # Create client AFTER class-level instrumentation
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+
+      # Make a simple message request
+      message = client.messages.create(
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 10,
+        messages: [
+          {role: "user", content: "Say 'test'"}
+        ]
+      )
+
+      # Verify response
+      refute_nil message
+
+      # Drain and verify span was created
+      span = rig.drain_one
+
+      # Verify span name and key attributes
+      assert_equal "anthropic.messages.create", span.name
+      assert span.attributes.key?("braintrust.input_json")
+      assert span.attributes.key?("braintrust.output_json")
+      assert span.attributes.key?("braintrust.metadata")
+      assert span.attributes.key?("braintrust.metrics")
+    end
+  end
+
+  def test_handles_system_prompt
+    VCR.use_cassette("anthropic/system_prompt") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with system prompt
       message = client.messages.create(
@@ -122,16 +160,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_tool_use
+  def test_handles_tool_use
     VCR.use_cassette("anthropic/tool_use") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with tools
       message = client.messages.create(
@@ -191,16 +227,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_streaming
+  def test_handles_streaming
     VCR.use_cassette("anthropic/streaming") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
       stream = client.messages.stream(
@@ -216,40 +250,37 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
         # Just consume events
       end
 
-      # Drain and verify span was created
-      span = rig.drain_one
+      # Two spans: stream (HTTP request) and create (consumption)
+      spans = rig.drain
+      assert_equal 2, spans.length, "Expected 2 spans"
 
-      # Verify span name
-      assert_equal "anthropic.messages.create", span.name
+      stream_span = spans.find { |s| s.name == "anthropic.messages.stream" }
+      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
 
-      # Verify input captured
-      assert span.attributes.key?("braintrust.input_json")
-      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert stream_span, "Expected stream span"
+      assert create_span, "Expected create span"
+
+      # Verify input captured on stream span
+      assert stream_span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(stream_span.attributes["braintrust.input_json"])
       assert_equal 1, input.length
       assert_equal "user", input[0]["role"]
 
-      # Verify metadata includes stream flag
-      assert span.attributes.key?("braintrust.metadata")
-      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      # Verify metadata includes stream flag on create span
+      assert create_span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(create_span.attributes["braintrust.metadata"])
       assert_equal true, metadata["stream"]
-
-      # Note: Full output aggregation testing requires live API calls
-      # VCR doesn't perfectly replay streaming SSE responses
-      # The streaming wrapper is implemented and works with real API calls
     end
   end
 
-  def test_wrap_handles_streaming_output_aggregation
-    # This test demonstrates the bug: streaming output is not aggregated
+  def test_handles_streaming_output_aggregation
     VCR.use_cassette("anthropic/streaming_aggregation") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
       collected_text = ""
@@ -271,15 +302,16 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       # Verify we got some text
       refute_empty collected_text, "Should have received text from stream"
 
-      # Drain and verify span
-      span = rig.drain_one
+      # Two spans: stream (HTTP request) and create (consumption)
+      spans = rig.drain
+      assert_equal 2, spans.length, "Expected 2 spans"
 
-      # Verify span name
-      assert_equal "anthropic.messages.create", span.name
+      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
+      assert create_span, "Expected create span"
 
       # CRITICAL: Verify output was aggregated
-      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(create_span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -295,8 +327,8 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_equal collected_text, text_block["text"], "Aggregated text should match collected text"
 
       # CRITICAL: Verify metrics were captured
-      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"], "Should have prompt_tokens"
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"], "Should have completion_tokens"
@@ -306,16 +338,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_vision_with_base64
+  def test_handles_vision_with_base64
     VCR.use_cassette("anthropic/vision_base64") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Small 1x1 red pixel PNG as base64
       test_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
@@ -369,16 +399,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_reasoning_thinking_blocks
+  def test_handles_reasoning_thinking_blocks
     VCR.use_cassette("anthropic/reasoning") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with reasoning enabled
       message = client.messages.create(
@@ -429,16 +457,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_multi_turn_conversation
+  def test_handles_multi_turn_conversation
     VCR.use_cassette("anthropic/multi_turn") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a multi-turn conversation request
       message = client.messages.create(
@@ -483,16 +509,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_temperature_and_stop_sequences
+  def test_handles_temperature_and_stop_sequences
     VCR.use_cassette("anthropic/temperature_stop") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with temperature and stop sequences
       message = client.messages.create(
@@ -533,16 +557,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_tool_use_multi_turn
+  def test_handles_tool_use_multi_turn
     VCR.use_cassette("anthropic/tool_use_multi_turn") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # First request - model should use tool
       first_message = client.messages.create(
@@ -652,16 +674,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_streaming_with_text_each
+  def test_handles_streaming_with_text_each
     VCR.use_cassette("anthropic/streaming_text_each") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .text.each
       collected_text = ""
@@ -687,15 +707,16 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_match(/2/, collected_text, "Should contain 2")
       assert_match(/3/, collected_text, "Should contain 3")
 
-      # Drain and verify span
-      span = rig.drain_one
+      # Two spans: stream (HTTP request) and create (consumption)
+      spans = rig.drain
+      assert_equal 2, spans.length, "Expected 2 spans"
 
-      # Verify span name
-      assert_equal "anthropic.messages.create", span.name
+      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
+      assert create_span, "Expected create span"
 
       # CRITICAL: Verify output was aggregated
-      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(create_span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -710,24 +731,22 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_equal "1\n2\n3", text_block["text"], "Span output should contain correct count"
 
       # CRITICAL: Verify metrics were captured
-      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
     end
   end
 
-  def test_wrap_handles_streaming_with_accumulated_text
+  def test_handles_streaming_with_accumulated_text
     VCR.use_cassette("anthropic/streaming_accumulated_text") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .accumulated_text
       stream = client.messages.stream(
@@ -750,15 +769,16 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_match(/Hello/, accumulated_text, "Should contain greeting")
       assert_match(/help/, accumulated_text, "Should offer help")
 
-      # Drain and verify span
-      span = rig.drain_one
+      # Two spans: stream (HTTP request) and create (consumption)
+      spans = rig.drain
+      assert_equal 2, spans.length, "Expected 2 spans"
 
-      # Verify span name
-      assert_equal "anthropic.messages.create", span.name
+      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
+      assert create_span, "Expected create span"
 
       # CRITICAL: Verify output was aggregated
-      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(create_span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -769,24 +789,22 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_equal expected_text, text_block["text"], "Span output should contain correct greeting"
 
       # CRITICAL: Verify metrics were captured
-      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
     end
   end
 
-  def test_wrap_handles_streaming_with_accumulated_message
+  def test_handles_streaming_with_accumulated_message
     VCR.use_cassette("anthropic/streaming_accumulated_message") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .accumulated_message
       stream = client.messages.stream(
@@ -805,15 +823,16 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       refute_nil message.content, "Message should have content"
       refute_empty message.content, "Message content should not be empty"
 
-      # Drain and verify span
-      span = rig.drain_one
+      # Two spans: stream (HTTP request) and create (consumption)
+      spans = rig.drain
+      assert_equal 2, spans.length, "Expected 2 spans"
 
-      # Verify span name
-      assert_equal "anthropic.messages.create", span.name
+      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
+      assert create_span, "Expected create span"
 
       # CRITICAL: Verify output was aggregated
-      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(span.attributes["braintrust.output_json"])
+      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(create_span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -821,8 +840,8 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       refute_empty output[0]["content"], "Output content should not be empty"
 
       # CRITICAL: Verify metrics were captured
-      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(span.attributes["braintrust.metrics"])
+      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"], "Should have prompt_tokens"
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"], "Should have completion_tokens"
@@ -830,16 +849,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_streaming_with_close
+  def test_handles_streaming_with_close
     VCR.use_cassette("anthropic/streaming_close") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request and close early without consuming
       stream = client.messages.stream(
@@ -853,22 +870,26 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       # Close the stream early (before consuming)
       stream.close
 
-      # Drain and verify span was finished
-      span = rig.drain_one
+      # Two spans: stream (HTTP request) and create (close)
+      spans = rig.drain
+      assert_equal 2, spans.length, "Expected 2 spans"
 
-      # Verify span name
-      assert_equal "anthropic.messages.create", span.name
+      stream_span = spans.find { |s| s.name == "anthropic.messages.stream" }
+      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
 
-      # Verify input was captured
-      assert span.attributes.key?("braintrust.input_json")
-      input = JSON.parse(span.attributes["braintrust.input_json"])
+      assert stream_span, "Expected stream span"
+      assert create_span, "Expected create span"
+
+      # Verify input was captured on stream span
+      assert stream_span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(stream_span.attributes["braintrust.input_json"])
       assert_equal 1, input.length
       assert_equal "user", input[0]["role"]
 
       # When stream is closed early, we may have partial or no output
       # The important part is that the span finished properly
-      assert span.attributes.key?("braintrust.metadata")
-      metadata = JSON.parse(span.attributes["braintrust.metadata"])
+      assert create_span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(create_span.attributes["braintrust.metadata"])
       assert_equal true, metadata["stream"]
     end
   end

@@ -106,6 +106,7 @@ namespace :test do
   namespace :contrib do
     # Tasks per integration
     [
+      {name: :anthropic},
       {name: :openai},
       {name: :ruby_llm},
       {name: :ruby_openai, appraisal: "ruby-openai"}
