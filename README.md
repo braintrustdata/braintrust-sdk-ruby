@@ -146,10 +146,10 @@ require "braintrust"
 require "anthropic"
 
 Braintrust.init
+Braintrust.instrument!(:anthropic)
 
+# Instrument Anthropic (instance-level)
 client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
-
-Braintrust::Trace::Anthropic.wrap(client)
 
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-app")
 root_span = nil
@@ -268,7 +268,7 @@ Check out the [`examples/`](./examples/) directory for complete working examples
 - [trace.rb](./examples/trace.rb) - Manual span creation and tracing
 - [openai.rb](./examples/openai.rb) - Automatically trace OpenAI API calls
 - [alexrudall_openai.rb](./examples/alexrudall_openai.rb) - Automatically trace ruby-openai gem API calls
-- [anthropic.rb](./examples/anthropic.rb) - Automatically trace Anthropic API calls
+- [contrib/anthropic/basic.rb](./examples/contrib/anthropic/basic.rb) - Automatically trace Anthropic API calls
 - [ruby_llm.rb](./examples/ruby_llm.rb) - Automatically trace RubyLLM API calls
 - [trace/trace_attachments.rb](./examples/trace/trace_attachments.rb) - Log attachments (images, PDFs) in traces
 - [eval/dataset.rb](./examples/eval/dataset.rb) - Run evaluations using datasets stored in Braintrust
