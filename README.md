@@ -182,8 +182,8 @@ require "ruby_llm"
 
 Braintrust.init
 
-# Wrap RubyLLM globally (wraps all Chat instances)
-Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
+# Instrument all RubyLLM Chat instances
+Braintrust.instrument!(:ruby_llm)
 
 tracer = OpenTelemetry.tracer_provider.tracer("ruby-llm-app")
 root_span = nil
