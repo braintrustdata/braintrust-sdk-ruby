@@ -18,6 +18,7 @@ require "braintrust"
 
 require "minitest/autorun"
 require "minitest/stub_const"
+require "climate_control"
 
 # Show test timings when MT_VERBOSE is set
 if ENV["MT_VERBOSE"]
