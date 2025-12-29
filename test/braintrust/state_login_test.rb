@@ -42,12 +42,9 @@ class Braintrust::StateLoginTest < Minitest::Test
   end
 
   def test_login_in_thread_retries_on_failure
-    state = Braintrust::State.new(
-      api_key: @api_key,
-      app_url: "https://www.braintrust.dev"
-    )
-
-    # Disable VCR to allow WebMock stubs to work properly
+    # IMPORTANT: Disable VCR and set up stubs BEFORE creating State, because
+    # State.new immediately spawns a background login thread when no org_id
+    # is provided. If stubs aren't ready, the thread hits WebMock errors.
     VCR.turn_off!
     begin
       # Stub HTTP to fail twice, then succeed
@@ -71,8 +68,12 @@ class Braintrust::StateLoginTest < Minitest::Test
         )
 
       begin
-        # Start background login
-        state.login_in_thread
+        # Now create State - this spawns the login thread with stubs already in place
+        state = Braintrust::State.new(
+          api_key: @api_key,
+          app_url: "https://www.braintrust.dev",
+          enable_tracing: false
+        )
 
         # Wait for it to complete (should retry and eventually succeed)
         state.wait_for_login(5)
