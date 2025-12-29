@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "braintrust/trace/attachment"
+require "braintrust/internal/encoding"
 
 class Braintrust::Trace::AttachmentTest < Minitest::Test
   def setup
@@ -58,7 +59,7 @@ class Braintrust::Trace::AttachmentTest < Minitest::Test
 
     # Verify it's valid base64 by extracting and decoding
     base64_part = data_url.sub(/^data:image\/png;base64,/, "")
-    decoded = Base64.strict_decode64(base64_part)
+    decoded = Braintrust::Internal::Encoding::Base64.strict_decode64(base64_part)
     assert_equal @test_png_data, decoded
   end
 
