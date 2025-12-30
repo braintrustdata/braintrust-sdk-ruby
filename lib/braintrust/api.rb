@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "api/datasets"
+require_relative "api/experiments"
 require_relative "api/functions"
 
 module Braintrust
@@ -18,6 +19,12 @@ module Braintrust
     # @return [API::Datasets]
     def datasets
       @datasets ||= API::Datasets.new(self)
+    end
+
+    # Access to experiments API
+    # @return [API::Experiments]
+    def experiments
+      @experiments ||= API::Experiments.new(self)
     end
 
     # Access to functions API
