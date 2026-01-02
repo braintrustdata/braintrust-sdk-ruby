@@ -36,11 +36,25 @@ gem install braintrust
 
 ## Quick Start
 
-### Set up your API key
+1. **Set up your API key**
 
-```bash
-export BRAINTRUST_API_KEY="your-api-key"
-```
+    ```bash
+    export BRAINTRUST_API_KEY="your-api-key"
+    ```
+
+2. **Add `Braintrust.init` to your application**
+
+    For Rails applications, we suggest adding this to an initializer file.
+
+    ```ruby
+    require "braintrust"
+
+    Braintrust.init
+    ```
+
+    This sets up Braintrust and auto-instruments your application with LLM tracing.
+
+## How to use...
 
 ### Evals
 
@@ -67,7 +81,9 @@ Braintrust::Eval.run(
 )
 ```
 
-### Tracing
+## Tracing
+
+Supported LLM libraries are automatically instrumented with `Braintrust.init`. If you wish to manually instrument your LLM clients (for greater customization) you can use OpenTelemetry and `instrument!` to make your own custom LLM traces.
 
 ```ruby
 require "braintrust"
@@ -101,18 +117,19 @@ OpenTelemetry.tracer_provider.shutdown
 puts "View trace in Braintrust!"
 ```
 
-### OpenAI Tracing
+### OpenAI
 
 ```ruby
 require "braintrust"
 require "openai"
 
-Braintrust.init
+Braintrust.init(auto_instrument: false)
 
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
 # Instrument all clients
 Braintrust.instrument!(:openai)
+
 # OR instrument a single client
 Braintrust.instrument!(:openai, target: client)
 
@@ -139,17 +156,22 @@ puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 OpenTelemetry.tracer_provider.shutdown
 ```
 
-### Anthropic Tracing
+### Anthropic
 
 ```ruby
 require "braintrust"
 require "anthropic"
 
-Braintrust.init
-Braintrust.instrument!(:anthropic)
+Braintrust.init(auto_instrument: false)
 
 # Instrument Anthropic (instance-level)
 client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+
+# Instrument all clients
+Braintrust.instrument!(:anthropic)
+
+# OR instrument a single client
+Braintrust.instrument!(:anthropic, target: client)
 
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-app")
 root_span = nil
@@ -174,16 +196,21 @@ puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
 OpenTelemetry.tracer_provider.shutdown
 ```
 
-### RubyLLM Tracing
+### RubyLLM
 
 ```ruby
 require "braintrust"
 require "ruby_llm"
 
-Braintrust.init
+Braintrust.init(auto_instrument: false)
 
-# Instrument all RubyLLM Chat instances
+chat = RubyLLM.chat(model: "gpt-4o-mini")
+
+# Instrument all clients
 Braintrust.instrument!(:ruby_llm)
+
+# OR instrument a single client
+Braintrust.instrument!(:ruby_llm, target: chat)
 
 tracer = OpenTelemetry.tracer_provider.tracer("ruby-llm-app")
 root_span = nil
@@ -191,7 +218,6 @@ root_span = nil
 response = tracer.in_span("chat") do |span|
   root_span = span
 
-  chat = RubyLLM.chat(model: "gpt-4o-mini")
   chat.ask("Say hello!")
 end
 
