@@ -250,25 +250,20 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
         # Just consume events
       end
 
-      # Two spans: stream (HTTP request) and create (consumption)
-      spans = rig.drain
-      assert_equal 2, spans.length, "Expected 2 spans"
+      # Single span created during consumption
+      span = rig.drain_one
 
-      stream_span = spans.find { |s| s.name == "anthropic.messages.stream" }
-      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
+      assert_equal "anthropic.messages.create", span.name
 
-      assert stream_span, "Expected stream span"
-      assert create_span, "Expected create span"
-
-      # Verify input captured on stream span
-      assert stream_span.attributes.key?("braintrust.input_json")
-      input = JSON.parse(stream_span.attributes["braintrust.input_json"])
+      # Verify input captured on span
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
       assert_equal 1, input.length
       assert_equal "user", input[0]["role"]
 
-      # Verify metadata includes stream flag on create span
-      assert create_span.attributes.key?("braintrust.metadata")
-      metadata = JSON.parse(create_span.attributes["braintrust.metadata"])
+      # Verify metadata includes stream flag
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal true, metadata["stream"]
     end
   end
@@ -302,16 +297,14 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify we got some text
       refute_empty collected_text, "Should have received text from stream"
 
-      # Two spans: stream (HTTP request) and create (consumption)
-      spans = rig.drain
-      assert_equal 2, spans.length, "Expected 2 spans"
+      # Single span created during consumption
+      span = rig.drain_one
 
-      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
-      assert create_span, "Expected create span"
+      assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
-      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(create_span.attributes["braintrust.output_json"])
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -327,8 +320,8 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       assert_equal collected_text, text_block["text"], "Aggregated text should match collected text"
 
       # CRITICAL: Verify metrics were captured
-      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"], "Should have prompt_tokens"
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"], "Should have completion_tokens"
@@ -707,16 +700,14 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       assert_match(/2/, collected_text, "Should contain 2")
       assert_match(/3/, collected_text, "Should contain 3")
 
-      # Two spans: stream (HTTP request) and create (consumption)
-      spans = rig.drain
-      assert_equal 2, spans.length, "Expected 2 spans"
+      # Single span created during consumption
+      span = rig.drain_one
 
-      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
-      assert create_span, "Expected create span"
+      assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
-      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(create_span.attributes["braintrust.output_json"])
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -731,8 +722,8 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       assert_equal "1\n2\n3", text_block["text"], "Span output should contain correct count"
 
       # CRITICAL: Verify metrics were captured
-      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
@@ -769,16 +760,14 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       assert_match(/Hello/, accumulated_text, "Should contain greeting")
       assert_match(/help/, accumulated_text, "Should offer help")
 
-      # Two spans: stream (HTTP request) and create (consumption)
-      spans = rig.drain
-      assert_equal 2, spans.length, "Expected 2 spans"
+      # Single span created during consumption
+      span = rig.drain_one
 
-      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
-      assert create_span, "Expected create span"
+      assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
-      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(create_span.attributes["braintrust.output_json"])
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -789,8 +778,8 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       assert_equal expected_text, text_block["text"], "Span output should contain correct greeting"
 
       # CRITICAL: Verify metrics were captured
-      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
@@ -823,16 +812,14 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       refute_nil message.content, "Message should have content"
       refute_empty message.content, "Message content should not be empty"
 
-      # Two spans: stream (HTTP request) and create (consumption)
-      spans = rig.drain
-      assert_equal 2, spans.length, "Expected 2 spans"
+      # Single span created during consumption
+      span = rig.drain_one
 
-      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
-      assert create_span, "Expected create span"
+      assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
-      assert create_span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
-      output = JSON.parse(create_span.attributes["braintrust.output_json"])
+      assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
+      output = JSON.parse(span.attributes["braintrust.output_json"])
       assert_equal 1, output.length, "Should have one output message"
       assert_equal "assistant", output[0]["role"]
 
@@ -840,8 +827,8 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       refute_empty output[0]["content"], "Output content should not be empty"
 
       # CRITICAL: Verify metrics were captured
-      assert create_span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
-      metrics = JSON.parse(create_span.attributes["braintrust.metrics"])
+      assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
+      metrics = JSON.parse(span.attributes["braintrust.metrics"])
       assert metrics["prompt_tokens"], "Should have prompt_tokens"
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"], "Should have completion_tokens"
@@ -870,26 +857,21 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Close the stream early (before consuming)
       stream.close
 
-      # Two spans: stream (HTTP request) and create (close)
-      spans = rig.drain
-      assert_equal 2, spans.length, "Expected 2 spans"
+      # Single span created on close
+      span = rig.drain_one
 
-      stream_span = spans.find { |s| s.name == "anthropic.messages.stream" }
-      create_span = spans.find { |s| s.name == "anthropic.messages.create" }
+      assert_equal "anthropic.messages.create", span.name
 
-      assert stream_span, "Expected stream span"
-      assert create_span, "Expected create span"
-
-      # Verify input was captured on stream span
-      assert stream_span.attributes.key?("braintrust.input_json")
-      input = JSON.parse(stream_span.attributes["braintrust.input_json"])
+      # Verify input was captured on span
+      assert span.attributes.key?("braintrust.input_json")
+      input = JSON.parse(span.attributes["braintrust.input_json"])
       assert_equal 1, input.length
       assert_equal "user", input[0]["role"]
 
       # When stream is closed early, we may have partial or no output
       # The important part is that the span finished properly
-      assert create_span.attributes.key?("braintrust.metadata")
-      metadata = JSON.parse(create_span.attributes["braintrust.metadata"])
+      assert span.attributes.key?("braintrust.metadata")
+      metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal true, metadata["stream"]
     end
   end

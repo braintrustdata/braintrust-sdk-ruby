@@ -46,28 +46,19 @@ module Braintrust
             end
 
             # Wrap streaming messages.stream
-            # Creates span for HTTP request; second span created in MessageStream#each
+            # Stores context on stream object for span creation during consumption
             def stream(**params)
               client = instance_variable_get(:@client)
               tracer = Braintrust::Contrib.tracer_for(client)
               metadata = build_metadata(params, stream: true)
 
-              tracer.in_span("anthropic.messages.stream") do |span|
-                set_input(span, params)
-                Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
-
-                stream_obj = super
-                Braintrust::Contrib::Context.set!(stream_obj,
-                  tracer: tracer,
-                  params: params,
-                  metadata: metadata,
-                  messages_instance: self)
-                stream_obj
-              rescue => e
-                span.record_exception(e)
-                span.status = ::OpenTelemetry::Trace::Status.error("Anthropic API error: #{e.message}")
-                raise
-              end
+              stream_obj = super
+              Braintrust::Contrib::Context.set!(stream_obj,
+                tracer: tracer,
+                params: params,
+                metadata: metadata,
+                messages_instance: self)
+              stream_obj
             end
 
             private
