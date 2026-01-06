@@ -3,6 +3,7 @@
 source "https://rubygems.org"
 
 gem "minitest-reporters", "~> 1.6"
+gem "minitest-stub_any_instance", "~> 1.0"
 gem "ruby-openai", ">= 8.0"
 
 gemspec path: "../"

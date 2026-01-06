@@ -17,6 +17,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "braintrust"
 
 require "minitest/autorun"
+require "minitest/stub_any_instance"
 
 # Show test timings when MT_VERBOSE is set
 if ENV["MT_VERBOSE"]
