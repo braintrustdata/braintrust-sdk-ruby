@@ -2,11 +2,10 @@
 
 require "rake/testtask"
 
-Rake::TestTask.new(:test) do |t|
-  t.libs << "test"
-  t.libs << "lib"
-  t.test_files = FileList["test/**/*_test.rb"]
-  t.warning = false
+desc "Run tests (optionally with seed: rake test[12345])"
+task :test, [:seed] do |t, args|
+  seed_opt = args[:seed] ? " -- --seed=#{args[:seed]}" : ""
+  sh "ruby -Ilib:test -e \"Dir.glob('test/**/*_test.rb').each { |f| require_relative f }\"#{seed_opt}"
 end
 
 desc "Run Standard linter"
