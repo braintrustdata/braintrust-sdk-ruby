@@ -1,0 +1,167 @@
+---
+# This cassette is manually crafted to test retry logic.
+# It returns 500 twice, then 200 on the third attempt.
+# VCR plays back interactions in order, enabling sequential response testing.
+http_interactions:
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 500
+      message: Internal Server Error
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Type:
+      - text/plain; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 14:56:01 GMT
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Vercel-Id:
+      - iad1::iad1::retry-test-1
+    body:
+      encoding: UTF-8
+      string: 'Internal Server Error'
+  recorded_at: Fri, 24 Oct 2025 14:56:01 GMT
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 500
+      message: Internal Server Error
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Type:
+      - text/plain; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 14:56:02 GMT
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Vercel-Id:
+      - iad1::iad1::retry-test-2
+    body:
+      encoding: UTF-8
+      string: 'Internal Server Error'
+  recorded_at: Fri, 24 Oct 2025 14:56:02 GMT
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '147'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Fri, 24 Oct 2025 14:56:03 GMT
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Vercel-Id:
+      - iad1::iad1::retry-test-3
+    body:
+      encoding: UTF-8
+      string: '{"org_info":[{"id":"test-org-id","name":"test-org","api_url":"https://api.braintrust.dev","proxy_url":"https://api.braintrust.dev"}]}'
+  recorded_at: Fri, 24 Oct 2025 14:56:03 GMT
+recorded_with: VCR 6.3.1
