@@ -28,16 +28,18 @@ class Braintrust::StateLoginTest < Minitest::Test
 
   def test_login_with_invalid_api_key
     VCR.use_cassette("auth/login_invalid_key") do
-      state = Braintrust::State.new(
-        api_key: "invalid-key",
-        app_url: "https://www.braintrust.dev"
-      )
+      mock_login_in_thread do
+        state = Braintrust::State.new(
+          api_key: "invalid-key",
+          app_url: "https://www.braintrust.dev"
+        )
 
-      error = assert_raises(Braintrust::Error) do
-        state.login
+        error = assert_raises(Braintrust::Error) do
+          state.login
+        end
+
+        assert_match(/invalid api key/i, error.message)
       end
-
-      assert_match(/invalid api key/i, error.message)
     end
   end
 

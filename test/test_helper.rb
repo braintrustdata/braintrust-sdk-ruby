@@ -205,6 +205,20 @@ module TracingTestHelper
     end
   end
 
+  # Stub login_in_thread to prevent background thread from spawning.
+  # Asserts that login_in_thread would have been called.
+  # Yields to the block for actual test code.
+  # @yield Block containing the test code
+  def mock_login_in_thread
+    login_in_thread_called = false
+
+    Braintrust::State.stub_any_instance(:login_in_thread, -> { login_in_thread_called = true }) do
+      yield
+    end
+
+    assert login_in_thread_called, "Expected login_in_thread to be called"
+  end
+
   # Get API key for tests
   # Uses real key for recording, fake key for playback
   # @return [String] API key
