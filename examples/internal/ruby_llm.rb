@@ -236,6 +236,53 @@ tracer.in_span("examples/internal/ruby_llm.rb") do |span|
     puts "✓ Gracefully caught error: #{e.class.name}"
     puts "  Message: #{e.message}"
   end
+
+  # Feature 8: Image Attachments (Issue #71 fix)
+  # This demonstrates proper handling of RubyLLM Content objects with attachments
+  puts "\n" + "=" * 80
+  puts "Feature 8: Image Attachments"
+  puts "=" * 80
+
+  tracer.in_span("feature_image_attachments") do
+    require "tempfile"
+
+    # Create a minimal valid PNG image (10x10 red square)
+    png_data = [
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x0a,
+      0x08, 0x02, 0x00, 0x00, 0x00, 0x02, 0x50, 0x58, 0xea, 0x00, 0x00, 0x00,
+      0x12, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0xf8, 0xcf, 0xc0, 0x80,
+      0x07, 0x31, 0x8c, 0x4a, 0x63, 0x43, 0x00, 0xb7, 0xca, 0x63, 0x9d, 0xd6,
+      0xd5, 0xef, 0x74, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+      0x42, 0x60, 0x82
+    ].pack("C*")
+
+    # Create a temp PNG file
+    tmpfile = Tempfile.new(["test_image", ".png"])
+    tmpfile.binmode
+    tmpfile.write(png_data)
+    tmpfile.close
+
+    begin
+      puts "\n[OpenAI - gpt-4o-mini with Image Attachment]"
+      chat_openai = RubyLLM.chat(model: "gpt-4o-mini")
+
+      # Use RubyLLM's Content class with attachment
+      # This triggers the Content object behavior (issue #71)
+      content = RubyLLM::Content.new("What color is this image? Reply in one word.")
+      content.add_attachment(tmpfile.path)
+
+      chat_openai.add_message(role: :user, content: content)
+      response = chat_openai.complete
+
+      puts "Q: What color is this image? (with PNG attachment)"
+      puts "A: #{response.content}"
+      puts "Tokens: #{response.to_h[:input_tokens]} in, #{response.to_h[:output_tokens]} out"
+      puts "Note: The trace includes the base64-encoded image attachment"
+    ensure
+      tmpfile.unlink
+    end
+  end
 end
 
 puts "\n" + "=" * 80

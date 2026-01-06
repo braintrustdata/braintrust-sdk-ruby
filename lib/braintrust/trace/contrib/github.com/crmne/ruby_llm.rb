@@ -4,6 +4,7 @@ require "opentelemetry/sdk"
 require "json"
 require_relative "../../../tokens"
 require_relative "../../../../logger"
+require_relative "../../../../internal/encoding"
 
 module Braintrust
   module Trace
@@ -422,18 +423,14 @@ module Braintrust
 
               # Handle content
               if msg.respond_to?(:content) && msg.content
-                # Convert Ruby hash notation to JSON string for tool results
-                content = msg.content
-                if msg.role.to_s == "tool" && content.is_a?(String) && content.start_with?("{:")
-                  # Ruby hash string like "{:location=>...}" - try to parse and re-serialize as JSON
-                  begin
-                    # Simple conversion: replace Ruby hash syntax with JSON
-                    content = content.gsub(/(?<=\{|, ):(\w+)=>/, '"\1":').gsub("=>", ":")
-                  rescue
-                    # Keep original if conversion fails
-                  end
+                raw_content = msg.content
+
+                # Check if content is a Content object with attachments (issue #71)
+                formatted["content"] = if raw_content.respond_to?(:text) && raw_content.respond_to?(:attachments) && raw_content.attachments&.any?
+                  format_multipart_content(raw_content)
+                else
+                  format_simple_content(raw_content, msg.role.to_s)
                 end
-                formatted["content"] = content
               end
 
               # Handle tool_calls for assistant messages
@@ -450,6 +447,74 @@ module Braintrust
               formatted
             end
 
+            # Format multipart content with text and attachments
+            # @param content_obj [Object] Content object with text and attachments
+            # @return [Array<Hash>] array of content parts
+            def self.format_multipart_content(content_obj)
+              content_parts = []
+
+              # Add text part
+              content_parts << {"type" => "text", "text" => content_obj.text} if content_obj.text
+
+              # Add attachment parts (convert to Braintrust format)
+              content_obj.attachments.each do |attachment|
+                content_parts << format_attachment_for_input(attachment)
+              end
+
+              content_parts
+            end
+
+            # Format simple text content
+            # @param raw_content [Object] String or Content object with text
+            # @param role [String] the message role
+            # @return [String] formatted text content
+            def self.format_simple_content(raw_content, role)
+              content = raw_content
+              content = content.text if content.respond_to?(:text)
+
+              # Convert Ruby hash string to JSON for tool results
+              if role == "tool" && content.is_a?(String) && content.start_with?("{:")
+                begin
+                  content = content.gsub(/(?<=\{|, ):(\w+)=>/, '"\1":').gsub("=>", ":")
+                rescue
+                  # Keep original if conversion fails
+                end
+              end
+
+              content
+            end
+
+            # Format a RubyLLM attachment to OpenAI-compatible format
+            # @param attachment [Object] the RubyLLM attachment
+            # @return [Hash] OpenAI image_url format for consistency with other integrations
+            def self.format_attachment_for_input(attachment)
+              # RubyLLM Attachment has: source (Pathname), filename, mime_type
+              if attachment.respond_to?(:source) && attachment.source
+                begin
+                  data = File.binread(attachment.source.to_s)
+                  encoded = Internal::Encoding::Base64.strict_encode64(data)
+                  mime_type = attachment.respond_to?(:mime_type) ? attachment.mime_type : "application/octet-stream"
+
+                  # Use OpenAI's image_url format for consistency
+                  {
+                    "type" => "image_url",
+                    "image_url" => {
+                      "url" => "data:#{mime_type};base64,#{encoded}"
+                    }
+                  }
+                rescue => e
+                  Log.debug("Failed to read attachment file: #{e.message}")
+                  # Return a placeholder if we can't read the file
+                  {"type" => "text", "text" => "[attachment: #{attachment.respond_to?(:filename) ? attachment.filename : "unknown"}]"}
+                end
+              elsif attachment.respond_to?(:to_h)
+                # Try to use attachment's own serialization
+                attachment.to_h
+              else
+                {"type" => "text", "text" => "[attachment]"}
+              end
+            end
+
             # Capture streaming output and metrics
             # @param span [OpenTelemetry::Trace::Span] the span
             # @param aggregated_chunks [Array] the aggregated chunks
@@ -458,8 +523,11 @@ module Braintrust
               return if aggregated_chunks.empty?
 
               # Aggregate content from chunks
+              # Extract text from Content objects if present (issue #71)
               aggregated_content = aggregated_chunks.map { |c|
-                c.respond_to?(:content) ? c.content : c.to_s
+                content = c.respond_to?(:content) ? c.content : c.to_s
+                content = content.text if content.respond_to?(:text)
+                content
               }.join
 
               output = [{
@@ -490,8 +558,11 @@ module Braintrust
               }
 
               # Add content if it's a simple text response
+              # Extract text from Content objects if present (issue #71)
               if response.respond_to?(:content) && response.content && !response.content.empty?
-                message["content"] = response.content
+                content = response.content
+                content = content.text if content.respond_to?(:text)
+                message["content"] = content
               end
 
               # Check if there are tool calls in the messages history
