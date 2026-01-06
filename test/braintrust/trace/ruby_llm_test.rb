@@ -461,4 +461,135 @@ class RubyLLMIntegrationTest < Minitest::Test
     assert_equal({}, params["properties"])
     assert_equal [], params["required"]
   end
+
+  # Test for GitHub issue #71: Content object not properly serialized
+  # When a message has attachments, RubyLLM returns a Content object instead of a string
+  # The SDK should include both text and attachments in the trace
+  def test_format_message_for_input_handles_content_object_with_attachments
+    with_tmp_file(data: "This is test content") do |tmpfile|
+      # Create a Content object with an attachment (this triggers the Content object return)
+      content = ::RubyLLM::Content.new("Hello, this is the actual text content")
+      content.add_attachment(tmpfile.path)
+
+      # Create a message with the Content object (simulates message with attachment)
+      msg = ::RubyLLM::Message.new(role: :user, content: content)
+
+      # Verify the precondition: msg.content returns a Content object, not a string
+      assert msg.content.is_a?(::RubyLLM::Content),
+        "Precondition failed: Expected Content object when message has attachments"
+
+      # Call the method under test
+      result = Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.format_message_for_input(msg)
+
+      # When attachments are present, content should be a multipart array
+      assert_equal "user", result["role"]
+      assert result["content"].is_a?(Array), "Content should be an array when attachments are present"
+      assert_equal 2, result["content"].length, "Content should have text and attachment parts"
+
+      # Verify text part
+      text_part = result["content"].find { |p| p["type"] == "text" }
+      refute_nil text_part, "Should have a text part"
+      assert_equal "Hello, this is the actual text content", text_part["text"]
+
+      # Verify attachment part (OpenAI image_url format)
+      attachment_part = result["content"].find { |p| p["type"] == "image_url" }
+      refute_nil attachment_part, "Should have an attachment part"
+      assert attachment_part["image_url"]["url"].start_with?("data:text/plain;base64,"),
+        "Attachment should be a data URL with base64 encoded content"
+
+      # Verify no object references
+      refute result.to_s.include?("RubyLLM::Content"),
+        "Result should not contain Content object reference"
+    end
+  end
+
+  # Test for GitHub issue #71: Content object with image attachment
+  # Verifies attachments are properly included in traces (similar to braintrust-go-sdk)
+  def test_format_message_for_input_handles_image_attachment
+    with_png_file do |tmpfile|
+      # Create a Content object with an image attachment
+      content = ::RubyLLM::Content.new("What's in this image?")
+      content.add_attachment(tmpfile.path)
+
+      # Create a message with the Content object
+      msg = ::RubyLLM::Message.new(role: :user, content: content)
+
+      # Verify the precondition: msg.content returns a Content object
+      assert msg.content.is_a?(::RubyLLM::Content),
+        "Precondition failed: Expected Content object when message has image attachment"
+      assert_equal 1, msg.content.attachments.count,
+        "Expected one attachment"
+
+      # Call the method under test
+      result = Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.format_message_for_input(msg)
+
+      # Verify multipart content array is returned
+      assert_equal "user", result["role"]
+      assert result["content"].is_a?(Array), "Content should be an array when attachments are present"
+      assert_equal 2, result["content"].length, "Content should have text and attachment parts"
+
+      # Verify text part
+      text_part = result["content"].find { |p| p["type"] == "text" }
+      refute_nil text_part, "Should have a text part"
+      assert_equal "What's in this image?", text_part["text"]
+
+      # Verify attachment part (OpenAI image_url format)
+      attachment_part = result["content"].find { |p| p["type"] == "image_url" }
+      refute_nil attachment_part, "Should have an attachment part"
+      assert attachment_part["image_url"]["url"].start_with?("data:image/png;base64,"),
+        "Attachment should be a data URL with base64 encoded PNG"
+
+      # Verify no object references in the result
+      refute result.to_s.include?("RubyLLM::Content"),
+        "Result should not contain Content object reference"
+      refute result.to_s.include?("RubyLLM::Attachment"),
+        "Result should not contain Attachment object reference"
+    end
+  end
+
+  # Test for GitHub issue #71: build_input_messages works with Content objects
+  # Verifies the full flow works end-to-end with attachments
+  def test_build_input_messages_handles_content_objects_with_attachments
+    with_png_file do |tmpfile|
+      # Configure RubyLLM
+      ::RubyLLM.configure do |config|
+        config.openai_api_key = "test-key"
+      end
+
+      # Create a chat instance with a message containing an attachment
+      chat = ::RubyLLM.chat(model: "gpt-4o-mini")
+
+      # Add message with image attachment using RubyLLM's API
+      content = ::RubyLLM::Content.new("Describe this image")
+      content.add_attachment(tmpfile.path)
+      chat.add_message(role: :user, content: content)
+
+      # Call the method under test
+      result = Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.build_input_messages(chat, nil)
+
+      # Verify the result
+      assert_equal 1, result.length, "Expected one message"
+      assert_equal "user", result[0]["role"]
+
+      # Content should be an array with text and attachment parts
+      content_parts = result[0]["content"]
+      assert content_parts.is_a?(Array), "Content should be an array when attachments are present"
+      assert_equal 2, content_parts.length, "Content should have text and attachment parts"
+
+      # Verify text part
+      text_part = content_parts.find { |p| p["type"] == "text" }
+      refute_nil text_part, "Should have a text part"
+      assert_equal "Describe this image", text_part["text"]
+
+      # Verify attachment part (OpenAI image_url format)
+      attachment_part = content_parts.find { |p| p["type"] == "image_url" }
+      refute_nil attachment_part, "Should have an attachment part"
+      assert attachment_part["image_url"]["url"].start_with?("data:image/png;base64,"),
+        "Attachment should be a data URL with base64 encoded PNG"
+
+      # Verify no object references
+      refute result.to_s.include?("RubyLLM::Content"),
+        "Result should not contain Content object reference"
+    end
+  end
 end
