@@ -20,6 +20,9 @@ Add this line to your application's Gemfile:
 
 ```ruby
 gem 'braintrust'
+
+# OR if you'd like to activate auto-instrumentation
+gem 'braintrust', require 'braintrust/setup'
 ```
 
 And then execute:
