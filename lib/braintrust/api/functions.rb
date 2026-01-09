@@ -85,6 +85,14 @@ module Braintrust
         http_post_json("/v1/function/#{id}/invoke", payload)
       end
 
+      # Get a function by ID (includes full prompt_data)
+      # GET /v1/function/{id}
+      # @param id [String] Function UUID
+      # @return [Hash] Full function data including prompt_data
+      def get(id:)
+        http_get("/v1/function/#{id}")
+      end
+
       # Delete a function by ID
       # DELETE /v1/function/{id}
       # @param id [String] Function UUID
