@@ -117,11 +117,12 @@ class Braintrust::PromptTest < Minitest::Test
     assert_match(/missing.*task/i, error.message)
   end
 
-  def test_build_non_strict_leaves_missing_variables
+  def test_build_non_strict_replaces_missing_variables_with_empty
+    # Mustache standard behavior: missing variables become empty strings
     prompt = Braintrust::Prompt.new(@function_data)
     result = prompt.build(name: "Alice")
 
-    assert_equal "Hello Alice, please help with {{task}}.", result[:messages][1][:content]
+    assert_equal "Hello Alice, please help with .", result[:messages][1][:content]
   end
 
   def test_build_handles_nested_variables

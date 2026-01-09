@@ -25,6 +25,7 @@
       "Bash(gem search:*)",
       "Bash(gem list:*)",
       "Bash(tree:*)",
+      "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(echo:*)",
       "Bash(sort:*)",

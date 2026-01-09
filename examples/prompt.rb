@@ -1,25 +1,30 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Example: Loading and using prompts from Braintrust
+# Example: Loading and executing prompts from Braintrust
 #
 # This example demonstrates how to:
 # 1. Create a prompt (function) on the Braintrust server
 # 2. Load it using Prompt.load
-# 3. Build the prompt with variable substitution
-# 4. Use the built prompt with an LLM client
+# 3. Build the prompt with Mustache variable substitution
+# 4. Execute the prompt with OpenAI and get a response
 #
 # Benefits of loading prompts:
 # - Centralized prompt management in Braintrust UI
 # - Version control and A/B testing for prompts
 # - No code deployment needed for prompt changes
 # - Works with any LLM client (OpenAI, Anthropic, etc.)
+# - Uses standard Mustache templating ({{variable}}, {{object.property}})
 
 require "bundler/setup"
 require "braintrust"
+require "openai"
 
-# Initialize Braintrust
+# Initialize Braintrust with tracing
 Braintrust.init
+
+# Wrap OpenAI client for tracing
+openai = Braintrust::Trace::OpenAI.wrap(OpenAI::Client.new)
 
 project_name = "ruby-sdk-examples"
 prompt_slug = "greeting-prompt-#{Time.now.to_i}"
@@ -39,7 +44,7 @@ api.functions.create(
       messages: [
         {
           role: "system",
-          content: "You are a friendly assistant who speaks {{language}}."
+          content: "You are a friendly assistant. Respond in {{language}}. Keep responses brief (1-2 sentences)."
         },
         {
           role: "user",
@@ -60,11 +65,10 @@ puts "\nLoading prompt..."
 prompt = Braintrust::Prompt.load(project: project_name, slug: prompt_slug)
 
 puts "  ID: #{prompt.id}"
-puts "  Name: #{prompt.name}"
+puts "  Slug: #{prompt.slug}"
 puts "  Model: #{prompt.model}"
-puts "  Messages: #{prompt.messages.length}"
 
-# Build the prompt with variable substitution
+# Build the prompt with Mustache variable substitution
 puts "\nBuilding prompt with variables..."
 params = prompt.build(
   name: "Alice",
@@ -74,22 +78,23 @@ params = prompt.build(
 
 puts "  Model: #{params[:model]}"
 puts "  Temperature: #{params[:temperature]}"
-puts "  Max tokens: #{params[:max_tokens]}"
 puts "  Messages:"
 params[:messages].each do |msg|
   puts "    [#{msg[:role]}] #{msg[:content]}"
 end
 
-# The params hash is ready to pass to any LLM client:
-#
-# With OpenAI:
-#   client.chat.completions.create(**params)
-#
-# With Anthropic:
-#   client.messages.create(**params)
+# Execute the prompt with OpenAI
+puts "\nExecuting prompt with OpenAI..."
+response = openai.chat.completions.create(**params)
 
-puts "\nPrompt is ready to use with any LLM client!"
+puts "\nResponse:"
+content = response.choices.first.message.content
+puts "  #{content}"
 
 # Clean up - delete the test prompt
+puts "\nCleaning up..."
 api.functions.delete(id: prompt.id)
-puts "Cleaned up test prompt."
+puts "Done!"
+
+# Flush traces
+OpenTelemetry.tracer_provider.shutdown

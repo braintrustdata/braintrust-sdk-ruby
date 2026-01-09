@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "mustache"
+
 module Braintrust
   # Prompt class for loading and building prompts from Braintrust
   #
@@ -92,11 +94,11 @@ module Braintrust
       variables_hash = variables.is_a?(Hash) ? variables : {}
       vars = @defaults.merge(stringify_keys(variables_hash)).merge(stringify_keys(kwargs))
 
-      # Substitute variables in messages
+      # Render Mustache templates in messages
       built_messages = messages.map do |msg|
         {
           role: msg["role"].to_sym,
-          content: substitute_variables(msg["content"], vars, strict: strict)
+          content: render_template(msg["content"], vars, strict: strict)
         }
       end
 
@@ -119,33 +121,31 @@ module Braintrust
 
     private
 
-    # Substitute {{variable}} placeholders with values
-    def substitute_variables(text, variables, strict:)
+    # Render Mustache template with variables
+    def render_template(text, variables, strict:)
       return text unless text.is_a?(String)
 
-      # Find all {{variable}} patterns
-      missing = []
-
-      result = text.gsub(/\{\{([^}]+)\}\}/) do |match|
-        var_path = ::Regexp.last_match(1).strip
-        value = resolve_variable(var_path, variables)
-
-        if value.nil?
-          missing << var_path
-          match # Keep original placeholder
-        else
-          value.to_s
+      if strict
+        # Check for missing variables before rendering
+        missing = find_missing_variables(text, variables)
+        if missing.any?
+          raise Error, "Missing required variables: #{missing.join(", ")}"
         end
       end
 
-      if strict && missing.any?
-        raise Error, "Missing required variables: #{missing.join(", ")}"
-      end
-
-      result
+      Mustache.render(text, variables)
     end
 
-    # Resolve a variable path like "user.name" from variables hash
+    # Find variables in template that are not provided
+    def find_missing_variables(text, variables)
+      # Extract {{variable}} and {{variable.path}} patterns
+      # Mustache uses {{name}} syntax
+      text.scan(/\{\{([^}#^\/!>]+)\}\}/).flatten.map(&:strip).uniq.reject do |var|
+        resolve_variable(var, variables)
+      end
+    end
+
+    # Check if a variable path exists in the variables hash
     def resolve_variable(path, variables)
       parts = path.split(".")
       value = variables
