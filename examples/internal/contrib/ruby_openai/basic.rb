@@ -14,10 +14,10 @@ require "opentelemetry/sdk"
 #
 # Note: ruby-openai is an optional development dependency. To run this example:
 #   1. Install ruby-openai: gem install ruby-openai
-#   2. Run from the SDK root: ruby examples/contrib/ruby_openai/basic.rb
+#   2. Run from the SDK root: ruby examples/internal/contrib/ruby_openai/basic.rb
 #
 # Usage:
-#   OPENAI_API_KEY=your-openai-key ruby examples/contrib/ruby_openai/basic.rb
+#   OPENAI_API_KEY=your-openai-key ruby examples/internal/contrib/ruby_openai/basic.rb
 
 # Check for API keys
 unless ENV["OPENAI_API_KEY"]
@@ -40,7 +40,7 @@ root_span = nil
 
 # Make a chat completion request (automatically traced!)
 puts "Sending chat completion request to OpenAI (using ruby-openai gem)..."
-response = tracer.in_span("examples/contrib/ruby_openai/basic.rb") do |span|
+response = tracer.in_span("examples/internal/contrib/ruby_openai/basic.rb") do |span|
   root_span = span
 
   # ruby-openai uses: client.chat(parameters: {...})

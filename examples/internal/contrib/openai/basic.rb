@@ -12,10 +12,10 @@ require "opentelemetry/sdk"
 #
 # Note: The openai gem is a development dependency. To run this example:
 #   1. Install dependencies: bundle install
-#   2. Run from the SDK root: bundle exec ruby examples/contrib/openai/deprecated.rb
+#   2. Run from the SDK root: bundle exec ruby examples/internal/contrib/openai/basic.rb
 #
 # Usage:
-#   OPENAI_API_KEY=your-openai-key bundle exec ruby examples/contrib/openai/deprecated.rb
+#   OPENAI_API_KEY=your-openai-key bundle exec ruby examples/internal/contrib/openai/basic.rb
 
 # Check for API keys
 unless ENV["OPENAI_API_KEY"]
@@ -24,14 +24,12 @@ unless ENV["OPENAI_API_KEY"]
   exit 1
 end
 
+# Instrument OpenAI
 Braintrust.init(blocking_login: true)
+Braintrust.instrument!(:openai)
 
 # Create OpenAI client
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
-
-# Wrap the client with Braintrust tracing
-# DEPRECATED: Use `Braintrust.instrument!(:openai, target: client)` instead
-Braintrust::Trace::OpenAI.wrap(client)
 
 # Create a root span to capture the entire operation
 tracer = OpenTelemetry.tracer_provider.tracer("openai-example")
@@ -39,7 +37,7 @@ root_span = nil
 
 # Make a chat completion request (automatically traced!)
 puts "Sending chat completion request to OpenAI..."
-response = tracer.in_span("examples/contrib/openai/deprecated.rb") do |span|
+response = tracer.in_span("examples/internal/contrib/openai/basic.rb") do |span|
   root_span = span
 
   client.chat.completions.create(

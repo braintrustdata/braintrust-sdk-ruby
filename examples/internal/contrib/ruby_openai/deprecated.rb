@@ -10,18 +10,18 @@ require "opentelemetry/sdk"
 #
 # DEPRECATED: This example uses the old wrap() API which is deprecated.
 # Please use the new instrument!() API instead:
-#   - examples/contrib/ruby_openai/basic.rb - Class-level instrumentation (all clients)
-#   - examples/contrib/ruby_openai/instance.rb - Instance-level instrumentation (specific client)
+#   - examples/internal/contrib/ruby_openai/basic.rb - Class-level instrumentation (all clients)
+#   - examples/internal/contrib/ruby_openai/instance.rb - Instance-level instrumentation (specific client)
 #
 # This example demonstrates how to automatically trace OpenAI API calls using
 # the ruby-openai gem (by alexrudall) with Braintrust.
 #
 # Note: ruby-openai is an optional development dependency. To run this example:
 #   1. Install ruby-openai: gem install ruby-openai
-#   2. Run from the SDK root: ruby examples/contrib/ruby_openai/deprecated.rb
+#   2. Run from the SDK root: ruby examples/internal/contrib/ruby_openai/deprecated.rb
 #
 # Usage:
-#   OPENAI_API_KEY=your-openai-key ruby examples/contrib/ruby_openai/deprecated.rb
+#   OPENAI_API_KEY=your-openai-key ruby examples/internal/contrib/ruby_openai/deprecated.rb
 
 # Check for API keys
 unless ENV["OPENAI_API_KEY"]
@@ -44,7 +44,7 @@ root_span = nil
 
 # Make a chat completion request (automatically traced!)
 puts "Sending chat completion request to OpenAI (using ruby-openai gem)..."
-response = tracer.in_span("examples/contrib/ruby_openai/deprecated.rb") do |span|
+response = tracer.in_span("examples/internal/contrib/ruby_openai/deprecated.rb") do |span|
   root_span = span
 
   # ruby-openai uses: client.chat(parameters: {...})

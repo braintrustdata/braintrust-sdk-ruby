@@ -16,7 +16,7 @@ require "opentelemetry/sdk"
 # - Multi-turn conversation with multiple tool invocations
 #
 # Trace hierarchy will look like:
-#   examples/contrib/ruby_llm/tool_usage.rb
+#   examples/internal/contrib/ruby_llm/tool_usage.rb
 #   └── ruby_llm.chat
 #       ├── ruby_llm.tool.search_flights
 #       │   └── flight_api.search (internal span)
@@ -27,7 +27,7 @@ require "opentelemetry/sdk"
 #           └── events_api.search (internal span)
 #
 # Usage:
-#   OPENAI_API_KEY=your-key bundle exec appraisal ruby_llm ruby examples/contrib/ruby_llm/tool_usage.rb
+#   OPENAI_API_KEY=your-key bundle exec appraisal ruby_llm ruby examples/internal/contrib/ruby_llm/tool_usage.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
@@ -319,7 +319,7 @@ puts "This example demonstrates deeply nested tracing with multiple tools."
 puts "Watch the trace to see how tool calls create hierarchical spans."
 puts
 
-response = tracer.in_span("examples/contrib/ruby_llm/tool_usage.rb") do |span|
+response = tracer.in_span("examples/internal/contrib/ruby_llm/tool_usage.rb") do |span|
   root_span = span
 
   chat = RubyLLM.chat(model: "gpt-4o-mini")
@@ -357,7 +357,7 @@ puts
 puts "View the full trace: #{Braintrust::Trace.permalink(root_span)}"
 puts
 puts "Expected span hierarchy:"
-puts "  └── examples/contrib/ruby_llm/tool_usage.rb"
+puts "  └── examples/internal/contrib/ruby_llm/tool_usage.rb"
 puts "      └── ruby_llm.chat"
 puts "          ├── ruby_llm.tool.search_flights"
 puts "          │   └── flight_api.search"

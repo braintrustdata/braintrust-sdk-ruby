@@ -12,7 +12,7 @@ require "opentelemetry/sdk"
 # all OpenAI clients globally.
 #
 # Usage:
-#   OPENAI_API_KEY=your-key bundle exec ruby examples/contrib/openai/instance.rb
+#   OPENAI_API_KEY=your-key bundle exec ruby examples/internal/contrib/openai/instance.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
@@ -31,7 +31,7 @@ Braintrust.instrument!(:openai, target: client_traced)
 tracer = OpenTelemetry.tracer_provider.tracer("openai-example")
 root_span = nil
 
-tracer.in_span("examples/contrib/openai/instance.rb") do |span|
+tracer.in_span("examples/internal/contrib/openai/instance.rb") do |span|
   root_span = span
 
   puts "Calling traced client..."
