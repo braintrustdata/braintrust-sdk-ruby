@@ -100,6 +100,12 @@ module Braintrust
         # @example Instance-level instrumentation (specific client)
         #   integration.instrument!(target: client, tracer_provider: my_provider)
         def instrument!(**options)
+          if options.empty?
+            Braintrust::Log.debug("#{integration_name}.instrument! called")
+          else
+            Braintrust::Log.debug("#{integration_name}.instrument! called (#{options.keys.join(", ")})")
+          end
+
           if options[:target]
             # Configure the target with provided options (exclude :target from context)
             context_options = options.except(:target)
@@ -117,7 +123,18 @@ module Braintrust
         # @option options [OpenTelemetry::SDK::Trace::TracerProvider] :tracer_provider Optional tracer provider
         # @return [Boolean] true if any patching succeeded or was already done
         def patch!(**options)
-          return false unless available? && loaded? && compatible?
+          unless available?
+            Braintrust::Log.debug("#{integration_name}.patch! skipped: gem not available")
+            return false
+          end
+          unless loaded?
+            Braintrust::Log.debug("#{integration_name}.patch! skipped: library not loaded")
+            return false
+          end
+          unless compatible?
+            Braintrust::Log.debug("#{integration_name}.patch! skipped: version not compatible")
+            return false
+          end
 
           # Try all applicable patchers
           success = false
@@ -129,7 +146,7 @@ module Braintrust
             success = true if patch.patch!(**options)
           end
 
-          Braintrust::Log.debug("No applicable patcher found for #{integration_name}") unless success
+          Braintrust::Log.debug("#{integration_name}.patch! skipped: no applicable patcher") unless success
           success
         end
 

@@ -27,6 +27,8 @@ module Braintrust
 
         @setup_complete = true
 
+        Braintrust::Log.debug("Braintrust setting up...")
+
         # Initialize Braintrust (silent failure if no API key)
         begin
           Braintrust.init
@@ -36,10 +38,13 @@ module Braintrust
 
         # Setup contrib for 3rd party integrations
         Contrib::Setup.run!
+
+        Braintrust::Log.debug("Braintrust setup complete. Auto-instrumentation enabled: #{Braintrust::Internal::Env.auto_instrument}")
       end
     end
   end
 end
 
 # Auto-setup when required
+
 Braintrust::Setup.run!

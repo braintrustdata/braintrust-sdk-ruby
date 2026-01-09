@@ -116,13 +116,25 @@ module Braintrust
       # @example Exclude specific integrations
       #   Braintrust::Contrib.auto_instrument!(except: [:ruby_llm])
       def auto_instrument!(only: nil, except: nil)
+        if only || except
+          Braintrust::Log.debug("auto_instrument! called (only: #{only.inspect}, except: #{except.inspect})")
+        else
+          Braintrust::Log.debug("auto_instrument! called")
+        end
+
         targets = registry.available
+        Braintrust::Log.debug("auto_instrument! available: #{targets.map(&:integration_name).inspect}")
         targets = targets.select { |i| only.include?(i.integration_name) } if only
         targets = targets.reject { |i| except.include?(i.integration_name) } if except
 
-        targets.each_with_object([]) do |integration, instrumented|
-          instrumented << integration.integration_name if instrument!(integration.integration_name)
+        results = targets.each_with_object([]) do |integration, instrumented|
+          result = instrument!(integration.integration_name)
+          # Note: false means skipped (not applicable) or failed (error logged at lower level)
+          Braintrust::Log.debug("auto_instrument! :#{integration.integration_name} #{result ? "instrumented" : "skipped"}")
+          instrumented << integration.integration_name if result
         end
+        Braintrust::Log.debug("auto_instrument! complete: #{results.inspect}")
+        results
       end
 
       # Instrument a registered integration by name.
