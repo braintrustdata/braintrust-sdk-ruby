@@ -1,0 +1,173 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"o4-mini","input":"What is 2+2?","reasoning":{"effort":"low"}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - OpenAI::Client/Ruby 0.39.0
+      Host:
+      - api.openai.com
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - Linux
+      X-Stainless-Package-Version:
+      - 0.39.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.9
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '71'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 26 Dec 2025 16:11:39 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999780'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      Openai-Version:
+      - '2020-10-01'
+      Openai-Organization:
+      - braintrust-data
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      X-Request-Id:
+      - req_93d774acb37d492a94abb8d1777c10e4
+      Openai-Processing-Ms:
+      - '2675'
+      X-Envoy-Upstream-Service-Time:
+      - '2680'
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=hfpoec9m9b4G1l8P0FMILfD.LxdBjOW0Ihj2hgy0a6w-1766765499-1.0.1.1-Waas3S9_hag4CT.yQVaFXf.YUeJd22FhvjB0e4D1tGIRMvEkEkXjNZQmlMpFW5uomY35IoheQ1ZjMZ.H2hIxTLs.6wTpM914GeRsVi0JxTc;
+        path=/; expires=Fri, 26-Dec-25 16:41:39 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=pfpF5kd2yEhd79IRBBZwP_YK0LolT.iGYo_bHWz1t3g-1766765499630-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9b41dae38a7a233c-ORD
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_05c9b376eaef5df500694eb3b8f0488190aad671821487d718",
+          "object": "response",
+          "created_at": 1766765496,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "completed_at": 1766765499,
+          "error": null,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "o4-mini-2025-04-16",
+          "output": [
+            {
+              "id": "rs_05c9b376eaef5df500694eb3baeb3c819098d8a271d979e4e5",
+              "type": "reasoning",
+              "summary": []
+            },
+            {
+              "id": "msg_05c9b376eaef5df500694eb3bb32508190be0d4fba1f18ed2b",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "2 + 2 = 4."
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": null,
+          "reasoning": {
+            "effort": "low",
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 13,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 14,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 27
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Fri, 26 Dec 2025 16:11:39 GMT
+recorded_with: VCR 6.3.1
