@@ -11,7 +11,7 @@ require "opentelemetry/sdk"
 # This example demonstrates how to automatically trace Anthropic API calls with Braintrust.
 #
 # Usage:
-#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/anthropic.rb
+#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/contrib/anthropic/basic.rb
 
 # Check for API keys
 unless ENV["ANTHROPIC_API_KEY"]
@@ -20,13 +20,12 @@ unless ENV["ANTHROPIC_API_KEY"]
   exit 1
 end
 
+# Instrument Anthropic (class-level, affects all clients)
 Braintrust.init(blocking_login: true)
+Braintrust.instrument!(:anthropic)
 
 # Create Anthropic client
 client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
-
-# Wrap the client with Braintrust tracing
-Braintrust::Trace::Anthropic.wrap(client)
 
 # Create a root span to capture the entire operation
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-example")
@@ -34,7 +33,7 @@ root_span = nil
 
 # Make a message request (automatically traced!)
 puts "Sending message request to Anthropic..."
-message = tracer.in_span("examples/anthropic.rb") do |span|
+message = tracer.in_span("examples/contrib/anthropic/basic.rb") do |span|
   root_span = span
 
   client.messages.create(
@@ -48,7 +47,7 @@ message = tracer.in_span("examples/anthropic.rb") do |span|
 end
 
 # Print the response
-puts "\n✓ Response received!"
+puts "\n Response received!"
 puts "\nClaude: #{message.content[0].text}"
 
 # Print usage stats
@@ -57,10 +56,10 @@ puts "  Input tokens: #{message.usage.input_tokens}"
 puts "  Output tokens: #{message.usage.output_tokens}"
 
 # Print permalink to view this trace in Braintrust
-puts "\n✓ View this trace in Braintrust:"
+puts "\n View this trace in Braintrust:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
 
 # Shutdown to flush spans to Braintrust
 OpenTelemetry.tracer_provider.shutdown
 
-puts "\n✓ Trace sent to Braintrust!"
+puts "\n Trace sent to Braintrust!"

@@ -1,23 +1,26 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "../integration_helper"
 
-class Braintrust::Trace::AnthropicTest < Minitest::Test
+# Explicitly load the patcher (lazy-loaded by integration)
+require "braintrust/contrib/anthropic/patcher"
+
+class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::Test
+  include Braintrust::Contrib::Anthropic::IntegrationHelper
+
   def setup
-    # Skip all Anthropic tests if the gem is not available
-    skip "Anthropic gem not available" unless defined?(Anthropic)
+    skip_unless_anthropic!
   end
 
-  def test_wrap_creates_span_for_basic_message
+  def test_creates_span_for_basic_message
     VCR.use_cassette("anthropic/basic_message") do
-      require "anthropic"
-
       # Set up test rig (includes Braintrust processor)
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it with Braintrust tracing
+      # Create Anthropic client and instrument it
       client = Anthropic::Client.new(api_key: get_anthropic_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a simple message request
       message = client.messages.create(
@@ -68,19 +71,60 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert metrics["completion_tokens"] > 0
       assert metrics["tokens"] > 0
       assert_equal metrics["prompt_tokens"] + metrics["completion_tokens"], metrics["tokens"]
+
+      # Verify time_to_first_token is present and non-negative
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be non-negative"
     end
   end
 
-  def test_wrap_handles_system_prompt
-    VCR.use_cassette("anthropic/system_prompt") do
-      require "anthropic"
-
+  def test_creates_span_with_class_level_patching
+    VCR.use_cassette("anthropic/basic_message") do
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # For class-level patching, set the default tracer provider via Braintrust.init
+      # (instance-level patching uses target: which stores tracer_provider in context)
+      Braintrust.init(tracer_provider: rig.tracer_provider)
+
+      # Instrument at class level (no target:) - patches Anthropic::Resources::Messages
+      Braintrust.instrument!(:anthropic)
+
+      # Create client AFTER class-level instrumentation
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+
+      # Make a simple message request
+      message = client.messages.create(
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 10,
+        messages: [
+          {role: "user", content: "Say 'test'"}
+        ]
+      )
+
+      # Verify response
+      refute_nil message
+
+      # Drain and verify span was created
+      span = rig.drain_one
+
+      # Verify span name and key attributes
+      assert_equal "anthropic.messages.create", span.name
+      assert span.attributes.key?("braintrust.input_json")
+      assert span.attributes.key?("braintrust.output_json")
+      assert span.attributes.key?("braintrust.metadata")
+      assert span.attributes.key?("braintrust.metrics")
+    end
+  end
+
+  def test_handles_system_prompt
+    VCR.use_cassette("anthropic/system_prompt") do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with system prompt
       message = client.messages.create(
@@ -122,16 +166,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_tool_use
+  def test_handles_tool_use
     VCR.use_cassette("anthropic/tool_use") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with tools
       message = client.messages.create(
@@ -191,16 +233,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_streaming
+  def test_handles_streaming
     VCR.use_cassette("anthropic/streaming") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
       stream = client.messages.stream(
@@ -216,13 +256,12 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
         # Just consume events
       end
 
-      # Drain and verify span was created
+      # Single span created during consumption
       span = rig.drain_one
 
-      # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
-      # Verify input captured
+      # Verify input captured on span
       assert span.attributes.key?("braintrust.input_json")
       input = JSON.parse(span.attributes["braintrust.input_json"])
       assert_equal 1, input.length
@@ -232,24 +271,17 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert span.attributes.key?("braintrust.metadata")
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal true, metadata["stream"]
-
-      # Note: Full output aggregation testing requires live API calls
-      # VCR doesn't perfectly replay streaming SSE responses
-      # The streaming wrapper is implemented and works with real API calls
     end
   end
 
-  def test_wrap_handles_streaming_output_aggregation
-    # This test demonstrates the bug: streaming output is not aggregated
+  def test_handles_streaming_output_aggregation
     VCR.use_cassette("anthropic/streaming_aggregation") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request
       collected_text = ""
@@ -271,10 +303,9 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       # Verify we got some text
       refute_empty collected_text, "Should have received text from stream"
 
-      # Drain and verify span
+      # Single span created during consumption
       span = rig.drain_one
 
-      # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
@@ -303,19 +334,21 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"], "Should have total tokens"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
+
+      # Verify time_to_first_token is present and non-negative
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be non-negative"
     end
   end
 
-  def test_wrap_handles_vision_with_base64
+  def test_handles_vision_with_base64
     VCR.use_cassette("anthropic/vision_base64") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Small 1x1 red pixel PNG as base64
       test_image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
@@ -369,16 +402,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_reasoning_thinking_blocks
+  def test_handles_reasoning_thinking_blocks
     VCR.use_cassette("anthropic/reasoning") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with reasoning enabled
       message = client.messages.create(
@@ -429,16 +460,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_multi_turn_conversation
+  def test_handles_multi_turn_conversation
     VCR.use_cassette("anthropic/multi_turn") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a multi-turn conversation request
       message = client.messages.create(
@@ -483,16 +512,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_temperature_and_stop_sequences
+  def test_handles_temperature_and_stop_sequences
     VCR.use_cassette("anthropic/temperature_stop") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a request with temperature and stop sequences
       message = client.messages.create(
@@ -533,16 +560,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_tool_use_multi_turn
+  def test_handles_tool_use_multi_turn
     VCR.use_cassette("anthropic/tool_use_multi_turn") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # First request - model should use tool
       first_message = client.messages.create(
@@ -652,16 +677,14 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
     end
   end
 
-  def test_wrap_handles_streaming_with_text_each
+  def test_handles_streaming_with_text_each
     VCR.use_cassette("anthropic/streaming_text_each") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .text.each
       collected_text = ""
@@ -687,10 +710,9 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_match(/2/, collected_text, "Should contain 2")
       assert_match(/3/, collected_text, "Should contain 3")
 
-      # Drain and verify span
+      # Single span created during consumption
       span = rig.drain_one
 
-      # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
@@ -715,19 +737,21 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
+
+      # Verify time_to_first_token is present and non-negative
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be non-negative"
     end
   end
 
-  def test_wrap_handles_streaming_with_accumulated_text
+  def test_handles_streaming_with_accumulated_text
     VCR.use_cassette("anthropic/streaming_accumulated_text") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .accumulated_text
       stream = client.messages.stream(
@@ -750,10 +774,9 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert_match(/Hello/, accumulated_text, "Should contain greeting")
       assert_match(/help/, accumulated_text, "Should offer help")
 
-      # Drain and verify span
+      # Single span created during consumption
       span = rig.drain_one
 
-      # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
@@ -774,19 +797,21 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
       assert metrics["tokens"] > 0, "Total tokens should be greater than 0"
+
+      # Verify time_to_first_token is present and non-negative
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be non-negative"
     end
   end
 
-  def test_wrap_handles_streaming_with_accumulated_message
+  def test_handles_streaming_with_accumulated_message
     VCR.use_cassette("anthropic/streaming_accumulated_message") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request using .accumulated_message
       stream = client.messages.stream(
@@ -805,10 +830,9 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       refute_nil message.content, "Message should have content"
       refute_empty message.content, "Message content should not be empty"
 
-      # Drain and verify span
+      # Single span created during consumption
       span = rig.drain_one
 
-      # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
       # CRITICAL: Verify output was aggregated
@@ -827,19 +851,21 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       assert metrics["prompt_tokens"] > 0, "Prompt tokens should be greater than 0"
       assert metrics["completion_tokens"], "Should have completion_tokens"
       assert metrics["completion_tokens"] > 0, "Completion tokens should be greater than 0"
+
+      # Verify time_to_first_token is present and non-negative
+      assert metrics.key?("time_to_first_token"), "Should have time_to_first_token metric"
+      assert metrics["time_to_first_token"] >= 0, "time_to_first_token should be non-negative"
     end
   end
 
-  def test_wrap_handles_streaming_with_close
+  def test_handles_streaming_with_close
     VCR.use_cassette("anthropic/streaming_close") do
-      require "anthropic"
-
       # Set up test rig
       rig = setup_otel_test_rig
 
-      # Create Anthropic client and wrap it
-      client = Anthropic::Client.new(api_key: @api_key)
-      Braintrust::Trace::Anthropic.wrap(client, tracer_provider: rig.tracer_provider)
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
       # Make a streaming request and close early without consuming
       stream = client.messages.stream(
@@ -853,13 +879,12 @@ class Braintrust::Trace::AnthropicTest < Minitest::Test
       # Close the stream early (before consuming)
       stream.close
 
-      # Drain and verify span was finished
+      # Single span created on close
       span = rig.drain_one
 
-      # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
-      # Verify input was captured
+      # Verify input was captured on span
       assert span.attributes.key?("braintrust.input_json")
       input = JSON.parse(span.attributes["braintrust.input_json"])
       assert_equal 1, input.length
