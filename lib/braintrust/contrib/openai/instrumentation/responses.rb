@@ -5,6 +5,8 @@ require "json"
 
 require_relative "common"
 require_relative "../../../internal/time"
+require_relative "../../support/otel"
+require_relative "../../support/openai"
 
 module Braintrust
   module Contrib
@@ -86,27 +88,27 @@ module Braintrust
             def set_input(span, params)
               return unless params[:input]
 
-              Common.set_json_attr(span, "braintrust.input_json", params[:input])
+              Support::OTel.set_json_attr(span, "braintrust.input_json", params[:input])
             end
 
             def set_output(span, response)
               return unless response.respond_to?(:output) && response.output
 
-              Common.set_json_attr(span, "braintrust.output_json", response.output)
+              Support::OTel.set_json_attr(span, "braintrust.output_json", response.output)
             end
 
             def set_metrics(span, response, time_to_first_token)
               metrics = {}
               if response.respond_to?(:usage) && response.usage
-                metrics = Common.parse_usage_tokens(response.usage)
+                metrics = Support::OpenAI.parse_usage_tokens(response.usage)
               end
               metrics["time_to_first_token"] = time_to_first_token
-              Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+              Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
             end
 
             def finalize_metadata(span, metadata, response)
               metadata["id"] = response.id if response.respond_to?(:id) && response.id
-              Common.set_json_attr(span, "braintrust.metadata", metadata)
+              Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
             end
           end
         end
@@ -139,7 +141,7 @@ module Braintrust
 
               tracer.in_span("openai.responses.create") do |span|
                 responses_instance.send(:set_input, span, params)
-                Common.set_json_attr(span, "braintrust.metadata", metadata)
+                Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
 
                 begin
                   super do |event|
@@ -163,19 +165,19 @@ module Braintrust
               return if aggregated_events.empty?
 
               aggregated_output = Common.aggregate_responses_events(aggregated_events)
-              Common.set_json_attr(span, "braintrust.output_json", aggregated_output[:output]) if aggregated_output[:output]
+              Support::OTel.set_json_attr(span, "braintrust.output_json", aggregated_output[:output]) if aggregated_output[:output]
 
               # Set metrics
               metrics = {}
               if aggregated_output[:usage]
-                metrics = Common.parse_usage_tokens(aggregated_output[:usage])
+                metrics = Support::OpenAI.parse_usage_tokens(aggregated_output[:usage])
               end
               metrics["time_to_first_token"] = time_to_first_token
-              Common.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
+              Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
 
               # Update metadata with response fields
               metadata["id"] = aggregated_output[:id] if aggregated_output[:id]
-              Common.set_json_attr(span, "braintrust.metadata", metadata)
+              Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
             end
           end
         end
