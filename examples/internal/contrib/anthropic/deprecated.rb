@@ -3,15 +3,17 @@
 
 require "bundler/setup"
 require "braintrust"
+require "braintrust/contrib/anthropic/deprecated"
 require "anthropic"
 require "opentelemetry/sdk"
 
-# Example: Anthropic message creation with Braintrust tracing
+# Example: Anthropic message creation with deprecated wrap() API
 #
-# This example demonstrates how to automatically trace Anthropic API calls with Braintrust.
+# This example demonstrates the old API for backward compatibility.
+# For new code, use `Braintrust.instrument!(:anthropic)` instead.
 #
 # Usage:
-#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/contrib/anthropic/basic.rb
+#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/internal/contrib/anthropic/deprecated.rb
 
 # Check for API keys
 unless ENV["ANTHROPIC_API_KEY"]
@@ -20,12 +22,14 @@ unless ENV["ANTHROPIC_API_KEY"]
   exit 1
 end
 
-# Instrument Anthropic (class-level, affects all clients)
 Braintrust.init(blocking_login: true)
-Braintrust.instrument!(:anthropic)
 
 # Create Anthropic client
 client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
+
+# Wrap the client with Braintrust tracing
+# DEPRECATED: Use `Braintrust.instrument!(:anthropic, target: client)` instead
+Braintrust::Trace::Anthropic.wrap(client)
 
 # Create a root span to capture the entire operation
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-example")
@@ -33,7 +37,7 @@ root_span = nil
 
 # Make a message request (automatically traced!)
 puts "Sending message request to Anthropic..."
-message = tracer.in_span("examples/contrib/anthropic/basic.rb") do |span|
+message = tracer.in_span("examples/internal/contrib/anthropic/deprecated.rb") do |span|
   root_span = span
 
   client.messages.create(

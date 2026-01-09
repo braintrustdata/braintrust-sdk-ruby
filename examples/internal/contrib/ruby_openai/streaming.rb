@@ -12,7 +12,7 @@ require "opentelemetry/sdk"
 # using the ruby-openai gem. Shows the callback-based streaming pattern.
 #
 # Usage:
-#   OPENAI_API_KEY=your-key bundle exec ruby examples/contrib/ruby_openai/streaming.rb
+#   OPENAI_API_KEY=your-key bundle exec ruby examples/internal/contrib/ruby_openai/streaming.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
@@ -28,7 +28,7 @@ client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
 tracer = OpenTelemetry.tracer_provider.tracer("ruby-openai-streaming-example")
 root_span = nil
 
-tracer.in_span("examples/contrib/ruby_openai/streaming.rb") do |span|
+tracer.in_span("examples/internal/contrib/ruby_openai/streaming.rb") do |span|
   root_span = span
 
   # Pattern 1: Chat streaming with callback proc

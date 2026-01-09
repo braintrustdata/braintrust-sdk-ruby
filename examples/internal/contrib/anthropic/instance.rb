@@ -12,7 +12,7 @@ require "opentelemetry/sdk"
 # all Anthropic clients globally.
 #
 # Usage:
-#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/contrib/anthropic/instance.rb
+#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/internal/contrib/anthropic/instance.rb
 
 unless ENV["ANTHROPIC_API_KEY"]
   puts "Error: ANTHROPIC_API_KEY environment variable is required"
@@ -31,7 +31,7 @@ Braintrust.instrument!(:anthropic, target: client_traced)
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-example")
 root_span = nil
 
-tracer.in_span("examples/contrib/anthropic/instance.rb") do |span|
+tracer.in_span("examples/internal/contrib/anthropic/instance.rb") do |span|
   root_span = span
 
   puts "Calling traced client..."

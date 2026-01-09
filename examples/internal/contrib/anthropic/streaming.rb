@@ -14,7 +14,7 @@ require "opentelemetry/sdk"
 #   2. Text-only streaming with .text (simplified)
 #
 # Usage:
-#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/contrib/anthropic/streaming.rb
+#   ANTHROPIC_API_KEY=your-key bundle exec ruby examples/internal/contrib/anthropic/streaming.rb
 
 unless ENV["ANTHROPIC_API_KEY"]
   puts "Error: ANTHROPIC_API_KEY environment variable is required"
@@ -29,7 +29,7 @@ client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-streaming-example")
 root_span = nil
 
-tracer.in_span("examples/contrib/anthropic/streaming.rb") do |span|
+tracer.in_span("examples/internal/contrib/anthropic/streaming.rb") do |span|
   root_span = span
 
   # Pattern 1: Iterator-based streaming with .each

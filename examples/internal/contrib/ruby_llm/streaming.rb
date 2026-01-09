@@ -9,7 +9,7 @@ require "opentelemetry/sdk"
 # Example: Streaming RubyLLM chat with Braintrust tracing
 #
 # Usage:
-#   OPENAI_API_KEY=your-key bundle exec appraisal ruby_llm ruby examples/contrib/ruby_llm/streaming.rb
+#   OPENAI_API_KEY=your-key bundle exec appraisal ruby_llm ruby examples/internal/contrib/ruby_llm/streaming.rb
 
 unless ENV["OPENAI_API_KEY"]
   puts "Error: OPENAI_API_KEY environment variable is required"
@@ -29,7 +29,7 @@ root_span = nil
 puts "Streaming response..."
 print "\nAssistant: "
 
-tracer.in_span("examples/contrib/ruby_llm/streaming.rb") do |span|
+tracer.in_span("examples/internal/contrib/ruby_llm/streaming.rb") do |span|
   root_span = span
   chat = RubyLLM.chat(model: "gpt-4o-mini")
   chat.ask("Write a haiku about programming") do |chunk|
