@@ -560,7 +560,7 @@ class Braintrust::Contrib::IntegrationTest < Minitest::Test
     begin
       integration.patch!
       # Check that the "no applicable patcher" message was logged
-      assert captured_logs.any? { |msg| msg.include?("No applicable patcher found") }
+      assert captured_logs.any? { |msg| msg.include?("no applicable patcher") }
     ensure
       Braintrust::Log.logger = original_logger
     end

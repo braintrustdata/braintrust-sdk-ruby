@@ -10,13 +10,18 @@ module Braintrust
           return if @setup_complete
           @setup_complete = true
 
-          if Internal::Env.auto_instrument
-            # Set up deferred patching for libraries loaded later
-            if rails_environment?
-              setup_rails_hook!
-            else
-              setup_require_hook!
-            end
+          unless Internal::Env.auto_instrument
+            Braintrust::Log.debug("Contrib::Setup.run! auto-instrumentation disabled via environment")
+            return
+          end
+
+          # Set up deferred patching for libraries loaded later
+          if rails_environment?
+            Braintrust::Log.debug("Contrib::Setup.run! using Rails after_initialize hook")
+            setup_rails_hook!
+          else
+            Braintrust::Log.debug("Contrib::Setup.run! using require hook")
+            setup_require_hook!
           end
         end
 
@@ -47,7 +52,11 @@ module Braintrust
                 Thread.current[:braintrust_in_require_hook] = true
 
                 # Check if any integration matches this require path
-                registry.integrations_for_require_path(path).each do |integration|
+                integrations = registry.integrations_for_require_path(path)
+                if integrations.any?
+                  Braintrust::Log.debug("require '#{path}' matched integration hook: #{integrations.map(&:integration_name).inspect}")
+                end
+                integrations.each do |integration|
                   next unless integration.available? && integration.compatible?
                   next if only && !only.include?(integration.integration_name)
                   next if except&.include?(integration.integration_name)
