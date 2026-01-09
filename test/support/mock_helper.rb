@@ -41,6 +41,38 @@ module Test
 
         mocks.each(&:verify)
       end
+
+      # Apply multiple stubs without deep nesting.
+      # Each stub is an array of [object, method, value].
+      #
+      # @param stubs [Array<Array>] list of [object, method, value] tuples
+      # @yield block to execute with all stubs applied
+      #
+      # @example Single stub
+      #   with_stubs([Braintrust, :init, -> { }]) do
+      #     # code runs with Braintrust.init stubbed
+      #   end
+      #
+      # @example Multiple stubs (no nesting required)
+      #   with_stubs(
+      #     [Braintrust, :init, -> { init_called = true }],
+      #     [Braintrust::Contrib::Setup, :run!, -> {}],
+      #     [Braintrust::Log, :error, ->(msg) { errors << msg }]
+      #   ) do
+      #     require "braintrust/setup"
+      #     # assertions here - only one level deep
+      #   end
+      #
+      def with_stubs(*stubs, &block)
+        if stubs.empty?
+          yield
+        else
+          obj, method, value = stubs.first
+          obj.stub(method, value) do
+            with_stubs(*stubs[1..], &block)
+          end
+        end
+      end
     end
   end
 end

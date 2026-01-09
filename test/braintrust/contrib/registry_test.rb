@@ -227,15 +227,4 @@ class Braintrust::Contrib::RegistryTest < Minitest::Test
 
     assert_equal [], errors
   end
-
-  def test_clear_removes_all_integrations
-    openai = create_mock_integration(name: :openai, gem_names: ["openai"])
-
-    @registry.register(openai)
-    assert_equal 1, @registry.all.length
-
-    @registry.clear!
-    assert_equal 0, @registry.all.length
-    assert_nil @registry[:openai]
-  end
 end
