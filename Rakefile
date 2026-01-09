@@ -107,6 +107,7 @@ namespace :test do
     # Tasks per integration
     [
       {name: :openai},
+      {name: :ruby_llm},
       {name: :ruby_openai, appraisal: "ruby-openai"}
     ].each do |integration|
       name = integration[:name]
