@@ -26,11 +26,20 @@ RubyLLM.configure do |config|
   config.openai_api_key = ENV["OPENAI_API_KEY"]
 end
 
-chat = RubyLLM.chat(model: "gpt-4o-mini")
-chat.ask("What is the capital of France?")
+# Get a tracer and wrap the API call in a span
+tracer = OpenTelemetry.tracer_provider.tracer("ruby-llm-example")
+
+root_span = nil
+tracer.in_span("examples/contrib/ruby_llm.rb") do |span|
+  root_span = span
+
+  # Make a chat request (automatically traced!)
+  chat = RubyLLM.chat(model: "gpt-4o-mini")
+  chat.ask("What is the capital of France?")
+end
 
 # Print permalink to view this trace in Braintrust
-puts "\n View this trace in Braintrust:"
+puts "\nView this trace in Braintrust:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
 
 # Shutdown to flush spans to Braintrust

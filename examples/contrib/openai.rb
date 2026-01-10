@@ -25,18 +25,26 @@ Braintrust.init(blocking_login: true)
 # Create OpenAI client
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
-# Make a chat completion request (automatically traced!)
-client.chat.completions.create(
-  messages: [
-    {role: "system", content: "You are a helpful assistant."},
-    {role: "user", content: "Say hello and tell me a short joke."}
-  ],
-  model: "gpt-4o-mini",
-  max_tokens: 100
-)
+# Get a tracer and wrap the API call in a span
+tracer = OpenTelemetry.tracer_provider.tracer("openai-example")
+
+root_span = nil
+tracer.in_span("examples/contrib/openai.rb") do |span|
+  root_span = span
+
+  # Make a chat completion request (automatically traced!)
+  client.chat.completions.create(
+    messages: [
+      {role: "system", content: "You are a helpful assistant."},
+      {role: "user", content: "Say hello and tell me a short joke."}
+    ],
+    model: "gpt-4o-mini",
+    max_tokens: 100
+  )
+end
 
 # Print permalink to view this trace in Braintrust
-puts "\n View this trace in Braintrust:"
+puts "\nView this trace in Braintrust:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
 
 # Shutdown to flush spans to Braintrust
