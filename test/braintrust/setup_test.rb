@@ -20,12 +20,7 @@ class Braintrust::SetupTest < Minitest::Test
         require "braintrust/setup"
       end
 
-      if init_called
-        puts "test_run_calls_braintrust_init:passed"
-      else
-        puts "test_run_calls_braintrust_init:failed - init not called"
-        exit 1
-      end
+      assert init_called, "Braintrust.init should be called"
     end
   end
 
@@ -42,12 +37,7 @@ class Braintrust::SetupTest < Minitest::Test
         require "braintrust/setup"
       end
 
-      if contrib_setup_called
-        puts "test_run_calls_contrib_setup_run:passed"
-      else
-        puts "test_run_calls_contrib_setup_run:failed - Contrib::Setup.run! not called"
-        exit 1
-      end
+      assert contrib_setup_called, "Contrib::Setup.run! should be called"
     end
   end
 
@@ -68,12 +58,7 @@ class Braintrust::SetupTest < Minitest::Test
         Braintrust::Setup.run!
       end
 
-      if call_count == 1
-        puts "test_run_is_idempotent:passed"
-      else
-        puts "test_run_is_idempotent:failed - call_count=#{call_count}, expected 1"
-        exit 1
-      end
+      assert_equal 1, call_count, "init should only be called once"
     end
   end
 
@@ -96,12 +81,7 @@ class Braintrust::SetupTest < Minitest::Test
           msg.include?("Test init error")
       end
 
-      if error_logged
-        puts "test_run_logs_error_on_init_failure:passed"
-      else
-        puts "test_run_logs_error_on_init_failure:failed - logged: #{logged_messages.inspect}"
-        exit 1
-      end
+      assert error_logged, "should log error message containing failure details"
     end
   end
 
@@ -119,12 +99,7 @@ class Braintrust::SetupTest < Minitest::Test
         require "braintrust/setup"
       end
 
-      if contrib_setup_called
-        puts "test_run_continues_to_contrib_setup_after_init_failure:passed"
-      else
-        puts "test_run_continues_to_contrib_setup_after_init_failure:failed"
-        exit 1
-      end
+      assert contrib_setup_called, "Contrib::Setup.run! should be called even after init failure"
     end
   end
 end

@@ -30,13 +30,14 @@ module Braintrust
         Braintrust::Log.debug("Braintrust setting up...")
 
         # Initialize Braintrust (silent failure if no API key)
+        # Must run in every process - tracer provider doesn't persist across Kernel.exec
         begin
           Braintrust.init
         rescue => e
           Braintrust::Log.error("Failed to automatically setup Braintrust: #{e.message}")
         end
 
-        # Setup contrib for 3rd party integrations
+        # Always setup contrib - hooks don't persist across Kernel.exec
         Contrib::Setup.run!
 
         Braintrust::Log.debug("Braintrust setup complete. Auto-instrumentation enabled: #{Braintrust::Internal::Env.auto_instrument}")
@@ -46,5 +47,4 @@ module Braintrust
 end
 
 # Auto-setup when required
-
 Braintrust::Setup.run!

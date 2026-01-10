@@ -25,23 +25,32 @@ module Test
       # Create a temporary file and yield to the block
       # File is automatically cleaned up after the block
       # @param data [String] content to write to the file (default: empty)
-      # @param filename [String] prefix for the temp file name
+      # @param filename [String] prefix for the temp file name (or exact name if exact_name: true)
       # @param extension [String] extension for the temp file name
       # @param binary [Boolean] whether to write in binary mode
-      # @yield [Tempfile] the temporary file
-      def with_tmp_file(data: "", filename: "test", extension: ".txt", binary: false)
+      # @param exact_name [Boolean] if true, use exact filename without random suffix
+      # @yield [Tempfile, String] the temporary file (Tempfile) or path (String if exact_name)
+      def with_tmp_file(data: "", filename: "test", extension: ".txt", binary: false, exact_name: false)
         return unless block_given?
 
-        require "tempfile"
-        tmpfile = Tempfile.new([filename, extension])
-        tmpfile.binmode if binary
-        tmpfile.write(data)
-        tmpfile.close
+        if exact_name
+          Dir.mktmpdir do |dir|
+            path = File.join(dir, "#{filename}#{extension}")
+            File.write(path, data, mode: binary ? "wb" : "w")
+            yield path
+          end
+        else
+          require "tempfile"
+          tmpfile = Tempfile.new([filename, extension])
+          tmpfile.binmode if binary
+          tmpfile.write(data)
+          tmpfile.close
 
-        begin
-          yield(tmpfile)
-        ensure
-          tmpfile.unlink
+          begin
+            yield(tmpfile)
+          ensure
+            tmpfile.unlink
+          end
         end
       end
     end
