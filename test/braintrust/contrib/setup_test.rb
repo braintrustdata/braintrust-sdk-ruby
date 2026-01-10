@@ -21,10 +21,12 @@ class Braintrust::Contrib::SetupTest < Minitest::Test
 
     call_count = 0
 
-    Braintrust::Contrib::Setup.stub(:setup_require_hook!, -> { call_count += 1 }) do
-      Braintrust::Contrib::Setup.run!
-      Braintrust::Contrib::Setup.run!
-      Braintrust::Contrib::Setup.run!
+    ClimateControl.modify(BRAINTRUST_AUTO_INSTRUMENT: nil) do
+      Braintrust::Contrib::Setup.stub(:setup_require_hook!, -> { call_count += 1 }) do
+        Braintrust::Contrib::Setup.run!
+        Braintrust::Contrib::Setup.run!
+        Braintrust::Contrib::Setup.run!
+      end
     end
 
     assert_equal 1, call_count, "run! should only execute once"

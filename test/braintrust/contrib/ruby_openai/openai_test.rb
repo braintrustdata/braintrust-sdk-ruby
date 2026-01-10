@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
-# require "test_helper"
-
-# # Load the openai gem to define OpenAI::Client (and OpenAI::Internal if official gem)
-# # This must happen before tests run so the gem detection logic works
-# begin
-#   require "openai"
-# rescue LoadError
-#   # Gem not available in this appraisal
-# end
+require "test_helper"
+require_relative "integration_helper"
 
 # This test verifies that the RubyOpenAI integration correctly identifies when the
 # `ruby-openai` gem is loaded vs the official `openai` gem.
@@ -23,17 +16,13 @@
 # 2. When `ruby-openai` gem is loaded, instrument! succeeds and patchers are applied
 
 class Braintrust::Contrib::RubyOpenAI::OpenAITest < Minitest::Test
+  include Braintrust::Contrib::RubyOpenAI::IntegrationHelper
+
   Integration = Braintrust::Contrib::RubyOpenAI::Integration
 
-  # def ruby_openai_available?
-  #   # OpenAI::Internal is only defined in the official openai gem
-  #   !Gem.loaded_specs["ruby-openai"].nil?
-  # end
-
-  # def official_openai_available?
-  #   # OpenAI::Internal is only defined in the official openai gem
-  #   !Gem.loaded_specs["openai"].nil?
-  # end
+  def setup
+    load_ruby_openai_if_available
+  end
 
   def ruby_openai_loaded?
     # Check if ruby-openai gem is loaded (not the official openai gem).
@@ -64,12 +53,25 @@ class Braintrust::Contrib::RubyOpenAI::OpenAITest < Minitest::Test
   def test_instrument_succeeds_for_ruby_openai_gem
     skip "ruby-openai gem not loaded" unless ruby_openai_loaded?
 
-    result = Braintrust.instrument!(:ruby_openai)
+    # Run in fork to avoid polluting global state (class-level patching)
+    assert_in_fork do
+      require "openai"
 
-    assert result, "instrument! should return truthy for ruby-openai gem"
+      result = Braintrust.instrument!(:ruby_openai)
 
-    any_patched = Integration.patchers.any?(&:patched?)
-    assert any_patched, "at least one patcher should be patched for ruby-openai gem"
+      unless result
+        puts "FAIL: instrument! should return truthy for ruby-openai gem"
+        exit 1
+      end
+
+      any_patched = Integration.patchers.any?(&:patched?)
+      unless any_patched
+        puts "FAIL: at least one patcher should be patched for ruby-openai gem"
+        exit 1
+      end
+
+      puts "instrument_succeeds_test:passed"
+    end
   end
 
   # --- OpenAI::Internal ---

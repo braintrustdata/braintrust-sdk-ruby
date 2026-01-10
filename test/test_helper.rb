@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# Disable auto-instrumentation by default in tests to prevent test pollution.
+# Tests that specifically need auto-instrumentation can opt-in via auto_instrument: true.
+ENV["BRAINTRUST_AUTO_INSTRUMENT"] ||= "false"
+
 # Start SimpleCov BEFORE loading any code to track
 # Skip coverage when running under appraisal (different dependency scenarios)
 unless ENV["BUNDLE_GEMFILE"]&.include?("gemfiles/")

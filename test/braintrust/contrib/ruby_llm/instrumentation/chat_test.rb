@@ -53,27 +53,34 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatTest < Minitest::Test
   end
 end
 
-# Define test tool classes for different ruby_llm versions
-if defined?(RubyLLM)
-  RUBY_LLM_VERSION = Gem.loaded_specs["ruby_llm"]&.version || Gem::Version.new("0.0.0")
-  SUPPORTS_PARAMS_DSL = Gem::Version.new("1.9.0") <= RUBY_LLM_VERSION
-
-  # Tool for ruby_llm 1.8+ (using param - singular)
-  class WeatherTestTool < RubyLLM::Tool
-    description "Get the current weather for a location"
-
-    param :location, type: :string, desc: "The city and state, e.g. San Francisco, CA"
-    param :unit, type: :string, desc: "Temperature unit (celsius or fahrenheit)"
-
-    def execute(location:, unit: "fahrenheit")
-      {location: location, temperature: 72, unit: unit, conditions: "sunny"}
-    end
-  end
-end
-
 # E2E tests for Chat instrumentation
 class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Test
   include Braintrust::Contrib::RubyLLM::IntegrationHelper
+
+  def self.supports_tool_calling?
+    return false unless defined?(RubyLLM)
+    version = Gem.loaded_specs["ruby_llm"]&.version || Gem::Version.new("0.0.0")
+    Gem::Version.new("1.9.0") <= version
+  end
+
+  # Creates a test tool class and yields it to the block.
+  # Uses stub_const to avoid polluting global state.
+  def with_weather_test_tool
+    tool_class = Class.new(RubyLLM::Tool) do
+      description "Get the current weather for a location"
+
+      param :location, type: :string, desc: "The city and state, e.g. San Francisco, CA"
+      param :unit, type: :string, desc: "Temperature unit (celsius or fahrenheit)"
+
+      def execute(location:, unit: "fahrenheit")
+        {location: location, temperature: 72, unit: unit, conditions: "sunny"}
+      end
+    end
+
+    Object.stub_const(:WeatherTestTool, tool_class) do
+      yield WeatherTestTool
+    end
+  end
 
   def setup
     skip_unless_ruby_llm!
@@ -188,71 +195,73 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
   # --- Tool calling ---
 
   def test_tool_calling_creates_nested_spans
-    skip "Tool calling test requires ruby_llm >= 1.9" unless defined?(SUPPORTS_PARAMS_DSL) && SUPPORTS_PARAMS_DSL
+    skip "Tool calling test requires ruby_llm >= 1.9" unless self.class.supports_tool_calling?
 
-    VCR.use_cassette("contrib/ruby_llm/tool_calling") do
-      rig = setup_otel_test_rig
+    with_weather_test_tool do |tool_class|
+      VCR.use_cassette("contrib/ruby_llm/tool_calling") do
+        rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+        RubyLLM.configure do |config|
+          config.openai_api_key = get_openai_key
+        end
 
-      chat = RubyLLM.chat(model: "gpt-4o-mini")
-      Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
-      chat.with_tool(WeatherTestTool)
+        chat = RubyLLM.chat(model: "gpt-4o-mini")
+        Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
+        chat.with_tool(tool_class)
 
-      response = chat.ask("What's the weather like in San Francisco?")
+        response = chat.ask("What's the weather like in San Francisco?")
 
-      refute_nil response
-      refute_nil response.content
+        refute_nil response
+        refute_nil response.content
 
-      # Should have multiple spans: chat + tool + possibly another chat for follow-up
-      spans = rig.drain
-      assert spans.length >= 2, "Expected at least 2 spans for tool calling (chat + tool)"
+        # Should have multiple spans: chat + tool + possibly another chat for follow-up
+        spans = rig.drain
+        assert spans.length >= 2, "Expected at least 2 spans for tool calling (chat + tool)"
 
-      # Find the chat span and tool span
-      chat_spans = spans.select { |s| s.name == "ruby_llm.chat" }
-      tool_spans = spans.select { |s| s.name.start_with?("ruby_llm.tool.") }
+        # Find the chat span and tool span
+        chat_spans = spans.select { |s| s.name == "ruby_llm.chat" }
+        tool_spans = spans.select { |s| s.name.start_with?("ruby_llm.tool.") }
 
-      assert chat_spans.length >= 1, "Expected at least one ruby_llm.chat span"
-      assert tool_spans.length >= 1, "Expected at least one ruby_llm.tool.* span"
+        assert chat_spans.length >= 1, "Expected at least one ruby_llm.chat span"
+        assert tool_spans.length >= 1, "Expected at least one ruby_llm.tool.* span"
 
-      # Verify tool span has correct attributes
-      tool_span = tool_spans.first
-      assert tool_span.attributes.key?("braintrust.span_attributes"), "Tool span should have span_attributes"
-      span_attrs = JSON.parse(tool_span.attributes["braintrust.span_attributes"])
-      assert_equal "tool", span_attrs["type"]
-      assert tool_span.attributes.key?("braintrust.input_json"), "Tool span should have input"
-      assert tool_span.attributes.key?("braintrust.output_json"), "Tool span should have output"
+        # Verify tool span has correct attributes
+        tool_span = tool_spans.first
+        assert tool_span.attributes.key?("braintrust.span_attributes"), "Tool span should have span_attributes"
+        span_attrs = JSON.parse(tool_span.attributes["braintrust.span_attributes"])
+        assert_equal "tool", span_attrs["type"]
+        assert tool_span.attributes.key?("braintrust.input_json"), "Tool span should have input"
+        assert tool_span.attributes.key?("braintrust.output_json"), "Tool span should have output"
 
-      # Verify chat span metadata contains exact tool schema (OpenAI format)
-      chat_span = chat_spans.first
-      metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
+        # Verify chat span metadata contains exact tool schema (OpenAI format)
+        chat_span = chat_spans.first
+        metadata = JSON.parse(chat_span.attributes["braintrust.metadata"])
 
-      expected_tools = [
-        {
-          "type" => "function",
-          "function" => {
-            "name" => "weather_test",
-            "description" => "Get the current weather for a location",
-            "parameters" => {
-              "type" => "object",
-              "properties" => {
-                "location" => {
-                  "type" => "string",
-                  "description" => "The city and state, e.g. San Francisco, CA"
+        expected_tools = [
+          {
+            "type" => "function",
+            "function" => {
+              "name" => "weather_test",
+              "description" => "Get the current weather for a location",
+              "parameters" => {
+                "type" => "object",
+                "properties" => {
+                  "location" => {
+                    "type" => "string",
+                    "description" => "The city and state, e.g. San Francisco, CA"
+                  },
+                  "unit" => {
+                    "type" => "string",
+                    "description" => "Temperature unit (celsius or fahrenheit)"
+                  }
                 },
-                "unit" => {
-                  "type" => "string",
-                  "description" => "Temperature unit (celsius or fahrenheit)"
-                }
-              },
-              "required" => ["location", "unit"]
+                "required" => ["location", "unit"]
+              }
             }
           }
-        }
-      ]
-      assert_equal expected_tools, metadata["tools"]
+        ]
+        assert_equal expected_tools, metadata["tools"]
+      end
     end
   end
 

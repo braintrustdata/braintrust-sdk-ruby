@@ -8,8 +8,10 @@ class Braintrust::ContribTest < Minitest::Test
   def test_auto_instrument_enabled_by_default
     called_with = nil
 
-    Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
-      Braintrust.auto_instrument!
+    ClimateControl.modify(BRAINTRUST_AUTO_INSTRUMENT: nil) do
+      Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
+        Braintrust.auto_instrument!
+      end
     end
 
     assert_equal({only: nil, except: nil}, called_with)
@@ -70,7 +72,7 @@ class Braintrust::ContribTest < Minitest::Test
   def test_auto_instrument_reads_only_from_env
     called_with = nil
 
-    ClimateControl.modify(BRAINTRUST_INSTRUMENT_ONLY: "openai,anthropic") do
+    ClimateControl.modify(BRAINTRUST_AUTO_INSTRUMENT: nil, BRAINTRUST_INSTRUMENT_ONLY: "openai,anthropic") do
       Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
         Braintrust.auto_instrument!
       end
@@ -82,7 +84,7 @@ class Braintrust::ContribTest < Minitest::Test
   def test_auto_instrument_reads_except_from_env
     called_with = nil
 
-    ClimateControl.modify(BRAINTRUST_INSTRUMENT_EXCEPT: "ruby_llm") do
+    ClimateControl.modify(BRAINTRUST_AUTO_INSTRUMENT: nil, BRAINTRUST_INSTRUMENT_EXCEPT: "ruby_llm") do
       Braintrust::Contrib.stub(:auto_instrument!, ->(**kwargs) { called_with = kwargs }) do
         Braintrust.auto_instrument!
       end
