@@ -63,3 +63,25 @@ appraise "opentelemetry-latest" do
   gem "opentelemetry-sdk", ">= 1.10"
   gem "opentelemetry-exporter-otlp", ">= 0.31"
 end
+
+# Both OpenAI gems installed - tests that loaded? correctly distinguishes them
+appraise "openai-ruby-openai" do
+  gem "openai", ">= 0.34"
+  gem "ruby-openai", ">= 8.0"
+end
+
+# LLM libraries that can coexist - for demos that use multiple LLM SDKs
+# Note: ruby-openai is excluded because it conflicts with the official openai gem
+# (they share the same namespace). Use openai-ruby-openai appraisal to test both.
+appraise "contrib" do
+  gem "openai", ">= 0.34"
+  gem "anthropic", ">= 1.11"
+  gem "ruby_llm", ">= 1.9"
+  gem "base64" # needed for openai gem on Ruby 3.4+
+end
+
+# Rails integration testing (minimal dependencies)
+appraise "rails" do
+  gem "activesupport", "~> 8.0"
+  gem "railties", "~> 8.0"
+end

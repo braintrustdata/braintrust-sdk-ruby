@@ -105,9 +105,9 @@ puts
 # Initialize Braintrust
 Braintrust.init(blocking_login: true)
 
-# Create OpenAI client and wrap for tracing
+# Create OpenAI client and instrument for tracing
 client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
-Braintrust::Trace::OpenAI.wrap(client)
+Braintrust.instrument!(:openai)
 
 # Task: Call OpenAI to classify fruit/vegetable
 task = ->(input) {

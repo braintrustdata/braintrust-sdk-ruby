@@ -179,4 +179,24 @@ class BraintrustTest < Minitest::Test
     span_data = spans.first
     assert_equal "project_name:param-project", span_data.attributes["braintrust.parent"]
   end
+
+  def test_init_calls_auto_instrument_with_config
+    called_with = :not_called
+
+    Braintrust.stub(:auto_instrument!, ->(config) { called_with = config }) do
+      Braintrust.init(api_key: "test-api-key", auto_instrument: {only: [:openai]})
+    end
+
+    assert_equal({only: [:openai]}, called_with)
+  end
+
+  def test_init_calls_auto_instrument_with_nil_by_default
+    called_with = :not_called
+
+    Braintrust.stub(:auto_instrument!, ->(config) { called_with = config }) do
+      Braintrust.init(api_key: "test-api-key")
+    end
+
+    assert_nil called_with
+  end
 end

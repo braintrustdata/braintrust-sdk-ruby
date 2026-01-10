@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+# Explicitly load the patcher (lazy-loaded by integration)
+require "braintrust/contrib/<%= snake_case_name %>/patcher"
+
+class Braintrust::Contrib::<%= module_name %>::PatcherTest < Minitest::Test
+  def setup
+    @patcher = Braintrust::Contrib::<%= module_name %>::Patcher
+    @patcher.reset!
+  end
+
+  def teardown
+    @patcher.reset!
+  end
+
+  def test_inherits_from_base_patcher
+    assert @patcher < Braintrust::Contrib::Patcher
+  end
+
+  def test_implements_perform_patch
+    assert @patcher.respond_to?(:perform_patch)
+  end
+
+  def test_applicable
+    # TODO: Update once applicable? checks for target library
+    assert @patcher.applicable?
+  end
+
+  # TODO: Add tests for instrumented code
+end

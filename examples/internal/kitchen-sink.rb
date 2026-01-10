@@ -29,8 +29,8 @@ Braintrust.init
 # Create OpenAI client
 openai_client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 
-# Wrap the client with Braintrust tracing
-Braintrust::Trace::OpenAI.wrap(openai_client)
+# Instrument OpenAI with Braintrust tracing
+Braintrust.instrument!(:openai)
 
 puts "Kitchen Sink Eval Example"
 puts "=" * 60
