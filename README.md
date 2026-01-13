@@ -4,282 +4,315 @@
 [![Documentation](https://img.shields.io/badge/docs-gemdocs.org-blue.svg)](https://gemdocs.org/gems/braintrust/)
 ![Beta](https://img.shields.io/badge/status-beta-yellow)
 
-## Overview
+This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for tracing and evaluating your AI applications.
 
-This library provides tools for **evaluating** and **tracing** AI applications in [Braintrust](https://www.braintrust.dev). Use it to:
+*NOTE: This SDK is currently in BETA status and APIs may change between minor versions.*
 
-- **Evaluate** your AI models with custom test cases and scoring functions
-- **Trace** LLM calls and monitor AI application performance with OpenTelemetry
-- **Integrate** seamlessly with OpenAI and other LLM providers
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+  - [Setup script](#setup-script)
+  - [CLI Command](#cli-command)
+  - [Braintrust.init](#braintrustinit)
+  - [Environment variables](#environment-variables)
+- [Tracing](#tracing)
+  - [Supported providers](#supported-providers)
+  - [Manually applying instrumentation](#manually-applying-instrumentation)
+  - [Creating custom spans](#creating-custom-spans)
+  - [Attachments](#attachments)
+  - [Viewing traces](#viewing-traces)
+- [Evals](#evals)
+  - [Datasets](#datasets)
+  - [Remote scorers](#remote-scorers)
+- [Documentation](#documentation)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-This SDK is currently in BETA status and APIs may change.
+## Quick Start
 
-## Installation
-
-Add this line to your application's Gemfile:
+Add to your Gemfile:
 
 ```ruby
-gem 'braintrust'
+gem "braintrust", require: "braintrust/setup"
 ```
 
-And then execute:
+Set your API key and install:
 
 ```bash
+export BRAINTRUST_API_KEY="your-api-key"
 bundle install
 ```
 
-Or install it yourself as:
+Your LLM calls are now automatically traced. View them at [braintrust.dev](https://www.braintrust.dev).
+
+## Installation
+
+The SDK also offers additional setup options for a variety of applications.
+
+|                                        | What it looks like                  | When to Use                                                                 |
+| -------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| [**Setup script**](#setup-script)      | `require 'braintrust/setup'`        | You'd like to automatically setup the SDK at load time.                     |
+| [**CLI command**](#cli-command)        | `braintrust exec -- ruby app.rb`    | You prefer not to modify the application source code.                       |
+| [**Braintrust.init**](#braintrustinit) | Call `Braintrust.init` in your code | You need to control when setup occurs, or require customized configuration. |
+
+See [our examples](./examples/setup/README.md) for more detail.
+
+### Setup script
+
+For most applications, we recommend adding `require: "braintrust/setup"` to your `Gemfile` or an initializer file in your Ruby application to automatically setup the SDK. This will automatically apply instrumentation to all available LLM libraries.
+
+You can use [environment variables](#environment-variables) to configure behavior.
+
+### CLI Command
+
+You can use this CLI command to instrument any Ruby application without modifying the source code.
+
+First, make sure the gem is installed on the system:
 
 ```bash
 gem install braintrust
 ```
 
-## Quick Start
-
-### Set up your API key
+Then wrap the start up command of any Ruby application to apply:
 
 ```bash
-export BRAINTRUST_API_KEY="your-api-key"
+braintrust exec -- ruby app.rb
+braintrust exec -- bundle exec rails server
+braintrust exec --only openai -- ruby app.rb
 ```
 
-### Evals
+You can use [environment variables](#environment-variables) to configure behavior.
+
+---
+
+*NOTE: Installing a package at the system-level does not guarantee compatibility with all Ruby applications on that system; conflicts with dependencies can arise.*
+
+For stronger assurance of compatibility, we recommend either:
+
+- Installing via the application's `Gemfile` and `bundle install` when possible.
+- **OR** for OCI/Docker deployments, `gem install braintrust` when building images in your CI/CD pipeline (and verifying their safe function.)
+
+---
+
+### Braintrust.init
+
+For more control over when auto-instrumentation is applied:
+
+```ruby
+require "braintrust"
+
+Braintrust.init
+```
+
+**Options:**
+
+| Option            | Default                                  | Description                                                                 |
+| ----------------- | ---------------------------------------- | --------------------------------------------------------------------------- |
+| `api_key`         | `ENV['BRAINTRUST_API_KEY']`              | API key                                                                     |
+| `auto_instrument` | `true`                                   | `true`, `false`, or Hash with `:only`/`:except` keys to filter integrations |
+| `blocking_login`  | `false`                                  | Block until login completes (async login when `false`)                      |
+| `default_project` | `ENV['BRAINTRUST_DEFAULT_PROJECT']`      | Default project for spans                                                   |
+| `enable_tracing`  | `true`                                   | Enable OpenTelemetry tracing                                                |
+| `filter_ai_spans` | `ENV['BRAINTRUST_OTEL_FILTER_AI_SPANS']` | Only export AI-related spans                                                |
+| `org_name`        | `ENV['BRAINTRUST_ORG_NAME']`             | Organization name                                                           |
+| `set_global`      | `true`                                   | Set as global state. Set to `false` for isolated instances                  |
+
+**Example with options:**
+
+```ruby
+Braintrust.init(
+  default_project: "my-project",
+  auto_instrument: { only: [:openai] }
+)
+```
+
+### Environment variables
+
+| Variable                          | Description                                                               |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `BRAINTRUST_API_KEY`              | Required. Your Braintrust API key                                         |
+| `BRAINTRUST_API_URL`              | Braintrust API URL (default: `https://api.braintrust.dev`)                |
+| `BRAINTRUST_APP_URL`              | Braintrust app URL (default: `https://www.braintrust.dev`)                |
+| `BRAINTRUST_AUTO_INSTRUMENT`      | Set to `false` to disable auto-instrumentation                            |
+| `BRAINTRUST_DEBUG`                | Set to `true` to enable debug logging                                     |
+| `BRAINTRUST_DEFAULT_PROJECT`      | Default project for spans                                                 |
+| `BRAINTRUST_INSTRUMENT_EXCEPT`    | Comma-separated list of integrations to skip                              |
+| `BRAINTRUST_INSTRUMENT_ONLY`      | Comma-separated list of integrations to enable (e.g., `openai,anthropic`) |
+| `BRAINTRUST_ORG_NAME`             | Organization name                                                         |
+| `BRAINTRUST_OTEL_FILTER_AI_SPANS` | Set to `true` to only export AI-related spans                             |
+
+## Tracing
+
+### Supported providers
+
+The SDK automatically instruments these LLM libraries:
+
+| Provider  | Gem           | Versions | Integration Name | Examples                                        |
+| --------- | ------------- | -------- | ---------------- | ----------------------------------------------- |
+| Anthropic | `anthropic`   | >= 0.3.0 | `:anthropic`     | [Link](./examples/contrib/anthropic.rb)   |
+| OpenAI    | `openai`      | >= 0.1.0 | `:openai`        | [Link](./examples/contrib/openai.rb)      |
+|           | `ruby-openai` | >= 7.0.0 | `:ruby_openai`   | [Link](./examples/contrib/ruby-openai.rb) |
+| Multiple  | `ruby_llm`    | >= 1.8.0 | `:ruby_llm`      | [Link](./examples/contrib/ruby_llm.rb)    |
+
+### Manually applying instrumentation
+
+For fine-grained control, disable auto-instrumentation and instrument specific clients:
+
+```ruby
+require "braintrust"
+require "openai"
+
+Braintrust.init(auto_instrument: false) # Or BRAINTRUST_AUTO_INSTRUMENT=false
+
+# Instrument all OpenAI clients
+Braintrust.instrument!(:openai)
+
+# OR instrument a single client
+client = OpenAI::Client.new
+Braintrust.instrument!(:openai, target: client)
+```
+
+### Creating custom spans
+
+Wrap business logic in spans to see it in your traces:
+
+```ruby
+tracer = OpenTelemetry.tracer_provider.tracer("my-app")
+
+tracer.in_span("process-request") do |span|
+  span.set_attribute("user.id", user_id)
+
+  # LLM calls inside here are automatically nested under this span
+  response = client.chat.completions.create(...)
+end
+```
+
+### Attachments
+
+Log binary data (images, PDFs, audio) in your traces:
+
+```ruby
+require "braintrust/trace/attachment"
+
+att = Braintrust::Trace::Attachment.from_file("image/png", "./photo.png")
+
+# Use in messages (OpenAI/Anthropic format)
+messages = [
+  {
+    role: "user",
+    content: [
+      {type: "text", text: "What's in this image?"},
+      att.to_h
+    ]
+  }
+]
+
+# Log to span
+span.set_attribute("braintrust.input_json", JSON.generate(messages))
+```
+
+Create attachments from various sources:
+
+```ruby
+Braintrust::Trace::Attachment.from_bytes("image/jpeg", image_data)
+Braintrust::Trace::Attachment.from_file("application/pdf", "./doc.pdf")
+Braintrust::Trace::Attachment.from_url("https://example.com/image.png")
+```
+
+See example: [trace_attachments.rb](./examples/trace/trace_attachments.rb)
+
+### Viewing traces
+
+Get a permalink to any span:
+
+```ruby
+tracer = OpenTelemetry.tracer_provider.tracer("my-app")
+
+tracer.in_span("my-operation") do |span|
+  # your code here
+  puts "View trace at: #{Braintrust::Trace.permalink(span)}"
+end
+```
+
+## Evals
+
+Run evaluations against your AI systems:
 
 ```ruby
 require "braintrust"
 
 Braintrust.init
 
-# Define task to evaluate
-task = ->(input) { input.include?("a") ? "fruit" : "vegetable" }
-
-# Run evaluation
 Braintrust::Eval.run(
   project: "my-project",
-  experiment: "food-classifier",
+  experiment: "classifier-v1",
   cases: [
     {input: "apple", expected: "fruit"},
     {input: "carrot", expected: "vegetable"}
   ],
-  task: task,
+  task: ->(input) { classify(input) },
   scorers: [
     ->(input, expected, output) { output == expected ? 1.0 : 0.0 }
   ]
 )
 ```
 
-### Tracing
+### Datasets
+
+Load test cases from a Braintrust dataset:
 
 ```ruby
-require "braintrust"
-require "opentelemetry/sdk"
-
-# Initialize Braintrust
-Braintrust.init
-
-# Get a tracer
-tracer = OpenTelemetry.tracer_provider.tracer("my-app")
-
-# Create spans to track operations
-tracer.in_span("process-data") do |span|
-  span.set_attribute("user.id", "123")
-  span.set_attribute("operation.type", "data_processing")
-
-  # Your code here
-  puts "Processing data..."
-  sleep 0.1
-
-  # Nested spans are automatically linked
-  tracer.in_span("nested-operation") do |nested_span|
-    nested_span.set_attribute("step", "1")
-    puts "Nested operation..."
-  end
-end
-
-# Shutdown to flush spans
-OpenTelemetry.tracer_provider.shutdown
-
-puts "View trace in Braintrust!"
+Braintrust::Eval.run(
+  project: "my-project",
+  dataset: "my-dataset",
+  task: ->(input) { classify(input) },
+  scorers: [...]
+)
 ```
 
-### OpenAI Tracing
+### Remote scorers
+
+Use scoring functions defined in Braintrust:
 
 ```ruby
-require "braintrust"
-require "openai"
-
-Braintrust.init
-
-client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
-
-Braintrust::Trace::OpenAI.wrap(client)
-
-tracer = OpenTelemetry.tracer_provider.tracer("openai-app")
-root_span = nil
-
-response = tracer.in_span("chat-completion") do |span|
-  root_span = span
-
-  client.chat.completions.create(
-    messages: [
-      {role: "system", content: "You are a helpful assistant."},
-      {role: "user", content: "Say hello!"}
-    ],
-    model: "gpt-4o-mini",
-    max_tokens: 100
-  )
-end
-
-puts "Response: #{response.choices[0].message.content}"
-
-puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
-
-OpenTelemetry.tracer_provider.shutdown
-```
-
-### Anthropic Tracing
-
-```ruby
-require "braintrust"
-require "anthropic"
-
-Braintrust.init
-
-client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
-
-Braintrust::Trace::Anthropic.wrap(client)
-
-tracer = OpenTelemetry.tracer_provider.tracer("anthropic-app")
-root_span = nil
-
-message = tracer.in_span("chat-message") do |span|
-  root_span = span
-
-  client.messages.create(
-    model: "claude-3-haiku-20240307",
-    max_tokens: 100,
-    system: "You are a helpful assistant.",
-    messages: [
-      {role: "user", content: "Say hello!"}
-    ]
-  )
-end
-
-puts "Response: #{message.content[0].text}"
-
-puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
-
-OpenTelemetry.tracer_provider.shutdown
-```
-
-### RubyLLM Tracing
-
-```ruby
-require "braintrust"
-require "ruby_llm"
-
-Braintrust.init
-
-# Wrap RubyLLM globally (wraps all Chat instances)
-Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.wrap
-
-tracer = OpenTelemetry.tracer_provider.tracer("ruby-llm-app")
-root_span = nil
-
-response = tracer.in_span("chat") do |span|
-  root_span = span
-
-  chat = RubyLLM.chat(model: "gpt-4o-mini")
-  chat.ask("Say hello!")
-end
-
-puts "Response: #{response.content}"
-
-puts "View trace at: #{Braintrust::Trace.permalink(root_span)}"
-
-OpenTelemetry.tracer_provider.shutdown
-```
-
-### Attachments
-
-Attachments allow you to log binary data (images, PDFs, audio, etc.) as part of your traces. This is particularly useful for multimodal AI applications like vision models.
-
-```ruby
-require "braintrust"
-require "braintrust/trace/attachment"
-
-Braintrust.init
-
-tracer = OpenTelemetry.tracer_provider.tracer("vision-app")
-
-tracer.in_span("analyze-image") do |span|
-  # Create attachment from file
-  att = Braintrust::Trace::Attachment.from_file(
-    Braintrust::Trace::Attachment::IMAGE_PNG,
-    "./photo.png"
-  )
-
-  # Build message with attachment (OpenAI/Anthropic format)
-  messages = [
-    {
-      role: "user",
-      content: [
-        {type: "text", text: "What's in this image?"},
-        att.to_h  # Converts to {"type" => "base64_attachment", "content" => "data:..."}
-      ]
-    }
+Braintrust::Eval.run(
+  project: "my-project",
+  cases: [...],
+  task: ->(input) { ... },
+  scorers: [
+    Braintrust::Scorer.remote("my-project", "accuracy-scorer")
   ]
-
-  # Log to trace
-  span.set_attribute("braintrust.input_json", JSON.generate(messages))
-end
-
-OpenTelemetry.tracer_provider.shutdown
+)
 ```
 
-You can create attachments from bytes, files, or URLs:
-
-```ruby
-# From bytes
-att = Braintrust::Trace::Attachment.from_bytes("image/jpeg", image_data)
-
-# From file
-att = Braintrust::Trace::Attachment.from_file("application/pdf", "./doc.pdf")
-
-# From URL
-att = Braintrust::Trace::Attachment.from_url("https://example.com/image.png")
-```
-
-## Features
-
-- **Evaluations**: Run systematic evaluations of your AI systems with custom scoring functions
-- **Tracing**: Automatic instrumentation for OpenAI and Anthropic API calls with OpenTelemetry
-- **Datasets**: Manage and version your evaluation datasets
-- **Experiments**: Track different versions and configurations of your AI systems
-- **Observability**: Monitor your AI applications in production
-
-## Examples
-
-Check out the [`examples/`](./examples/) directory for complete working examples:
-
-- [eval.rb](./examples/eval.rb) - Create and run evaluations with custom test cases and scoring functions
-- [trace.rb](./examples/trace.rb) - Manual span creation and tracing
-- [openai.rb](./examples/openai.rb) - Automatically trace OpenAI API calls
-- [alexrudall_openai.rb](./examples/alexrudall_openai.rb) - Automatically trace ruby-openai gem API calls
-- [anthropic.rb](./examples/anthropic.rb) - Automatically trace Anthropic API calls
-- [ruby_llm.rb](./examples/ruby_llm.rb) - Automatically trace RubyLLM API calls
-- [trace/trace_attachments.rb](./examples/trace/trace_attachments.rb) - Log attachments (images, PDFs) in traces
-- [eval/dataset.rb](./examples/eval/dataset.rb) - Run evaluations using datasets stored in Braintrust
-- [eval/remote_functions.rb](./examples/eval/remote_functions.rb) - Use remote scoring functions
+See examples: [eval.rb](./examples/eval.rb), [dataset.rb](./examples/eval/dataset.rb), [remote_functions.rb](./examples/eval/remote_functions.rb)
 
 ## Documentation
 
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
-- [API Documentation](https://gemdocs.org/gems/braintrust/)
+- [API Reference](https://gemdocs.org/gems/braintrust/)
+
+## Troubleshooting
+
+#### No traces after adding `require 'braintrust/setup'` to the Gemfile
+
+First verify there are no errors in your logs after running with `BRAINTRUST_DEBUG=true` set.
+
+Your application needs the following for this to work:
+
+```ruby
+require 'bundler/setup'
+Bundler.require
+```
+
+It is present by default in Rails applications, but may not be in Sinatra, Rack, or other applications.
+
+Alternatively, you can add `require 'braintrust/setup'` to your application initialization files.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and contribution guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](./LICENSE) file for details.
+Apache License 2.0 - see [LICENSE](./LICENSE).

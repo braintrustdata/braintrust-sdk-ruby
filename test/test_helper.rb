@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# Disable auto-instrumentation by default in tests to prevent test pollution.
+# Tests that specifically need auto-instrumentation can opt-in via auto_instrument: true.
+ENV["BRAINTRUST_AUTO_INSTRUMENT"] ||= "false"
+
 # Start SimpleCov BEFORE loading any code to track
 # Skip coverage when running under appraisal (different dependency scenarios)
 unless ENV["BUNDLE_GEMFILE"]&.include?("gemfiles/")
@@ -17,6 +21,8 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "braintrust"
 
 require "minitest/autorun"
+require "minitest/stub_const"
+require "climate_control"
 
 # Show test timings when MT_VERBOSE is set
 if ENV["MT_VERBOSE"]
@@ -65,6 +71,8 @@ end
 require_relative "support/assert_helper"
 require_relative "support/braintrust_helper"
 require_relative "support/fixture_helper"
+require_relative "support/log_helper"
+require_relative "support/mock_helper"
 require_relative "support/provider_helper"
 require_relative "support/tracing_helper"
 
@@ -73,6 +81,8 @@ class Minitest::Test
   include ::Test::Support::AssertHelper
   include ::Test::Support::BraintrustHelper
   include ::Test::Support::FixtureHelper
+  include ::Test::Support::LogHelper
+  include ::Test::Support::MockHelper
   include ::Test::Support::ProviderHelper
   include ::Test::Support::TracingHelper
 
