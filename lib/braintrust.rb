@@ -2,6 +2,7 @@
 
 require_relative "braintrust/version"
 require_relative "braintrust/config"
+require_relative "braintrust/logger"
 require_relative "braintrust/state"
 require_relative "braintrust/trace"
 require_relative "braintrust/api"

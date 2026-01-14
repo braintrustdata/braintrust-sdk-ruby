@@ -88,6 +88,25 @@ module Braintrust
         "#{@state.app_url}/app/#{@state.org_name}/object?object_type=dataset&object_id=#{id}"
       end
 
+      # Fetch dataset rows directly (simpler than BTQL)
+      # GET /v1/dataset/{id}/fetch
+      #
+      # This is the preferred method for fetching dataset rows for evaluation.
+      # It returns rows in a format ready for use with EvalCase.from_hash.
+      #
+      # @param id [String] Dataset UUID
+      # @param limit [Integer] Max rows to fetch (default: 1000)
+      # @return [Array<Hash>] Array of dataset rows with input, expected, metadata, etc.
+      #
+      # @example Fetch rows for evaluation
+      #   rows = api.datasets.fetch_rows(id: dataset_id)
+      #   cases = rows.map { |row| Braintrust::Remote::EvalCase.from_hash(row) }
+      #
+      def fetch_rows(id:, limit: 1000)
+        result = http_get("/v1/dataset/#{id}/fetch", {"limit" => limit})
+        result["events"] || []
+      end
+
       # Fetch records from dataset using BTQL
       # POST /btql
       # @param id [String] Dataset UUID

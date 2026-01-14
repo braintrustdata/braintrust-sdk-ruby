@@ -85,6 +85,41 @@ module Braintrust
         http_post_json("/v1/function/#{id}/invoke", payload)
       end
 
+      # Invoke a scorer function via the proxy endpoint
+      # POST /api/proxy/function/invoke
+      #
+      # This method is designed for invoking scorer functions during evaluation.
+      # It uses the proxy endpoint which handles authentication and routing.
+      #
+      # @param function_id [String] Function UUID
+      # @param input [Hash] Scorer input with :input, :output, :expected, :metadata keys
+      # @param project_id [String, nil] Optional project ID for context
+      # @return [Hash] Scorer result (typically with "score" and optional "metadata")
+      #
+      # @example Invoke a scorer
+      #   result = api.functions.invoke_scorer(
+      #     function_id: "func-123",
+      #     input: { input: "question", output: "answer", expected: "correct", metadata: {} },
+      #     project_id: "proj-456"
+      #   )
+      #   score = result["score"]
+      #
+      def invoke_scorer(function_id:, input:, project_id: nil)
+        payload = {
+          function_id: function_id,
+          input: input,
+          stream: false,
+          mode: "auto",
+          strict: true
+        }
+
+        headers = {}
+        headers["x-bt-org-name"] = @state.org_name if @state.org_name
+        headers["x-bt-project-id"] = project_id if project_id
+
+        http_post_json_proxy("/function/invoke", payload, extra_headers: headers)
+      end
+
       # Delete a function by ID
       # DELETE /v1/function/{id}
       # @param id [String] Function UUID
@@ -202,11 +237,13 @@ module Braintrust
       # @param path [String] API path
       # @param params [Hash] Query params (for GET)
       # @param payload [Hash, nil] JSON payload (for POST)
+      # @param base_url [String, nil] Override base URL (default: api_url)
+      # @param extra_headers [Hash] Additional headers to include
       # @param parse_json [Boolean] Whether to parse response as JSON (default: true)
       # @return [Hash, Net::HTTPResponse] Parsed JSON or raw response
-      def http_request(method, path, params: {}, payload: nil, parse_json: true)
+      def http_request(method, path, params: {}, payload: nil, base_url: nil, extra_headers: {}, parse_json: true)
         # Build URI
-        base = @state.api_url
+        base = base_url || @state.api_url
         uri = URI("#{base}#{path}")
         uri.query = URI.encode_www_form(params) unless params.empty?
 
@@ -226,6 +263,9 @@ module Braintrust
         end
 
         request["Authorization"] = "Bearer #{@state.api_key}"
+
+        # Add extra headers
+        extra_headers.each { |k, v| request[k] = v }
 
         # Execute request with timing
         start_time = Time.now
@@ -257,9 +297,19 @@ module Braintrust
         http_request(:post, path, payload: payload)
       end
 
+      # HTTP POST to proxy endpoint - returns parsed JSON
+      def http_post_json_proxy(path, payload, extra_headers: {})
+        http_request(:post, path, payload: payload, base_url: proxy_url, extra_headers: extra_headers)
+      end
+
       # HTTP DELETE - returns parsed JSON
       def http_delete(path)
         http_request(:delete, path)
+      end
+
+      # Get the proxy URL (app_url/api/proxy or explicit proxy_url)
+      def proxy_url
+        @state.proxy_url || "#{@state.app_url}/api/proxy"
       end
     end
   end
