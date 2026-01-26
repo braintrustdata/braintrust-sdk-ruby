@@ -23,6 +23,7 @@ require "json"
 # 8. Advanced parameters
 # 9. Responses API (non-streaming)
 # 10. Responses API (streaming)
+# 11. Moderations API
 #
 # This example validates that the Ruby SDK captures the same data as TypeScript/Go SDKs.
 #
@@ -452,6 +453,32 @@ tracer.in_span("examples/internal/contrib/openai/golden.rb") do |span|
   else
     puts "\n9-10. Responses API examples skipped (not available in this OpenAI gem version)"
   end
+
+  # Example 11: Moderations API
+  if client.respond_to?(:moderations)
+    puts "\n11. Moderations API"
+    puts "-" * 50
+    tracer.in_span("example-moderations") do
+      response = client.moderations.create(
+        input: "I love sunny days and spending time with friends.",
+        model: "omni-moderation-latest"
+      )
+      result = response.results.first
+      puts "✓ Moderation result:"
+      puts "  Flagged: #{result.flagged}"
+      puts "  Model: #{response.model}"
+
+      # Show flagged categories if any
+      flagged_categories = result.categories.to_h.select { |_, v| v }.keys
+      if flagged_categories.any?
+        puts "  Flagged categories: #{flagged_categories.join(", ")}"
+      else
+        puts "  No categories flagged (safe content)"
+      end
+    end
+  else
+    puts "\n11. Moderations API example skipped (not available in this OpenAI gem version)"
+  end
 end # End of parent trace
 
 puts "\n" + "=" * 50
@@ -467,6 +494,7 @@ puts "  ✓ Advanced token metrics (cached, reasoning, audio tokens)"
 puts "  ✓ All request parameters (temperature, top_p, seed, user, etc.)"
 puts "  ✓ Full message structures (role, content, tool_calls, etc.)"
 puts "  ✓ Responses API (non-streaming and streaming)"
+puts "  ✓ Moderations API"
 puts ""
 puts "View this trace at:"
 puts "  #{Braintrust::Trace.permalink(root_span)}"
