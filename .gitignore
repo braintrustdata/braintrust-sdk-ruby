@@ -57,3 +57,4 @@ gemfiles/*.gemfile.lock
 # Ignore local Docker files (for dev env customizations)
 docker-compose.override.yml
 Dockerfile.local
+.dev-agent/artifacts/
