@@ -4,10 +4,18 @@ require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
 require_relative "trace/span_filter"
+require_relative "internal/env"
 require_relative "logger"
 
 module Braintrust
   module Trace
+    # Track whether the at_exit hook has been registered
+    @exit_hook_registered = false
+
+    class << self
+      attr_accessor :exit_hook_registered
+    end
+
     # Set up OpenTelemetry tracing with Braintrust
     # @param state [State] Braintrust state
     # @param tracer_provider [TracerProvider, nil] Optional tracer provider
@@ -32,11 +40,44 @@ module Braintrust
           OpenTelemetry.tracer_provider = tracer_provider
           Log.debug("Created OpenTelemetry tracer provider")
         end
+
+        # Register at_exit hook for global provider (only once)
+        register_exit_hook
       end
 
       # Enable Braintrust tracing (adds span processor)
       config = state.config
       enable(tracer_provider, state: state, config: config, exporter: exporter)
+    end
+
+    # Register an at_exit hook to flush spans before program exit.
+    # This ensures buffered spans in BatchSpanProcessor are exported.
+    # Only registers once, and only for the global tracer provider.
+    # Controlled by BRAINTRUST_FLUSH_ON_EXIT env var (default: true).
+    def self.register_exit_hook
+      return if @exit_hook_registered
+      return unless Internal::Env.flush_on_exit
+
+      @exit_hook_registered = true
+      at_exit { flush_spans }
+      Log.debug("Registered at_exit hook for span flushing")
+    end
+
+    # Flush buffered spans from the global tracer provider.
+    # Forces immediate export of any spans buffered by BatchSpanProcessor.
+    # @return [Boolean] true if flush succeeded, false otherwise
+    def self.flush_spans
+      provider = OpenTelemetry.tracer_provider
+      return false unless provider.respond_to?(:force_flush)
+
+      Log.debug("Flushing spans")
+      begin
+        provider.force_flush
+        true
+      rescue => e
+        Log.debug("Failed to flush spans: #{e.message}")
+        false
+      end
     end
 
     def self.enable(tracer_provider, state: nil, exporter: nil, config: nil)

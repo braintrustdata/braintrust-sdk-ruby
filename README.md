@@ -136,6 +136,7 @@ Braintrust.init(
 | `BRAINTRUST_AUTO_INSTRUMENT`      | Set to `false` to disable auto-instrumentation                            |
 | `BRAINTRUST_DEBUG`                | Set to `true` to enable debug logging                                     |
 | `BRAINTRUST_DEFAULT_PROJECT`      | Default project for spans                                                 |
+| `BRAINTRUST_FLUSH_ON_EXIT`        | Set to `false` to disable automatic span flushing on program exit         |
 | `BRAINTRUST_INSTRUMENT_EXCEPT`    | Comma-separated list of integrations to skip                              |
 | `BRAINTRUST_INSTRUMENT_ONLY`      | Comma-separated list of integrations to enable (e.g., `openai,anthropic`) |
 | `BRAINTRUST_ORG_NAME`             | Organization name                                                         |
