@@ -90,6 +90,8 @@ class Minitest::Test
   # This ensures cleanup happens even if individual tests don't have teardown methods
   def after_teardown
     Braintrust::State.instance_variable_set(:@global_state, nil)
+    OpenTelemetry.tracer_provider = OpenTelemetry::Internal::ProxyTracerProvider.new
+    Braintrust::Trace.exit_hook_registered = false
     super
   end
 end

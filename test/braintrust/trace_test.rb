@@ -155,4 +155,33 @@ class Braintrust::TraceTest < Minitest::Test
       Braintrust::Log.logger.level = original_level
     end
   end
+
+  # flush_spans tests
+
+  def test_flush_spans_calls_force_flush
+    flush_called = false
+    mock_provider = Object.new
+    mock_provider.define_singleton_method(:force_flush) { flush_called = true }
+
+    OpenTelemetry.tracer_provider = mock_provider
+    result = Braintrust::Trace.flush_spans
+
+    assert flush_called
+    assert result
+  end
+
+  def test_flush_spans_returns_false_when_not_supported
+    mock_provider = Object.new  # no force_flush method
+    OpenTelemetry.tracer_provider = mock_provider
+
+    refute Braintrust::Trace.flush_spans
+  end
+
+  def test_flush_spans_suppresses_errors
+    mock_provider = Object.new
+    mock_provider.define_singleton_method(:force_flush) { raise "fail" }
+
+    OpenTelemetry.tracer_provider = mock_provider
+    refute Braintrust::Trace.flush_spans  # should not raise
+  end
 end

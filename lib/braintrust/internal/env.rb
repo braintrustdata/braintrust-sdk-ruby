@@ -7,9 +7,15 @@ module Braintrust
       ENV_AUTO_INSTRUMENT = "BRAINTRUST_AUTO_INSTRUMENT"
       ENV_INSTRUMENT_EXCEPT = "BRAINTRUST_INSTRUMENT_EXCEPT"
       ENV_INSTRUMENT_ONLY = "BRAINTRUST_INSTRUMENT_ONLY"
+      ENV_FLUSH_ON_EXIT = "BRAINTRUST_FLUSH_ON_EXIT"
 
       def self.auto_instrument
         ENV[ENV_AUTO_INSTRUMENT] != "false"
+      end
+
+      # Whether to automatically flush spans on program exit. Default: true
+      def self.flush_on_exit
+        ENV[ENV_FLUSH_ON_EXIT] != "false"
       end
 
       def self.instrument_except
