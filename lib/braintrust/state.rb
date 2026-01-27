@@ -73,7 +73,7 @@ module Braintrust
       @org_id = org_id
       @default_project = default_project
       @app_url = app_url || "https://www.braintrust.dev"
-      @api_url = api_url
+      @api_url = api_url || "https://api.braintrust.dev"
       @proxy_url = proxy_url
       @config = config
 
