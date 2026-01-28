@@ -5,8 +5,8 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-3-5-sonnet-20241022","max_tokens":20,"system":"You
-        are a helpful assistant that always responds briefly.","messages":[{"role":"user","content":"Say
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":20,"system":"You are
+        a helpful assistant that always responds briefly.","messages":[{"role":"user","content":"Say
         hello"}]}'
     headers:
       Accept-Encoding:
@@ -14,7 +14,7 @@ http_interactions:
       Accept:
       - application/json
       User-Agent:
-      - Ruby
+      - Anthropic::Client/Ruby 1.16.3
       Host:
       - api.anthropic.com
       X-Stainless-Arch:
@@ -22,9 +22,9 @@ http_interactions:
       X-Stainless-Lang:
       - ruby
       X-Stainless-Os:
-      - MacOS
+      - Linux
       X-Stainless-Package-Version:
-      - 1.12.0
+      - 1.16.3
       X-Stainless-Runtime:
       - ruby
       X-Stainless-Runtime-Version:
@@ -40,65 +40,57 @@ http_interactions:
       X-Stainless-Timeout:
       - '600.0'
       Content-Length:
-      - '174'
+      - '172'
   response:
     status:
       code: 200
       message: OK
     headers:
       Date:
-      - Sun, 26 Oct 2025 00:28:28 GMT
+      - Wed, 28 Jan 2026 19:41:21 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
       - chunked
       Connection:
       - keep-alive
-      Anthropic-Ratelimit-Requests-Limit:
-      - '7000'
-      Anthropic-Ratelimit-Requests-Remaining:
-      - '6999'
-      Anthropic-Ratelimit-Requests-Reset:
-      - '2025-10-26T00:28:28Z'
-      Anthropic-Ratelimit-Input-Tokens-Limit:
-      - '8000000'
-      Anthropic-Ratelimit-Input-Tokens-Remaining:
-      - '8000000'
-      Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2025-10-26T00:28:28Z'
       Anthropic-Ratelimit-Output-Tokens-Limit:
-      - '1600000'
+      - '600000'
       Anthropic-Ratelimit-Output-Tokens-Remaining:
-      - '1600000'
+      - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2025-10-26T00:28:28Z'
+      - '2026-01-28T19:41:21Z'
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-01-28T19:41:21Z'
       Anthropic-Ratelimit-Tokens-Limit:
-      - '9600000'
+      - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
-      - '9600000'
+      - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2025-10-26T00:28:28Z'
+      - '2026-01-28T19:41:21Z'
       Request-Id:
-      - req_011CUUs2hZSa1au6pS6DV18u
+      - req_011CXaLynPkp3T1fzCAi2EfM
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
       - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '564'
-      Via:
-      - 1.1 google
+      - '1154'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
-      Server:
-      - cloudflare
       Cf-Ray:
-      - 9945d572ba14e8a6-EWR
+      - 9c52f77badaff85d-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-3-5-sonnet-20241022","id":"msg_01Tb6DqXphUPQBipk4ezun4w","type":"message","role":"assistant","content":[{"type":"text","text":"Hi
-        there!"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":19,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":6,"service_tier":"standard"}}'
-  recorded_at: Sun, 26 Oct 2025 00:28:28 GMT
-recorded_with: VCR 6.3.1
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01RFjdT6UKZvQnrBfppBHAUR","type":"message","role":"assistant","content":[{"type":"text","text":"Hello!
+        How can I help you today?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":19,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":12,"service_tier":"standard"}}'
+  recorded_at: Wed, 28 Jan 2026 19:41:21 GMT
+recorded_with: VCR 6.4.0

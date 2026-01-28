@@ -13,7 +13,7 @@ http_interactions:
       Accept:
       - application/json
       User-Agent:
-      - Ruby
+      - Anthropic::Client/Ruby 1.16.3
       Host:
       - api.anthropic.com
       X-Stainless-Arch:
@@ -21,13 +21,13 @@ http_interactions:
       X-Stainless-Lang:
       - ruby
       X-Stainless-Os:
-      - MacOS
+      - Linux
       X-Stainless-Package-Version:
-      - 1.12.0
+      - 1.16.3
       X-Stainless-Runtime:
       - ruby
       X-Stainless-Runtime-Version:
-      - 3.2.0
+      - 3.2.9
       Content-Type:
       - application/json
       Anthropic-Version:
@@ -46,7 +46,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Fri, 14 Nov 2025 18:43:53 GMT
+      - Wed, 28 Jan 2026 19:41:20 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -58,45 +58,47 @@ http_interactions:
       Anthropic-Ratelimit-Input-Tokens-Remaining:
       - '1000000'
       Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2025-11-14T18:43:51Z'
+      - '2026-01-28T19:41:17Z'
       Anthropic-Ratelimit-Output-Tokens-Limit:
       - '400000'
       Anthropic-Ratelimit-Output-Tokens-Remaining:
       - '400000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2025-11-14T18:43:53Z'
-      Retry-After:
-      - '9'
+      - '2026-01-28T19:41:20Z'
       Anthropic-Ratelimit-Tokens-Limit:
       - '1400000'
       Anthropic-Ratelimit-Tokens-Remaining:
       - '1400000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2025-11-14T18:43:51Z'
+      - '2026-01-28T19:41:17Z'
       Request-Id:
-      - req_011CV8GvpccecChDW3FD1GUy
+      - req_011CXaLyVfgZvwhodTen16d5
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
       - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2834'
+      - '3761'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
-      Server:
-      - cloudflare
       Cf-Ray:
-      - 99e8a8235fed7a02-EWR
+      - 9c52f7633a290043-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-3-7-sonnet-20250219","id":"msg_01D8eCX3K6u28gN7sQHAPsaA","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"This
-        is a straightforward arithmetic question asking what 2+2 equals.\n\nStep 1:
-        I need to add the number 2 to itself.\nStep 2: 2+2 = 4\n\nSo the answer is
-        4.","signature":"ErUBCkYICRgCIkAZzEUGuYdbNd6S/lmQynupO0Z3PsGqnhddDZSgDloLQHAN9raxv5Q2InUce9rVa0zBugmerwGPHGpqaA1fQT4gEgzdVl9Xr4ysiMSMFl4aDJ+JPn2VbXFOpZWt+yIwH1/kfwlEHrLkqrZU2LCrncTEbB8K7yWrmo83SeEKPu9HLJQryLu2/WCieFHwnPctKh1GvHCmD3JPeySd2uCfZHRxIZ6RAbLqm0DwdEv9LBgC"},{"type":"text","text":"To
-        find the value of 2+2, I''ll solve this step by step.\n\nStep 1: I need to
-        add the two numbers together.\nStep 2: 2+2 means combining 2 units with another
-        2 units.\nStep 3: This gives me a total of 4 units.\n\nTherefore, 2+2 = 4."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":48,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":148,"service_tier":"standard"}}'
-  recorded_at: Fri, 14 Nov 2025 18:43:53 GMT
-recorded_with: VCR 6.3.1
+      string: '{"model":"claude-3-7-sonnet-20250219","id":"msg_01Pt3Gp4k8Na8kPvCuGtvgQ4","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"This
+        is a simple arithmetic addition problem.\n\n2+2 means I need to add the number
+        2 and the number 2 together.\n\nWhen we add numbers, we are combining quantities.\n\n2
+        represents a quantity of two units.\n2 represents another quantity of two
+        units.\n\nWhen we combine these quantities:\n2 + 2 = 4\n\nSo the answer is
+        4.","signature":"ErcBCkgICxgCIkC1LmqE0yn7PjB+ij7K28Txrak0MFK9O+JUM5sStIHAI/nmimdH9mP598TbpKWOBcEH4PugkHvuO+UO7WmG/ocPKAESDDoLNum6t9xmPregNhoMncV3UTxkSVU1wE6qIjADoW69b1h+5JJUbHUqdNPvsUcGEpPKjtE2EKJC0N70vbytMTvxcIbtuHiQGjvvxCoqHX/f8G4ElJgXn8nvmG9oJna5KNxwsHi54thXn78yGAI="},{"type":"text","text":"To
+        solve 2+2, I''ll work through this step by step:\n\n1. I need to add the number
+        2 and the number 2 together\n2. When adding, I''m combining these two quantities\n3.
+        The first 2 represents two units\n4. The second 2 represents another two units\n5.
+        Combining these quantities: two units plus two units equals four units\n\nTherefore,
+        2+2 = 4"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":48,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":195,"service_tier":"standard"}}'
+  recorded_at: Wed, 28 Jan 2026 19:41:20 GMT
+recorded_with: VCR 6.4.0

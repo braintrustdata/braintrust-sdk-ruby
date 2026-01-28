@@ -14,7 +14,7 @@ http_interactions:
       Accept:
       - application/json
       User-Agent:
-      - Ruby
+      - Anthropic::Client/Ruby 1.16.3
       Host:
       - api.anthropic.com
       X-Stainless-Arch:
@@ -22,13 +22,13 @@ http_interactions:
       X-Stainless-Lang:
       - ruby
       X-Stainless-Os:
-      - MacOS
+      - Linux
       X-Stainless-Package-Version:
-      - 1.12.0
+      - 1.16.3
       X-Stainless-Runtime:
       - ruby
       X-Stainless-Runtime-Version:
-      - 3.2.0
+      - 3.2.9
       Content-Type:
       - application/json
       Anthropic-Version:
@@ -47,7 +47,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Fri, 14 Nov 2025 18:44:01 GMT
+      - Wed, 28 Jan 2026 19:41:12 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -59,40 +59,38 @@ http_interactions:
       Anthropic-Ratelimit-Output-Tokens-Remaining:
       - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2025-11-14T18:44:01Z'
+      - '2026-01-28T19:41:12Z'
       Anthropic-Ratelimit-Input-Tokens-Limit:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Remaining:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2025-11-14T18:44:00Z'
-      Retry-After:
-      - '63'
+      - '2026-01-28T19:41:12Z'
       Anthropic-Ratelimit-Tokens-Limit:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2025-11-14T18:44:00Z'
+      - '2026-01-28T19:41:12Z'
       Request-Id:
-      - req_011CV8GwQ6WQV7eFJDKhgco4
+      - req_011CXaLy5LTVjYqy3ngGp4i7
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
       - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2405'
+      - '1303'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
-      Server:
-      - cloudflare
       Cf-Ray:
-      - 99e8a8546b04c3fd-EWR
+      - 9c52f73f9c4cb595-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01QDNQixWJaqA8ft99tVhxrZ","type":"message","role":"assistant","content":[{"type":"text","text":"Your
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_0158T1o6jHVZHyKuuSs9DbiY","type":"message","role":"assistant","content":[{"type":"text","text":"Your
         name is Alice."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":31,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":8,"service_tier":"standard"}}'
-  recorded_at: Fri, 14 Nov 2025 18:44:01 GMT
-recorded_with: VCR 6.3.1
+  recorded_at: Wed, 28 Jan 2026 19:41:12 GMT
+recorded_with: VCR 6.4.0

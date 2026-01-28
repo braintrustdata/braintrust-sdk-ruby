@@ -61,7 +61,7 @@ class Braintrust::Contrib::Anthropic::InstrumentationTest < Minitest::Test
       suppress_logs { Braintrust::Trace::Anthropic.wrap(client_wrap, tracer_provider: rig_wrap.tracer_provider) }
 
       client_wrap.messages.create(
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 10,
         messages: [{role: "user", content: "Say 'test'"}]
       )
@@ -73,7 +73,7 @@ class Braintrust::Contrib::Anthropic::InstrumentationTest < Minitest::Test
       Braintrust.instrument!(:anthropic, target: client_instrument, tracer_provider: rig_instrument.tracer_provider)
 
       client_instrument.messages.create(
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 10,
         messages: [{role: "user", content: "Say 'test'"}]
       )

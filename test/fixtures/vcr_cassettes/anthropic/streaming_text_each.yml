@@ -13,7 +13,7 @@ http_interactions:
       Accept:
       - text/event-stream
       User-Agent:
-      - Ruby
+      - Anthropic::Client/Ruby 1.16.3
       Host:
       - api.anthropic.com
       X-Stainless-Arch:
@@ -21,9 +21,9 @@ http_interactions:
       X-Stainless-Lang:
       - ruby
       X-Stainless-Os:
-      - MacOS
+      - Linux
       X-Stainless-Package-Version:
-      - 1.12.0
+      - 1.16.3
       X-Stainless-Runtime:
       - ruby
       X-Stainless-Runtime-Version:
@@ -34,6 +34,8 @@ http_interactions:
       - '2023-06-01'
       X-Api-Key:
       - "<ANTHROPIC_API_KEY>"
+      X-Stainless-Helper-Method:
+      - stream
       X-Stainless-Retry-Count:
       - '0'
       X-Stainless-Timeout:
@@ -46,15 +48,13 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 19 Nov 2025 03:44:13 GMT
+      - Wed, 28 Jan 2026 19:41:13 GMT
       Content-Type:
       - text/event-stream; charset=utf-8
       Transfer-Encoding:
       - chunked
       Connection:
       - keep-alive
-      Cf-Ray:
-      - 9a0cb51affdc7b0b-EWR
       Cache-Control:
       - no-cache
       Anthropic-Ratelimit-Output-Tokens-Limit:
@@ -62,71 +62,62 @@ http_interactions:
       Anthropic-Ratelimit-Output-Tokens-Remaining:
       - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2025-11-19T03:44:09Z'
+      - '2026-01-28T19:41:12Z'
       Anthropic-Ratelimit-Input-Tokens-Limit:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Remaining:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2025-11-19T03:44:09Z'
-      Retry-After:
-      - '54'
+      - '2026-01-28T19:41:12Z'
       Anthropic-Ratelimit-Tokens-Limit:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2025-11-19T03:44:09Z'
+      - '2026-01-28T19:41:12Z'
       Request-Id:
-      - req_011CVGZNC2ZtWsXfSPtFQcVa
+      - req_011CXaLyBQq9qg82HRG5G4qn
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
       - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '4390'
+      - '1037'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
-      Server:
-      - cloudflare
+      Cf-Ray:
+      - 9c52f7488b6e2986-ORD
     body:
       encoding: UTF-8
       string: |+
         event: message_start
-        data: {"type":"message_start","message":{"model":"claude-sonnet-4-20250514","id":"msg_01Jqz3aMjDScrQt4jm4NMcrD","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard"}}  }
+        data: {"type":"message_start","message":{"model":"claude-sonnet-4-20250514","id":"msg_01DEfGQFTWy6MkPxi4QETukR","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard"}} }
 
         event: content_block_start
-        data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}  }
-
-        event: content_block_delta
-        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1"}    }
+        data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}    }
 
         event: ping
         data: {"type": "ping"}
 
         event: content_block_delta
-        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"\n2\n3"}            }
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1"}        }
 
-        event: ping
-        data: {"type": "ping"}
+        event: content_block_delta
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"\n\n2\n\n3"}      }
 
         event: content_block_stop
-        data: {"type":"content_block_stop","index":0      }
-
-        event: ping
-        data: {"type": "ping"}
-
-        event: ping
-        data: {"type": "ping"}
+        data: {"type":"content_block_stop","index":0       }
 
         event: message_delta
-        data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":9}   }
+        data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":9}          }
 
         event: message_stop
         data: {"type":"message_stop"               }
 
-  recorded_at: Wed, 19 Nov 2025 03:44:14 GMT
-recorded_with: VCR 6.3.1
+  recorded_at: Wed, 28 Jan 2026 19:41:13 GMT
+recorded_with: VCR 6.4.0
 ...
