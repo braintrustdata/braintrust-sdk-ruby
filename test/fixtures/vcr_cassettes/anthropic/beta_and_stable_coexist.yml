@@ -5,9 +5,8 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","max_tokens":200,"tools":[{"name":"calculator","description":"Perform
-        arithmetic","input_schema":{"type":"object","properties":{"operation":{"type":"string"},"a":{"type":"number"},"b":{"type":"number"}},"required":["operation","a","b"]}}],"messages":[{"role":"user","content":"What
-        is 15 times 23?"}]}'
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":10,"messages":[{"role":"user","content":"Say
+        ''stable''"}]}'
     headers:
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
@@ -40,14 +39,14 @@ http_interactions:
       X-Stainless-Timeout:
       - '600.0'
       Content-Length:
-      - '337'
+      - '106'
   response:
     status:
       code: 200
       message: OK
     headers:
       Date:
-      - Wed, 28 Jan 2026 19:41:25 GMT
+      - Wed, 28 Jan 2026 19:25:33 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -59,21 +58,21 @@ http_interactions:
       Anthropic-Ratelimit-Output-Tokens-Remaining:
       - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2026-01-28T19:41:25Z'
+      - '2026-01-28T19:25:33Z'
       Anthropic-Ratelimit-Input-Tokens-Limit:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Remaining:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2026-01-28T19:41:24Z'
+      - '2026-01-28T19:25:33Z'
       Anthropic-Ratelimit-Tokens-Limit:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2026-01-28T19:41:24Z'
+      - '2026-01-28T19:25:33Z'
       Request-Id:
-      - req_011CXaLz2seYCPDxHr438vNt
+      - req_011CXaKmuukSTHnXaxKmQDXH
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
@@ -81,27 +80,24 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1603'
+      - '1059'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
       Cf-Ray:
-      - 9c52f790dc9ff859-ORD
+      - 9c52e0579ef1fa1f-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01H4GkTEVYbzvpbRY4Fe6244","type":"message","role":"assistant","content":[{"type":"text","text":"I''ll
-        calculate 15 times 23 for you."},{"type":"tool_use","id":"toolu_01R2RTTPs4gxnMeych4ZkSEN","name":"calculator","input":{"operation":"multiply","a":15,"b":23}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":404,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":99,"service_tier":"standard"}}'
-  recorded_at: Wed, 28 Jan 2026 19:41:25 GMT
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01Bppuz9tFvornkeRE2xnkfa","type":"message","role":"assistant","content":[{"type":"text","text":"stable"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard"}}'
+  recorded_at: Wed, 28 Jan 2026 19:25:33 GMT
 - request:
     method: post
-    uri: https://api.anthropic.com/v1/messages
+    uri: https://api.anthropic.com/v1/messages?beta=true
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","max_tokens":200,"tools":[{"name":"calculator","description":"Perform
-        arithmetic","input_schema":{"type":"object","properties":{"operation":{"type":"string"},"a":{"type":"number"},"b":{"type":"number"}},"required":["operation","a","b"]}}],"messages":[{"role":"user","content":"What
-        is 15 times 23?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        calculate 15 times 23 for you."},{"type":"tool_use","id":"toolu_01R2RTTPs4gxnMeych4ZkSEN","name":"calculator","input":{"operation":"multiply","a":15,"b":23}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01R2RTTPs4gxnMeych4ZkSEN","content":"345"}]}]}'
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":10,"messages":[{"role":"user","content":"Say
+        ''beta''"}]}'
     headers:
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
@@ -134,14 +130,14 @@ http_interactions:
       X-Stainless-Timeout:
       - '600.0'
       Content-Length:
-      - '670'
+      - '104'
   response:
     status:
       code: 200
       message: OK
     headers:
       Date:
-      - Wed, 28 Jan 2026 19:41:26 GMT
+      - Wed, 28 Jan 2026 19:25:35 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -153,21 +149,21 @@ http_interactions:
       Anthropic-Ratelimit-Output-Tokens-Remaining:
       - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2026-01-28T19:41:26Z'
+      - '2026-01-28T19:25:34Z'
       Anthropic-Ratelimit-Input-Tokens-Limit:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Remaining:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2026-01-28T19:41:26Z'
+      - '2026-01-28T19:25:34Z'
       Anthropic-Ratelimit-Tokens-Limit:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2026-01-28T19:41:26Z'
+      - '2026-01-28T19:25:34Z'
       Request-Id:
-      - req_011CXaLz9v4ZNzAf1TLU5oDR
+      - req_011CXaKmzezxTzbBmJ5n9Edy
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
@@ -175,16 +171,15 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1025'
+      - '1179'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
       Cf-Ray:
-      - 9c52f79b1ca5f859-ORD
+      - 9c52e05e8e9afa1f-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01JjYUFc9E5U2s5s5eynERVU","type":"message","role":"assistant","content":[{"type":"text","text":"15
-        times 23 equals 345."}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":516,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":13,"service_tier":"standard"}}'
-  recorded_at: Wed, 28 Jan 2026 19:41:26 GMT
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01JfXwmsPzNwx7UoCWAAnaQo","type":"message","role":"assistant","content":[{"type":"text","text":"beta"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard"}}'
+  recorded_at: Wed, 28 Jan 2026 19:25:35 GMT
 recorded_with: VCR 6.4.0

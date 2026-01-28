@@ -5,7 +5,7 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-3-5-sonnet-20241022","max_tokens":50,"messages":[{"role":"user","content":"Count
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":50,"messages":[{"role":"user","content":"Count
         to 5"}],"stream":true}'
     headers:
       Accept-Encoding:
@@ -13,7 +13,7 @@ http_interactions:
       Accept:
       - text/event-stream
       User-Agent:
-      - Ruby
+      - Anthropic::Client/Ruby 1.16.3
       Host:
       - api.anthropic.com
       X-Stainless-Arch:
@@ -21,9 +21,9 @@ http_interactions:
       X-Stainless-Lang:
       - ruby
       X-Stainless-Os:
-      - MacOS
+      - Linux
       X-Stainless-Package-Version:
-      - 1.12.0
+      - 1.16.3
       X-Stainless-Runtime:
       - ruby
       X-Stainless-Runtime-Version:
@@ -34,108 +34,90 @@ http_interactions:
       - '2023-06-01'
       X-Api-Key:
       - "<ANTHROPIC_API_KEY>"
+      X-Stainless-Helper-Method:
+      - stream
       X-Stainless-Retry-Count:
       - '0'
       X-Stainless-Timeout:
       - '600.0'
       Content-Length:
-      - '120'
+      - '118'
   response:
     status:
       code: 200
       message: OK
     headers:
       Date:
-      - Sun, 26 Oct 2025 01:01:05 GMT
+      - Wed, 28 Jan 2026 19:41:14 GMT
       Content-Type:
       - text/event-stream; charset=utf-8
       Transfer-Encoding:
       - chunked
       Connection:
       - keep-alive
-      Cf-Ray:
-      - 9946053beee9729b-EWR
       Cache-Control:
       - no-cache
-      Anthropic-Ratelimit-Requests-Limit:
-      - '7000'
-      Anthropic-Ratelimit-Requests-Remaining:
-      - '6999'
-      Anthropic-Ratelimit-Requests-Reset:
-      - '2025-10-26T01:01:05Z'
-      Anthropic-Ratelimit-Input-Tokens-Limit:
-      - '8000000'
-      Anthropic-Ratelimit-Input-Tokens-Remaining:
-      - '8000000'
-      Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2025-10-26T01:01:05Z'
       Anthropic-Ratelimit-Output-Tokens-Limit:
-      - '1600000'
+      - '600000'
       Anthropic-Ratelimit-Output-Tokens-Remaining:
-      - '1600000'
+      - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2025-10-26T01:01:05Z'
+      - '2026-01-28T19:41:13Z'
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-01-28T19:41:13Z'
       Anthropic-Ratelimit-Tokens-Limit:
-      - '9600000'
+      - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
-      - '9600000'
+      - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2025-10-26T01:01:05Z'
+      - '2026-01-28T19:41:13Z'
       Request-Id:
-      - req_011CUUuWypFcPgYuuW94Knah
+      - req_011CXaLyHA71NtCYBC2jzXqu
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
       - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '501'
-      Via:
-      - 1.1 google
+      - '1077'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
-      Server:
-      - cloudflare
+      Cf-Ray:
+      - 9c52f750ef4d9d58-ORD
     body:
       encoding: UTF-8
       string: |+
         event: message_start
-        data: {"type":"message_start","message":{"model":"claude-3-5-sonnet-20241022","id":"msg_01HYAyvgsaKNyNBQjU4KzD6n","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard"}}           }
+        data: {"type":"message_start","message":{"model":"claude-sonnet-4-20250514","id":"msg_01BHXqE1TTCuxAhYGhNoDSqy","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard"}}     }
 
         event: content_block_start
-        data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}    }
-
-        event: content_block_delta
-        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1\n2"}  }
-
-        event: content_block_delta
-        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"\n3\n4"}       }
+        data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}         }
 
         event: ping
         data: {"type": "ping"}
 
         event: content_block_delta
-        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"\n5"}    }
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1"}   }
 
-        event: ping
-        data: {"type": "ping"}
+        event: content_block_delta
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"\n2\n3\n4\n5"}               }
 
         event: content_block_stop
-        data: {"type":"content_block_stop","index":0}
-
-        event: ping
-        data: {"type": "ping"}
-
-        event: ping
-        data: {"type": "ping"}
+        data: {"type":"content_block_stop","index":0      }
 
         event: message_delta
-        data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":13}}
+        data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":13} }
 
         event: message_stop
-        data: {"type":"message_stop"               }
+        data: {"type":"message_stop"  }
 
-  recorded_at: Sun, 26 Oct 2025 01:01:05 GMT
-recorded_with: VCR 6.3.1
+  recorded_at: Wed, 28 Jan 2026 19:41:15 GMT
+recorded_with: VCR 6.4.0
 ...

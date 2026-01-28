@@ -5,7 +5,7 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-3-5-sonnet-20241022","max_tokens":100,"tools":[{"name":"get_weather","description":"Get
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":100,"tools":[{"name":"get_weather","description":"Get
         the current weather for a location","input_schema":{"type":"object","properties":{"location":{"type":"string","description":"City
         name"}},"required":["location"]}}],"messages":[{"role":"user","content":"What''s
         the weather in Paris?"}]}'
@@ -15,7 +15,7 @@ http_interactions:
       Accept:
       - application/json
       User-Agent:
-      - Ruby
+      - Anthropic::Client/Ruby 1.16.3
       Host:
       - api.anthropic.com
       X-Stainless-Arch:
@@ -23,9 +23,9 @@ http_interactions:
       X-Stainless-Lang:
       - ruby
       X-Stainless-Os:
-      - MacOS
+      - Linux
       X-Stainless-Package-Version:
-      - 1.12.0
+      - 1.16.3
       X-Stainless-Runtime:
       - ruby
       X-Stainless-Runtime-Version:
@@ -41,65 +41,57 @@ http_interactions:
       X-Stainless-Timeout:
       - '600.0'
       Content-Length:
-      - '340'
+      - '338'
   response:
     status:
       code: 200
       message: OK
     headers:
       Date:
-      - Sun, 26 Oct 2025 00:29:15 GMT
+      - Wed, 28 Jan 2026 19:41:04 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
       - chunked
       Connection:
       - keep-alive
-      Anthropic-Ratelimit-Requests-Limit:
-      - '7000'
-      Anthropic-Ratelimit-Requests-Remaining:
-      - '6999'
-      Anthropic-Ratelimit-Requests-Reset:
-      - '2025-10-26T00:29:13Z'
-      Anthropic-Ratelimit-Input-Tokens-Limit:
-      - '8000000'
-      Anthropic-Ratelimit-Input-Tokens-Remaining:
-      - '8000000'
-      Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2025-10-26T00:29:14Z'
       Anthropic-Ratelimit-Output-Tokens-Limit:
-      - '1600000'
+      - '600000'
       Anthropic-Ratelimit-Output-Tokens-Remaining:
-      - '1600000'
+      - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2025-10-26T00:29:14Z'
+      - '2026-01-28T19:41:04Z'
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-01-28T19:41:04Z'
       Anthropic-Ratelimit-Tokens-Limit:
-      - '9600000'
+      - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
-      - '9600000'
+      - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2025-10-26T00:29:14Z'
+      - '2026-01-28T19:41:04Z'
       Request-Id:
-      - req_011CUUs65vS6K3DUww2i5zBg
+      - req_011CXaLxV4w8DJ2rGGCWWtU9
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
       - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1092'
-      Via:
-      - 1.1 google
+      - '1738'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
-      Server:
-      - cloudflare
       Cf-Ray:
-      - 9945d691e93733a6-EWR
+      - 9c52f70d8e871074-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-3-5-sonnet-20241022","id":"msg_01A2ShU4Ex3AsspYdk6k1P61","type":"message","role":"assistant","content":[{"type":"text","text":"I''ll
-        check the current weather in Paris for you."},{"type":"tool_use","id":"toolu_01GPagW1ENtF1pfPxXVrypHQ","name":"get_weather","input":{"location":"Paris"}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":389,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":65,"service_tier":"standard"}}'
-  recorded_at: Sun, 26 Oct 2025 00:29:14 GMT
-recorded_with: VCR 6.3.1
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01PcwU2LUxyZKxauujACwoe6","type":"message","role":"assistant","content":[{"type":"text","text":"I''ll
+        check the current weather in Paris for you."},{"type":"tool_use","id":"toolu_01P2YgSiNApPZ7VfJDBLyamo","name":"get_weather","input":{"location":"Paris"}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":389,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":65,"service_tier":"standard"}}'
+  recorded_at: Wed, 28 Jan 2026 19:41:04 GMT
+recorded_with: VCR 6.4.0

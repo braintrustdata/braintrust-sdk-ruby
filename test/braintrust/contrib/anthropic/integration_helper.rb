@@ -23,6 +23,14 @@ module Braintrust
             require "anthropic" unless defined?(::Anthropic)
           end
         end
+
+        # Skip test unless Beta::Messages is available.
+        def skip_unless_beta_messages!
+          unless defined?(::Anthropic::Resources::Beta) &&
+              defined?(::Anthropic::Resources::Beta::Messages)
+            skip "Beta::Messages not available in this SDK version"
+          end
+        end
       end
     end
   end

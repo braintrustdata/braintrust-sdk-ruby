@@ -2,12 +2,11 @@
 http_interactions:
 - request:
     method: post
-    uri: https://api.anthropic.com/v1/messages
+    uri: https://api.anthropic.com/v1/messages?beta=true
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","max_tokens":20,"system":"You are
-        a helpful assistant that always responds briefly.","messages":[{"role":"user","content":"Say
-        hello"}]}'
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":10,"messages":[{"role":"user","content":"Say
+        ''test''"}]}'
     headers:
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
@@ -40,14 +39,14 @@ http_interactions:
       X-Stainless-Timeout:
       - '600.0'
       Content-Length:
-      - '172'
+      - '104'
   response:
     status:
       code: 200
       message: OK
     headers:
       Date:
-      - Wed, 28 Jan 2026 19:41:21 GMT
+      - Wed, 28 Jan 2026 19:25:39 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -59,21 +58,21 @@ http_interactions:
       Anthropic-Ratelimit-Output-Tokens-Remaining:
       - '600000'
       Anthropic-Ratelimit-Output-Tokens-Reset:
-      - '2026-01-28T19:41:21Z'
+      - '2026-01-28T19:25:39Z'
       Anthropic-Ratelimit-Input-Tokens-Limit:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Remaining:
       - '3000000'
       Anthropic-Ratelimit-Input-Tokens-Reset:
-      - '2026-01-28T19:41:21Z'
+      - '2026-01-28T19:25:39Z'
       Anthropic-Ratelimit-Tokens-Limit:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Remaining:
       - '3600000'
       Anthropic-Ratelimit-Tokens-Reset:
-      - '2026-01-28T19:41:21Z'
+      - '2026-01-28T19:25:39Z'
       Request-Id:
-      - req_011CXaLynPkp3T1fzCAi2EfM
+      - req_011CXaKnJvbNGqR5yX5KEaiN
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
       Anthropic-Organization-Id:
@@ -81,16 +80,15 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1154'
+      - '1662'
       Cf-Cache-Status:
       - DYNAMIC
       X-Robots-Tag:
       - none
       Cf-Ray:
-      - 9c52f77badaff85d-ORD
+      - 9c52e0793f10fa21-ORD
     body:
       encoding: ASCII-8BIT
-      string: '{"model":"claude-sonnet-4-20250514","id":"msg_01RFjdT6UKZvQnrBfppBHAUR","type":"message","role":"assistant","content":[{"type":"text","text":"Hello!
-        How can I help you today?"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":19,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":12,"service_tier":"standard"}}'
-  recorded_at: Wed, 28 Jan 2026 19:41:21 GMT
+      string: '{"model":"claude-sonnet-4-20250514","id":"msg_011FEkMj3WA47SfMnrbGKYbx","type":"message","role":"assistant","content":[{"type":"text","text":"test"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":12,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":4,"service_tier":"standard"}}'
+  recorded_at: Wed, 28 Jan 2026 19:25:39 GMT
 recorded_with: VCR 6.4.0
