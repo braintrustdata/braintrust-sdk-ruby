@@ -20,6 +20,7 @@ require "json"
 # 8. Advanced parameters
 # 9. Responses API (non-streaming) [requires ruby-openai >= 8.0]
 # 10. Responses API (streaming) [requires ruby-openai >= 8.0]
+# 11. Moderations API
 #
 # This example validates that the ruby-openai integration captures the SAME DATA
 # as the openai gem integration for identical inputs.
@@ -373,13 +374,41 @@ tracer.in_span("examples/internal/contrib/ruby_openai/golden.rb") do |span|
   else
     puts "\n9-10. Responses API examples skipped (requires ruby-openai >= 8.0)"
   end
+
+  # Example 11: Moderations API
+  if client.respond_to?(:moderations)
+    puts "\n11. Moderations API"
+    puts "-" * 60
+    tracer.in_span("example-moderations") do
+      response = client.moderations(
+        parameters: {
+          input: "I love sunny days and spending time with friends.",
+          model: "omni-moderation-latest"
+        }
+      )
+      result = response["results"].first
+      puts "✓ Moderation result:"
+      puts "  Flagged: #{result["flagged"]}"
+      puts "  Model: #{response["model"]}"
+
+      # Show flagged categories if any
+      flagged_categories = result["categories"].select { |_, v| v }.keys
+      if flagged_categories.any?
+        puts "  Flagged categories: #{flagged_categories.join(", ")}"
+      else
+        puts "  No categories flagged (safe content)"
+      end
+    end
+  else
+    puts "\n11. Moderations API example skipped (not available in this ruby-openai version)"
+  end
 end # End of parent trace
 
 puts "\n" + "=" * 60
 puts "✓ All examples completed!"
 puts ""
 puts "VERIFICATION: Compare this trace with examples/internal/openai.rb"
-puts "  → Both should capture IDENTICAL data for matching examples (2-4, 6-10)"
+puts "  → Both should capture IDENTICAL data for matching examples (2-4, 6-11)"
 puts "  → Input/output JSON, metadata, metrics should match exactly"
 puts ""
 puts "View this trace at:"

@@ -1,0 +1,147 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/moderations
+    body:
+      encoding: UTF-8
+      string: '{"input":"I want to harm someone"}'
+    headers:
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Tue, 27 Jan 2026 22:37:00 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Openai-Version:
+      - '2020-10-01'
+      Openai-Organization:
+      - braintrust-data
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      X-Request-Id:
+      - req_b4a189429bc44157a96dbc9f7c40456f
+      Openai-Processing-Ms:
+      - '72'
+      X-Openai-Proxy-Wasm:
+      - v0.1
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - __cf_bm=PC4wl1jLmkJGobpJ2GPddZqxVAKHlsLogkgPberlchI-1769553420-1.0.1.1-2DjxZOJOOCvbisKX2TIgIkuW94VlKraZry3.gUsBxypsquOtrL3PzIf6ukU_cXk3sO4s2dBuGyWLLL5KOV2ZeY_C6FVPY9OxMn2gbSqQHzc;
+        path=/; expires=Tue, 27-Jan-26 23:07:00 GMT; domain=.api.openai.com; HttpOnly;
+        Secure; SameSite=None
+      - _cfuvid=1EFjvDEtis_Gpzn01mdfQHzzJSFiN4QonLUvzBLZD90-1769553420090-0.0.1.1-604800000;
+        path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - 9c4bbb6abf03c959-ORD
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "modr-9005",
+          "model": "omni-moderation-latest",
+          "results": [
+            {
+              "flagged": true,
+              "categories": {
+                "harassment": false,
+                "harassment/threatening": false,
+                "sexual": false,
+                "hate": false,
+                "hate/threatening": false,
+                "illicit": false,
+                "illicit/violent": false,
+                "self-harm/intent": false,
+                "self-harm/instructions": false,
+                "self-harm": false,
+                "sexual/minors": false,
+                "violence": true,
+                "violence/graphic": false
+              },
+              "category_scores": {
+                "harassment": 0.34069313931460254,
+                "harassment/threatening": 0.3327731869920205,
+                "sexual": 0.00005357805383473943,
+                "hate": 0.007314286422360842,
+                "hate/threatening": 0.0035009495364668702,
+                "illicit": 0.11081140571261128,
+                "illicit/violent": 0.05778161305464796,
+                "self-harm/intent": 0.00023996139648439313,
+                "self-harm/instructions": 8.939696304799168e-7,
+                "self-harm": 0.00047624913019932136,
+                "sexual/minors": 2.6688529572628562e-6,
+                "violence": 0.942284967643337,
+                "violence/graphic": 0.000026119031909571944
+              },
+              "category_applied_input_types": {
+                "harassment": [
+                  "text"
+                ],
+                "harassment/threatening": [
+                  "text"
+                ],
+                "sexual": [
+                  "text"
+                ],
+                "hate": [
+                  "text"
+                ],
+                "hate/threatening": [
+                  "text"
+                ],
+                "illicit": [
+                  "text"
+                ],
+                "illicit/violent": [
+                  "text"
+                ],
+                "self-harm/intent": [
+                  "text"
+                ],
+                "self-harm/instructions": [
+                  "text"
+                ],
+                "self-harm": [
+                  "text"
+                ],
+                "sexual/minors": [
+                  "text"
+                ],
+                "violence": [
+                  "text"
+                ],
+                "violence/graphic": [
+                  "text"
+                ]
+              }
+            }
+          ]
+        }
+  recorded_at: Tue, 27 Jan 2026 22:37:00 GMT
+recorded_with: VCR 6.4.0

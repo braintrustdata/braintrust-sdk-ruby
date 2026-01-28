@@ -50,7 +50,7 @@ module Braintrust
         # @return [Array<Class>] The patcher classes
         def self.patchers
           require_relative "patcher"
-          [ChatPatcher, ResponsesPatcher]
+          [ChatPatcher, ResponsesPatcher, ModerationsPatcher]
         end
       end
     end
