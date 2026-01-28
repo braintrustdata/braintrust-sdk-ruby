@@ -40,12 +40,12 @@ module Braintrust
           defined?(::Anthropic::Client) ? true : false
         end
 
-        # Lazy-load the patcher only when actually patching.
+        # Lazy-load the patchers only when actually patching.
         # This keeps the integration stub lightweight.
         # @return [Array<Class>] The patcher classes
         def self.patchers
           require_relative "patcher"
-          [MessagesPatcher]
+          [MessagesPatcher, BetaMessagesPatcher]
         end
       end
     end

@@ -1,0 +1,120 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages?beta=true
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","max_tokens":50,"messages":[{"role":"user","content":"Count
+        to 3"}],"stream":true}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - text/event-stream
+      User-Agent:
+      - Anthropic::Client/Ruby 1.16.3
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - Linux
+      X-Stainless-Package-Version:
+      - 1.16.3
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.9
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2023-06-01'
+      X-Api-Key:
+      - "<ANTHROPIC_API_KEY>"
+      X-Stainless-Helper-Method:
+      - stream
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '118'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Wed, 28 Jan 2026 19:25:36 GMT
+      Content-Type:
+      - text/event-stream; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cache-Control:
+      - no-cache
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '600000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '600000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2026-01-28T19:25:35Z'
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '3000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-01-28T19:25:35Z'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '3600000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '3600000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2026-01-28T19:25:35Z'
+      Request-Id:
+      - req_011CXaKn699pYTrafmH3puM6
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1183'
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - 9c52e0668ca9fa25-ORD
+    body:
+      encoding: UTF-8
+      string: |+
+        event: message_start
+        data: {"type":"message_start","message":{"model":"claude-sonnet-4-20250514","id":"msg_01T1FwJ5cF8N5z464nvuTU38","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":1,"service_tier":"standard"}}            }
+
+        event: content_block_start
+        data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""} }
+
+        event: ping
+        data: {"type": "ping"}
+
+        event: content_block_delta
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1, 2, 3"}         }
+
+        event: content_block_stop
+        data: {"type":"content_block_stop","index":0   }
+
+        event: message_delta
+        data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":11,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":11}           }
+
+        event: message_stop
+        data: {"type":"message_stop"       }
+
+  recorded_at: Wed, 28 Jan 2026 19:25:36 GMT
+recorded_with: VCR 6.4.0
+...
