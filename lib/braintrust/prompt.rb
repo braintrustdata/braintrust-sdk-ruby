@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "mustache"
+require_relative "vendor/mustache"
 
 module Braintrust
   # Prompt class for loading and building prompts from Braintrust
@@ -133,7 +133,7 @@ module Braintrust
         end
       end
 
-      Mustache.render(text, variables)
+      Vendor::Mustache.render(text, variables)
     end
 
     # Find variables in template that are not provided

@@ -136,6 +136,40 @@ class Braintrust::PromptTest < Minitest::Test
 
     assert_equal "User: Alice, Email: alice@example.com", result[:messages][0][:content]
   end
+
+  def test_build_does_not_escape_html_characters
+    # LLM prompts should NOT have HTML escaping applied.
+    # Standard Mustache would turn < into &lt; but we disable this.
+    data = @function_data.dup
+    data["prompt_data"]["prompt"]["messages"] = [
+      {"role" => "user", "content" => "Write code: {{code}}"}
+    ]
+    prompt = Braintrust::Prompt.new(data)
+
+    # These characters would be escaped by standard Mustache
+    code_with_html = '<script>alert("test")</script> & other < > stuff'
+    result = prompt.build(code: code_with_html)
+
+    # Verify NO escaping occurred - raw characters preserved
+    assert_equal "Write code: #{code_with_html}", result[:messages][0][:content]
+    assert_includes result[:messages][0][:content], "<script>"
+    assert_includes result[:messages][0][:content], '"test"'
+    assert_includes result[:messages][0][:content], " & "
+  end
+
+  def test_build_preserves_ampersands_and_quotes
+    # Ampersands and quotes are commonly escaped by HTML escapers
+    data = @function_data.dup
+    data["prompt_data"]["prompt"]["messages"] = [
+      {"role" => "user", "content" => "Search for: {{query}}"}
+    ]
+    prompt = Braintrust::Prompt.new(data)
+
+    result = prompt.build(query: 'foo & bar "baz"')
+
+    # Should be raw, not &amp; or &quot;
+    assert_equal 'Search for: foo & bar "baz"', result[:messages][0][:content]
+  end
 end
 
 class Braintrust::PromptLoadTest < Minitest::Test
