@@ -19,13 +19,10 @@ module Braintrust
     # @param slug [String] Prompt slug
     # @param version [String, nil] Specific version (default: latest)
     # @param defaults [Hash] Default variable values for build()
-    # @param state [State, nil] Braintrust state (default: global)
+    # @param api [API, nil] Braintrust API client (default: creates one using global state)
     # @return [Prompt]
-    def self.load(project:, slug:, version: nil, defaults: {}, state: nil)
-      state ||= Braintrust.current_state
-      raise Error, "No state available - call Braintrust.init first" unless state
-
-      api = API.new(state: state)
+    def self.load(project:, slug:, version: nil, defaults: {}, api: nil)
+      api ||= API.new
 
       # Find the function by project + slug
       result = api.functions.list(project_name: project, slug: slug)

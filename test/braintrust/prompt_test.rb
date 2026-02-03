@@ -275,14 +275,13 @@ class Braintrust::PromptLoadTest < Minitest::Test
     @project_name = "ruby-sdk-test"
   end
 
-  def get_test_state
-    get_integration_test_state(enable_tracing: false)
+  def get_test_api
+    get_integration_test_api(enable_tracing: false)
   end
 
   def test_prompt_load
     VCR.use_cassette("prompt/load") do
-      state = get_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_test_api
       slug = "test-prompt-load"
 
       # Create a prompt first
@@ -304,7 +303,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
       )
 
       # Load the prompt using Prompt.load
-      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug, state: state)
+      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug, api: api)
 
       assert_instance_of Braintrust::Prompt, prompt
       assert_equal slug, prompt.slug
@@ -322,10 +321,10 @@ class Braintrust::PromptLoadTest < Minitest::Test
 
   def test_prompt_load_not_found
     VCR.use_cassette("prompt/load_not_found") do
-      state = get_test_state
+      api = get_test_api
 
       error = assert_raises(Braintrust::Error) do
-        Braintrust::Prompt.load(project: @project_name, slug: "nonexistent-prompt-xyz", state: state)
+        Braintrust::Prompt.load(project: @project_name, slug: "nonexistent-prompt-xyz", api: api)
       end
 
       assert_match(/not found/i, error.message)
@@ -334,8 +333,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
 
   def test_prompt_load_with_version
     VCR.use_cassette("prompt/load_with_version") do
-      state = get_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_test_api
       slug = "test-prompt-version"
 
       # Create a prompt and capture its version (_xact_id)
@@ -364,7 +362,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
         project: @project_name,
         slug: slug,
         version: version_id,
-        state: state
+        api: api
       )
 
       assert_instance_of Braintrust::Prompt, prompt
@@ -382,8 +380,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
 
   def test_prompt_load_with_tools
     VCR.use_cassette("prompt/load_with_tools") do
-      state = get_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_test_api
       slug = "test-prompt-tools"
 
       # Tools in OpenAI format - stored as JSON string per API schema
@@ -422,7 +419,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
       )
 
       # Load the prompt
-      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug, state: state)
+      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug, api: api)
 
       # Verify tools accessor
       assert_instance_of Array, prompt.tools
