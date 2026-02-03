@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "vendor/mustache"
 
 module Braintrust
@@ -63,6 +64,17 @@ module Braintrust
       prompt&.dig("messages") || []
     end
 
+    # Get the tools definition (parsed from JSON string)
+    # @return [Array<Hash>, nil]
+    def tools
+      tools_json = prompt&.dig("tools")
+      return nil unless tools_json.is_a?(String) && !tools_json.empty?
+
+      JSON.parse(tools_json)
+    rescue JSON::ParserError
+      nil
+    end
+
     # Get the model name
     # @return [String, nil]
     def model
@@ -113,6 +125,10 @@ module Braintrust
         model: model,
         messages: built_messages
       }
+
+      # Add tools if defined
+      parsed_tools = tools
+      result[:tools] = parsed_tools if parsed_tools
 
       # Add params (temperature, max_tokens, etc.) to top level
       params = options.dig("params")

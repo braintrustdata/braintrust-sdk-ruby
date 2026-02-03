@@ -237,6 +237,36 @@ class Braintrust::PromptTest < Minitest::Test
     assert_match(/unknown template format/i, error.message)
     assert_match(/jinja2/i, error.message)
   end
+
+  # Tools tests - basic behavior without schema assumptions
+
+  def test_tools_returns_nil_when_not_defined
+    prompt = Braintrust::Prompt.new(@function_data)
+    assert_nil prompt.tools
+  end
+
+  def test_tools_returns_nil_for_empty_string
+    data = @function_data.dup
+    data["prompt_data"]["prompt"]["tools"] = ""
+    prompt = Braintrust::Prompt.new(data)
+
+    assert_nil prompt.tools
+  end
+
+  def test_tools_returns_nil_for_invalid_json
+    data = @function_data.dup
+    data["prompt_data"]["prompt"]["tools"] = "not valid json"
+    prompt = Braintrust::Prompt.new(data)
+
+    assert_nil prompt.tools
+  end
+
+  def test_build_excludes_tools_when_not_defined
+    prompt = Braintrust::Prompt.new(@function_data)
+    result = prompt.build(name: "Alice", task: "coding")
+
+    refute result.key?(:tools)
+  end
 end
 
 class Braintrust::PromptLoadTest < Minitest::Test
@@ -345,6 +375,69 @@ class Braintrust::PromptLoadTest < Minitest::Test
       # Build and verify content
       result = prompt.build(name: "World")
       assert_equal "Version test: World", result[:messages][0][:content]
+
+      # Clean up
+      api.functions.delete(id: prompt.id)
+    ensure
+      OpenTelemetry.tracer_provider.shutdown
+    end
+  end
+
+  def test_prompt_load_with_tools
+    VCR.use_cassette("prompt/load_with_tools") do
+      Braintrust.init(blocking_login: true)
+
+      api = Braintrust::API.new
+      slug = "test-prompt-tools"
+
+      # Tools in OpenAI format - stored as JSON string per API schema
+      tools = [
+        {
+          type: "function",
+          function: {
+            name: "get_weather",
+            description: "Get the current weather in a location",
+            parameters: {
+              type: "object",
+              properties: {
+                location: {type: "string", description: "City name"}
+              },
+              required: ["location"]
+            }
+          }
+        }
+      ]
+
+      # Create a prompt with tools
+      api.functions.create(
+        project_name: @project_name,
+        slug: slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "What is the weather in {{city}}?"}
+            ],
+            tools: JSON.dump(tools)
+          },
+          options: {model: "gpt-4o-mini"}
+        }
+      )
+
+      # Load the prompt
+      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug)
+
+      # Verify tools accessor
+      assert_instance_of Array, prompt.tools
+      assert_equal 1, prompt.tools.length
+      assert_equal "get_weather", prompt.tools[0]["function"]["name"]
+
+      # Build and verify tools are included
+      result = prompt.build(city: "Seattle")
+      assert result.key?(:tools), "Expected build result to include :tools"
+      assert_equal prompt.tools, result[:tools]
+      assert_equal "What is the weather in Seattle?", result[:messages][0][:content]
 
       # Clean up
       api.functions.delete(id: prompt.id)
