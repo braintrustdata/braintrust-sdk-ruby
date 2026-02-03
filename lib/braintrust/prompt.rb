@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "vendor/mustache"
+require_relative "internal/template"
 
 module Braintrust
   # Prompt class for loading and building prompts from Braintrust
@@ -44,7 +44,7 @@ module Braintrust
     # @param defaults [Hash] Default variable values for build()
     def initialize(data, defaults: {})
       @data = data
-      @defaults = stringify_keys(defaults)
+      @defaults = Internal::Template.stringify_keys(defaults)
 
       @id = data["id"]
       @name = data["name"]
@@ -110,13 +110,15 @@ module Braintrust
     def build(variables = nil, strict: false, **kwargs)
       # Support both explicit hash and keyword arguments
       variables_hash = variables.is_a?(Hash) ? variables : {}
-      vars = @defaults.merge(stringify_keys(variables_hash)).merge(stringify_keys(kwargs))
+      vars = @defaults
+        .merge(Internal::Template.stringify_keys(variables_hash))
+        .merge(Internal::Template.stringify_keys(kwargs))
 
       # Render Mustache templates in messages
       built_messages = messages.map do |msg|
         {
           role: msg["role"].to_sym,
-          content: render_template(msg["content"], vars, strict: strict)
+          content: Internal::Template.render(msg["content"], vars, format: template_format, strict: strict)
         }
       end
 
@@ -139,71 +141,6 @@ module Braintrust
       end
 
       result
-    end
-
-    private
-
-    # Render template with variables based on template_format
-    def render_template(text, variables, strict:)
-      return text unless text.is_a?(String)
-
-      case template_format
-      when "none"
-        # No templating - return text unchanged
-        text
-      when "nunjucks"
-        # Nunjucks is a UI-only feature in Braintrust
-        raise Error, "Nunjucks templates are not supported in the Ruby SDK. " \
-                     "Nunjucks only works in Braintrust playgrounds. " \
-                     "Please use 'mustache' or 'none' template format, or invoke the prompt via the API proxy."
-      when "mustache", "", nil
-        # Default: Mustache templating
-        if strict
-          # Check for missing variables before rendering
-          missing = find_missing_variables(text, variables)
-          if missing.any?
-            raise Error, "Missing required variables: #{missing.join(", ")}"
-          end
-        end
-
-        Vendor::Mustache.render(text, variables)
-      else
-        raise Error, "Unknown template format: #{template_format.inspect}. " \
-                     "Supported formats are 'mustache' and 'none'."
-      end
-    end
-
-    # Find variables in template that are not provided
-    def find_missing_variables(text, variables)
-      # Extract {{variable}} and {{variable.path}} patterns
-      # Mustache uses {{name}} syntax
-      text.scan(/\{\{([^}#^\/!>]+)\}\}/).flatten.map(&:strip).uniq.reject do |var|
-        resolve_variable(var, variables)
-      end
-    end
-
-    # Check if a variable path exists in the variables hash
-    def resolve_variable(path, variables)
-      parts = path.split(".")
-      value = variables
-
-      parts.each do |part|
-        return nil unless value.is_a?(Hash)
-        # Try both string and symbol keys
-        value = value[part] || value[part.to_sym]
-        return nil if value.nil?
-      end
-
-      value
-    end
-
-    # Convert hash keys to strings (handles both symbol and string keys)
-    def stringify_keys(hash)
-      return {} unless hash.is_a?(Hash)
-
-      hash.transform_keys(&:to_s).transform_values do |v|
-        v.is_a?(Hash) ? stringify_keys(v) : v
-      end
     end
   end
 end
