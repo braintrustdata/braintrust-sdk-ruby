@@ -75,6 +75,12 @@ module Braintrust
       @data.dig("prompt_data", "options") || {}
     end
 
+    # Get the template format
+    # @return [String] "mustache" (default), "nunjucks", or "none"
+    def template_format
+      @data.dig("prompt_data", "template_format") || "mustache"
+    end
+
     # Build the prompt with variable substitution
     #
     # Returns a hash ready to pass to an LLM client:
@@ -121,19 +127,34 @@ module Braintrust
 
     private
 
-    # Render Mustache template with variables
+    # Render template with variables based on template_format
     def render_template(text, variables, strict:)
       return text unless text.is_a?(String)
 
-      if strict
-        # Check for missing variables before rendering
-        missing = find_missing_variables(text, variables)
-        if missing.any?
-          raise Error, "Missing required variables: #{missing.join(", ")}"
+      case template_format
+      when "none"
+        # No templating - return text unchanged
+        text
+      when "nunjucks"
+        # Nunjucks is a UI-only feature in Braintrust
+        raise Error, "Nunjucks templates are not supported in the Ruby SDK. " \
+                     "Nunjucks only works in Braintrust playgrounds. " \
+                     "Please use 'mustache' or 'none' template format, or invoke the prompt via the API proxy."
+      when "mustache", "", nil
+        # Default: Mustache templating
+        if strict
+          # Check for missing variables before rendering
+          missing = find_missing_variables(text, variables)
+          if missing.any?
+            raise Error, "Missing required variables: #{missing.join(", ")}"
+          end
         end
-      end
 
-      Vendor::Mustache.render(text, variables)
+        Vendor::Mustache.render(text, variables)
+      else
+        raise Error, "Unknown template format: #{template_format.inspect}. " \
+                     "Supported formats are 'mustache' and 'none'."
+      end
     end
 
     # Find variables in template that are not provided

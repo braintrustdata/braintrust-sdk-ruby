@@ -170,6 +170,73 @@ class Braintrust::PromptTest < Minitest::Test
     # Should be raw, not &amp; or &quot;
     assert_equal 'Search for: foo & bar "baz"', result[:messages][0][:content]
   end
+
+  # Template format tests
+
+  def test_template_format_defaults_to_mustache
+    prompt = Braintrust::Prompt.new(@function_data)
+
+    assert_equal "mustache", prompt.template_format
+  end
+
+  def test_template_format_explicit_mustache
+    data = @function_data.dup
+    data["prompt_data"]["template_format"] = "mustache"
+    prompt = Braintrust::Prompt.new(data)
+
+    assert_equal "mustache", prompt.template_format
+
+    # Should render mustache templates
+    result = prompt.build(name: "Alice", task: "coding")
+    assert_equal "Hello Alice, please help with coding.", result[:messages][1][:content]
+  end
+
+  def test_template_format_none_returns_unchanged
+    data = @function_data.dup
+    data["prompt_data"]["template_format"] = "none"
+    data["prompt_data"]["prompt"]["messages"] = [
+      {"role" => "user", "content" => "Literal {{braces}} should stay as-is"}
+    ]
+    prompt = Braintrust::Prompt.new(data)
+
+    assert_equal "none", prompt.template_format
+
+    # Should NOT render - return template unchanged
+    result = prompt.build(braces: "REPLACED")
+    assert_equal "Literal {{braces}} should stay as-is", result[:messages][0][:content]
+  end
+
+  def test_template_format_nunjucks_raises_error
+    data = @function_data.dup
+    data["prompt_data"]["template_format"] = "nunjucks"
+    data["prompt_data"]["prompt"]["messages"] = [
+      {"role" => "user", "content" => "{% if name %}Hello {{name}}{% endif %}"}
+    ]
+    prompt = Braintrust::Prompt.new(data)
+
+    assert_equal "nunjucks", prompt.template_format
+
+    error = assert_raises(Braintrust::Error) do
+      prompt.build(name: "Alice")
+    end
+
+    assert_match(/nunjucks/i, error.message)
+    assert_match(/not supported/i, error.message)
+    assert_match(/ruby sdk/i, error.message)
+  end
+
+  def test_template_format_unknown_raises_error
+    data = @function_data.dup
+    data["prompt_data"]["template_format"] = "jinja2"
+    prompt = Braintrust::Prompt.new(data)
+
+    error = assert_raises(Braintrust::Error) do
+      prompt.build(name: "Alice", task: "coding")
+    end
+
+    assert_match(/unknown template format/i, error.message)
+    assert_match(/jinja2/i, error.message)
+  end
 end
 
 class Braintrust::PromptLoadTest < Minitest::Test
