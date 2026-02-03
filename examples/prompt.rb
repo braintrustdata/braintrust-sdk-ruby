@@ -20,11 +20,11 @@ require "bundler/setup"
 require "braintrust"
 require "openai"
 
-# Initialize Braintrust with tracing
+# Initialize Braintrust (auto-instruments OpenAI automatically)
 Braintrust.init
 
-# Wrap OpenAI client for tracing
-openai = Braintrust::Trace::OpenAI.wrap(OpenAI::Client.new)
+# Create OpenAI client (auto-instrumented for tracing)
+openai = OpenAI::Client.new
 
 project_name = "ruby-sdk-examples"
 prompt_slug = "greeting-prompt-#{Time.now.to_i}"
