@@ -88,9 +88,12 @@ module Braintrust
       # Get a function by ID (includes full prompt_data)
       # GET /v1/function/{id}
       # @param id [String] Function UUID
+      # @param version [String, nil] Retrieve prompt at a specific version (transaction ID or version identifier)
       # @return [Hash] Full function data including prompt_data
-      def get(id:)
-        http_get("/v1/function/#{id}")
+      def get(id:, version: nil)
+        params = {}
+        params["version"] = version if version
+        http_get("/v1/function/#{id}", params)
       end
 
       # Delete a function by ID

@@ -302,4 +302,54 @@ class Braintrust::PromptLoadTest < Minitest::Test
       OpenTelemetry.tracer_provider.shutdown
     end
   end
+
+  def test_prompt_load_with_version
+    VCR.use_cassette("prompt/load_with_version") do
+      Braintrust.init(blocking_login: true)
+
+      api = Braintrust::API.new
+      slug = "test-prompt-version"
+
+      # Create a prompt and capture its version (_xact_id)
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Version test: {{name}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      version_id = created["_xact_id"]
+      assert version_id, "Expected _xact_id in response"
+
+      # Load the prompt with explicit version
+      prompt = Braintrust::Prompt.load(
+        project: @project_name,
+        slug: slug,
+        version: version_id
+      )
+
+      assert_instance_of Braintrust::Prompt, prompt
+      assert_equal slug, prompt.slug
+      assert_equal "gpt-4o-mini", prompt.model
+
+      # Build and verify content
+      result = prompt.build(name: "World")
+      assert_equal "Version test: World", result[:messages][0][:content]
+
+      # Clean up
+      api.functions.delete(id: prompt.id)
+    ensure
+      OpenTelemetry.tracer_provider.shutdown
+    end
+  end
 end

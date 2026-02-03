@@ -32,7 +32,7 @@ module Braintrust
       raise Error, "Prompt '#{slug}' not found in project '#{project}'" unless function
 
       # Fetch full function data including prompt_data
-      full_data = api.functions.get(id: function["id"])
+      full_data = api.functions.get(id: function["id"], version: version)
 
       new(full_data, defaults: defaults)
     end
