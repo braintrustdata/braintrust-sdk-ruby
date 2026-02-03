@@ -275,14 +275,17 @@ class Braintrust::PromptLoadTest < Minitest::Test
     @project_name = "ruby-sdk-test"
   end
 
+  def get_test_state
+    get_integration_test_state(enable_tracing: false)
+  end
+
   def test_prompt_load
     VCR.use_cassette("prompt/load") do
-      Braintrust.init(blocking_login: true)
-
-      # Create a prompt first
-      api = Braintrust::API.new
+      state = get_test_state
+      api = Braintrust::API.new(state: state)
       slug = "test-prompt-load"
 
+      # Create a prompt first
       api.functions.create(
         project_name: @project_name,
         slug: slug,
@@ -301,7 +304,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
       )
 
       # Load the prompt using Prompt.load
-      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug)
+      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug, state: state)
 
       assert_instance_of Braintrust::Prompt, prompt
       assert_equal slug, prompt.slug
@@ -314,30 +317,25 @@ class Braintrust::PromptLoadTest < Minitest::Test
 
       # Clean up
       api.functions.delete(id: prompt.id)
-    ensure
-      OpenTelemetry.tracer_provider.shutdown
     end
   end
 
   def test_prompt_load_not_found
     VCR.use_cassette("prompt/load_not_found") do
-      Braintrust.init(blocking_login: true)
+      state = get_test_state
 
       error = assert_raises(Braintrust::Error) do
-        Braintrust::Prompt.load(project: @project_name, slug: "nonexistent-prompt-xyz")
+        Braintrust::Prompt.load(project: @project_name, slug: "nonexistent-prompt-xyz", state: state)
       end
 
       assert_match(/not found/i, error.message)
-    ensure
-      OpenTelemetry.tracer_provider.shutdown
     end
   end
 
   def test_prompt_load_with_version
     VCR.use_cassette("prompt/load_with_version") do
-      Braintrust.init(blocking_login: true)
-
-      api = Braintrust::API.new
+      state = get_test_state
+      api = Braintrust::API.new(state: state)
       slug = "test-prompt-version"
 
       # Create a prompt and capture its version (_xact_id)
@@ -365,7 +363,8 @@ class Braintrust::PromptLoadTest < Minitest::Test
       prompt = Braintrust::Prompt.load(
         project: @project_name,
         slug: slug,
-        version: version_id
+        version: version_id,
+        state: state
       )
 
       assert_instance_of Braintrust::Prompt, prompt
@@ -378,16 +377,13 @@ class Braintrust::PromptLoadTest < Minitest::Test
 
       # Clean up
       api.functions.delete(id: prompt.id)
-    ensure
-      OpenTelemetry.tracer_provider.shutdown
     end
   end
 
   def test_prompt_load_with_tools
     VCR.use_cassette("prompt/load_with_tools") do
-      Braintrust.init(blocking_login: true)
-
-      api = Braintrust::API.new
+      state = get_test_state
+      api = Braintrust::API.new(state: state)
       slug = "test-prompt-tools"
 
       # Tools in OpenAI format - stored as JSON string per API schema
@@ -426,7 +422,7 @@ class Braintrust::PromptLoadTest < Minitest::Test
       )
 
       # Load the prompt
-      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug)
+      prompt = Braintrust::Prompt.load(project: @project_name, slug: slug, state: state)
 
       # Verify tools accessor
       assert_instance_of Array, prompt.tools
@@ -441,8 +437,6 @@ class Braintrust::PromptLoadTest < Minitest::Test
 
       # Clean up
       api.functions.delete(id: prompt.id)
-    ensure
-      OpenTelemetry.tracer_provider.shutdown
     end
   end
 end
