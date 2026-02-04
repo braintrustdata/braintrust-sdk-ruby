@@ -181,7 +181,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
             output.to_s.include?(expected) ? 1.0 : 0.0
           end
         ],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -246,7 +246,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 

@@ -16,7 +16,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_basic
     VCR.use_cassette("eval/run_basic") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
@@ -32,7 +32,7 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -45,7 +45,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_task_error
     VCR.use_cassette("eval/run_task_error") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) {
         raise "Task failed!" if input == "bad"
@@ -65,7 +65,7 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -77,7 +77,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_scorer_error
     VCR.use_cassette("eval/run_scorer_error") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) { input.upcase }
 
@@ -95,7 +95,7 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -125,7 +125,7 @@ class Braintrust::EvalTest < Minitest::Test
       cases: [{input: "bad", expected: "BAD"}],
       task: task,
       scorers: [good_scorer, failing_scorer],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -149,7 +149,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_multiple_scorers
     VCR.use_cassette("eval/run_multiple_scorers") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) { input.upcase }
 
@@ -169,7 +169,7 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer1, scorer2],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -179,7 +179,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_callable_task
     VCR.use_cassette("eval/run_callable_task") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       callable_task = Class.new do
         def call(input)
@@ -199,7 +199,7 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: callable_task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -220,16 +220,14 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_validates_task_callable
     # Test that task must be callable (no API call needed)
-    state = get_unit_test_state
-
+    # Note: Validation happens before API is used, so we can pass nil
     error = assert_raises(ArgumentError) do
       Braintrust::Eval.run(
         project: "test",
         experiment: "test",
         cases: [],
         task: "not callable",  # String is not callable
-        scorers: [],
-        state: state
+        scorers: []
       )
     end
 
@@ -238,7 +236,7 @@ class Braintrust::EvalTest < Minitest::Test
 
   def test_eval_run_with_method_scorer
     VCR.use_cassette("eval/run_method_scorer") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) { input.upcase }
       # Use a lambda instead of nested method
@@ -252,7 +250,7 @@ class Braintrust::EvalTest < Minitest::Test
         ],
         task: task,
         scorers: [test_method_scorer],  # Pass lambda directly
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -279,7 +277,7 @@ class Braintrust::EvalTest < Minitest::Test
       cases: [{input: "bad", expected: "BAD"}],
       task: task,
       scorers: [scorer],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -308,7 +306,7 @@ class Braintrust::EvalTest < Minitest::Test
       rig = setup_otel_test_rig
 
       # Initialize and login
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
@@ -319,7 +317,7 @@ class Braintrust::EvalTest < Minitest::Test
         cases: [{input: "hello", expected: "HELLO"}],
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         tracer_provider: rig.tracer_provider,
         quiet: true
       )
@@ -367,8 +365,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as string (same project as experiment)
   def test_eval_run_with_dataset_string
     VCR.use_cassette("eval/dataset_string") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_integration_test_api
 
       # Create a test dataset with records
       project_name = "ruby-sdk-test"
@@ -403,7 +400,7 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: dataset_name,  # String - should fetch from same project
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -417,8 +414,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as hash with name + project
   def test_eval_run_with_dataset_hash_name_project
     VCR.use_cassette("eval/dataset_hash_name_project") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_integration_test_api
 
       # Create a test dataset
       project_name = "ruby-sdk-test"
@@ -446,7 +442,7 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: {name: dataset_name, project: project_name},
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -457,8 +453,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset as hash with id
   def test_eval_run_with_dataset_hash_id
     VCR.use_cassette("eval/dataset_hash_id") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_integration_test_api
 
       # Create a test dataset
       project_name = "ruby-sdk-test"
@@ -486,7 +481,7 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: {id: dataset_id},  # By ID only
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -497,8 +492,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: dataset with limit option
   def test_eval_run_with_dataset_limit
     VCR.use_cassette("eval/dataset_limit") do
-      state = get_integration_test_state
-      api = Braintrust::API.new(state: state)
+      api = get_integration_test_api
 
       # Create a test dataset with multiple records
       project_name = "ruby-sdk-test"
@@ -537,7 +531,7 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: {name: dataset_name, project: project_name, limit: 2},
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         quiet: true
       )
 
@@ -549,7 +543,7 @@ class Braintrust::EvalTest < Minitest::Test
   # Test dataset integration: error when both dataset and cases provided
   def test_eval_run_with_both_dataset_and_cases_errors
     VCR.use_cassette("eval/run_both_dataset_and_cases_error") do
-      state = get_integration_test_state
+      api = get_integration_test_api
 
       task = ->(input) { input.upcase }
       scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
@@ -563,7 +557,7 @@ class Braintrust::EvalTest < Minitest::Test
           cases: [{input: "test"}],
           task: task,
           scorers: [scorer],
-          state: state
+          api: api
         )
       end
 
@@ -599,7 +593,7 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       parallelism: 3,
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -635,7 +629,7 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       parallelism: 1,
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -666,7 +660,7 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       parallelism: 3,
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -692,7 +686,7 @@ class Braintrust::EvalTest < Minitest::Test
         task: task,
         scorers: [scorer],
         parallelism: max_parallelism + 1,
-        state: rig.state,
+        api: rig.api,
         tracer_provider: rig.tracer_provider
       )
     end
@@ -724,7 +718,7 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       parallelism: 0,
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
     assert result.success?
@@ -744,7 +738,7 @@ class Braintrust::EvalTest < Minitest::Test
       task: task,
       scorers: [scorer],
       parallelism: -1,
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
     assert result.success?
@@ -756,30 +750,6 @@ class Braintrust::EvalTest < Minitest::Test
   # ============================================
   # Origin is automatically generated when using remote datasets.
   # It links eval spans back to their source dataset records in the UI.
-
-  def test_build_dataset_origin_uses_fallback_dataset_id
-    # Some API responses may not include dataset_id in the record itself
-    record = {
-      "id" => "record-123",
-      "_xact_id" => "1000196022104685824",
-      "created" => "2025-10-24T15:29:18.118Z"
-    }
-
-    origin = Braintrust::Eval.send(:build_dataset_origin, record, "fallback-dataset-id")
-
-    parsed = JSON.parse(origin)
-    assert_equal "fallback-dataset-id", parsed["object_id"]
-  end
-
-  def test_build_dataset_origin_returns_nil_when_missing_required_fields
-    # Missing id - can't link to a specific record
-    record_no_id = {"_xact_id" => "1000196022104685824"}
-    assert_nil Braintrust::Eval.send(:build_dataset_origin, record_no_id, "dataset-id")
-
-    # Missing _xact_id - can't identify the transaction
-    record_no_xact = {"id" => "record-123"}
-    assert_nil Braintrust::Eval.send(:build_dataset_origin, record_no_xact, "dataset-id")
-  end
 
   def test_runner_does_not_set_origin_when_case_has_no_origin
     # Inline cases (not from remote datasets) have no origin
@@ -796,7 +766,7 @@ class Braintrust::EvalTest < Minitest::Test
       cases: [{input: "hello", expected: "HELLO"}],
       task: task,
       scorers: [scorer],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -813,10 +783,8 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/dataset_origin") do
       # Set up span capture (uses unit test state internally, but we override state for API calls)
       rig = setup_otel_test_rig
-      # Get integration state for real API calls via VCR
-      state = get_integration_test_state
-
-      api = Braintrust::API.new(state: state)
+      # Get integration API for real API calls via VCR
+      api = get_integration_test_api
 
       # Create/reuse test dataset (idempotent)
       project_name = "ruby-sdk-test"
@@ -845,7 +813,7 @@ class Braintrust::EvalTest < Minitest::Test
         dataset: dataset_name,
         task: task,
         scorers: [scorer],
-        state: state,
+        api: api,
         tracer_provider: rig.tracer_provider,
         quiet: true
       )
