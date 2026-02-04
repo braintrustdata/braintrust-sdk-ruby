@@ -2,7 +2,8 @@
 
 require_relative "eval/scorer"
 require_relative "eval/runner"
-require_relative "internal/experiments"
+require_relative "api/internal/projects"
+require_relative "api/internal/experiments"
 require_relative "dataset"
 
 require "opentelemetry/sdk"
@@ -223,16 +224,22 @@ module Braintrust
           cases = resolve_dataset(dataset, project, api)
         end
 
-        # Register project and experiment via API
-        # Note: Internal::Experiments still takes state, will be refactored later
-        result = Internal::Experiments.get_or_create(
-          experiment, project, state: api.state,
-          tags: tags, metadata: metadata, update: update
+        # Register project and experiment via internal API
+        projects_api = API::Internal::Projects.new(api.state)
+        experiments_api = API::Internal::Experiments.new(api.state)
+
+        project_result = projects_api.create(name: project)
+        experiment_result = experiments_api.create(
+          name: experiment,
+          project_id: project_result["id"],
+          ensure_new: !update,
+          tags: tags,
+          metadata: metadata
         )
 
-        experiment_id = result[:experiment_id]
-        project_id = result[:project_id]
-        project_name = result[:project_name]
+        experiment_id = experiment_result["id"]
+        project_id = project_result["id"]
+        project_name = project_result["name"]
 
         # Instantiate Runner and run evaluation
         runner = Runner.new(
