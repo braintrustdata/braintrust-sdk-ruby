@@ -757,30 +757,6 @@ class Braintrust::EvalTest < Minitest::Test
   # Origin is automatically generated when using remote datasets.
   # It links eval spans back to their source dataset records in the UI.
 
-  def test_build_dataset_origin_uses_fallback_dataset_id
-    # Some API responses may not include dataset_id in the record itself
-    record = {
-      "id" => "record-123",
-      "_xact_id" => "1000196022104685824",
-      "created" => "2025-10-24T15:29:18.118Z"
-    }
-
-    origin = Braintrust::Eval.send(:build_dataset_origin, record, "fallback-dataset-id")
-
-    parsed = JSON.parse(origin)
-    assert_equal "fallback-dataset-id", parsed["object_id"]
-  end
-
-  def test_build_dataset_origin_returns_nil_when_missing_required_fields
-    # Missing id - can't link to a specific record
-    record_no_id = {"_xact_id" => "1000196022104685824"}
-    assert_nil Braintrust::Eval.send(:build_dataset_origin, record_no_id, "dataset-id")
-
-    # Missing _xact_id - can't identify the transaction
-    record_no_xact = {"id" => "record-123"}
-    assert_nil Braintrust::Eval.send(:build_dataset_origin, record_no_xact, "dataset-id")
-  end
-
   def test_runner_does_not_set_origin_when_case_has_no_origin
     # Inline cases (not from remote datasets) have no origin
     rig = setup_otel_test_rig

@@ -3,7 +3,7 @@
 require_relative "eval/scorer"
 require_relative "eval/runner"
 require_relative "internal/experiments"
-require_relative "internal/origin"
+require_relative "dataset"
 
 require "opentelemetry/sdk"
 require "json"
@@ -221,7 +221,8 @@ module Braintrust
 
         # Resolve dataset to cases if dataset parameter provided
         if dataset
-          cases = resolve_dataset(dataset, project, state)
+          api = API.new(state: state)
+          cases = resolve_dataset(dataset, project, api)
         end
 
         # Register project and experiment via API
@@ -286,104 +287,29 @@ module Braintrust
       end
 
       # Resolve dataset parameter to an array of case records
-      # @param dataset [String, Hash] Dataset specifier
-      # @param project [String] Project name (used as default if not specified in hash)
-      # @param state [State] Braintrust state
+      # @param dataset [String, Hash, Dataset] Dataset specifier or instance
+      # @param project [String] Project name (used as default if not specified)
+      # @param api [API] Braintrust API client
       # @return [Array<Hash>] Array of case records
-      def resolve_dataset(dataset, project, state)
-        require_relative "api"
+      def resolve_dataset(dataset, project, api)
+        limit = nil
 
-        # Parse dataset parameter
-        dataset_opts = case dataset
+        dataset_obj = case dataset
+        when Dataset
+          dataset
         when String
-          # String: dataset name in same project
-          {name: dataset, project: project}
+          Dataset.new(name: dataset, project: project, api: api)
         when Hash
-          # Hash: explicit options
-          dataset.dup
+          opts = dataset.dup
+          limit = opts.delete(:limit)
+          opts[:project] ||= project
+          opts[:api] = api
+          Dataset.new(**opts)
         else
-          raise ArgumentError, "dataset must be String or Hash, got #{dataset.class}"
+          raise ArgumentError, "dataset must be String, Hash, or Dataset, got #{dataset.class}"
         end
 
-        # Apply defaults
-        dataset_opts[:project] ||= project
-
-        # Create API client
-        api = API.new(state: state)
-
-        # Resolve dataset ID
-        dataset_id = if dataset_opts[:id]
-          # ID provided directly
-          dataset_opts[:id]
-        elsif dataset_opts[:name]
-          # Fetch by name + project
-          metadata = api.datasets.get(
-            project_name: dataset_opts[:project],
-            name: dataset_opts[:name]
-          )
-          metadata["id"]
-        else
-          raise ArgumentError, "dataset hash must specify either :name or :id"
-        end
-
-        # Fetch records with pagination
-        limit_per_page = 1000
-        max_records = dataset_opts[:limit]
-        version = dataset_opts[:version]
-        records = []
-        cursor = nil
-
-        loop do
-          result = api.datasets.fetch(
-            id: dataset_id,
-            limit: limit_per_page,
-            cursor: cursor,
-            version: version
-          )
-
-          records.concat(result[:records])
-
-          # Check if we've hit the user-specified limit
-          if max_records && records.length >= max_records
-            records = records.take(max_records)
-            break
-          end
-
-          # Check if there's more data
-          cursor = result[:cursor]
-          break unless cursor
-        end
-
-        # Filter records to only include Case-compatible fields
-        # Case accepts: input, expected, tags, metadata, origin
-        records.map do |record|
-          filtered = {}
-          filtered[:input] = record["input"] if record.key?("input")
-          filtered[:expected] = record["expected"] if record.key?("expected")
-          filtered[:tags] = record["tags"] if record.key?("tags")
-          filtered[:metadata] = record["metadata"] if record.key?("metadata")
-
-          origin = build_dataset_origin(record, dataset_id)
-          filtered[:origin] = origin if origin
-
-          filtered
-        end
-      end
-
-      # Build origin JSON for a dataset record
-      # @param record [Hash] Record from dataset fetch API
-      # @param dataset_id [String] Dataset ID (fallback if not in record)
-      # @return [String, nil] JSON-serialized origin, or nil if record lacks required fields
-      def build_dataset_origin(record, dataset_id)
-        return nil unless record["id"] && record["_xact_id"]
-
-        Internal::Origin.to_json(
-          object_type: "dataset",
-          object_id: record["dataset_id"] || dataset_id,
-          id: record["id"],
-          xact_id: record["_xact_id"],
-          created: record["created"]
-        )
+        dataset_obj.fetch_all(limit: limit)
       end
     end
   end
