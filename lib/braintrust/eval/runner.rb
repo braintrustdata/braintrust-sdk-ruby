@@ -116,6 +116,9 @@ module Braintrust
           set_json_attr(eval_span, "braintrust.input_json", test_case.input)
           set_json_attr(eval_span, "braintrust.output_json", output)
           set_json_attr(eval_span, "braintrust.expected", test_case.expected) if test_case.expected
+
+          # Set origin for cases from remote sources (already JSON-serialized)
+          eval_span.set_attribute("braintrust.origin", test_case.origin) if test_case.origin
         end
       end
 

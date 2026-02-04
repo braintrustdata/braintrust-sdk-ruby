@@ -750,4 +750,125 @@ class Braintrust::EvalTest < Minitest::Test
     assert result.success?
     assert_equal %w[a b], order
   end
+
+  # ============================================
+  # Origin tests (for remote dataset linking)
+  # ============================================
+  # Origin is automatically generated when using remote datasets.
+  # It links eval spans back to their source dataset records in the UI.
+
+  def test_build_dataset_origin_uses_fallback_dataset_id
+    # Some API responses may not include dataset_id in the record itself
+    record = {
+      "id" => "record-123",
+      "_xact_id" => "1000196022104685824",
+      "created" => "2025-10-24T15:29:18.118Z"
+    }
+
+    origin = Braintrust::Eval.send(:build_dataset_origin, record, "fallback-dataset-id")
+
+    parsed = JSON.parse(origin)
+    assert_equal "fallback-dataset-id", parsed["object_id"]
+  end
+
+  def test_build_dataset_origin_returns_nil_when_missing_required_fields
+    # Missing id - can't link to a specific record
+    record_no_id = {"_xact_id" => "1000196022104685824"}
+    assert_nil Braintrust::Eval.send(:build_dataset_origin, record_no_id, "dataset-id")
+
+    # Missing _xact_id - can't identify the transaction
+    record_no_xact = {"id" => "record-123"}
+    assert_nil Braintrust::Eval.send(:build_dataset_origin, record_no_xact, "dataset-id")
+  end
+
+  def test_runner_does_not_set_origin_when_case_has_no_origin
+    # Inline cases (not from remote datasets) have no origin
+    rig = setup_otel_test_rig
+
+    task = ->(input) { input.upcase }
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+    run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-no-origin",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [{input: "hello", expected: "HELLO"}],
+      task: task,
+      scorers: [scorer],
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    spans = rig.drain
+    eval_span = spans.find { |s| s.name == "eval" }
+
+    assert eval_span, "Expected eval span"
+    assert_nil eval_span.attributes["braintrust.origin"]
+  end
+
+  # Integration test: verify real API dataset records result in correct origin on spans
+  # Note: Dataset is not deleted after test - relies on idempotent create (same pattern as other dataset tests)
+  def test_eval_with_remote_dataset_sets_origin_from_api_response
+    VCR.use_cassette("eval/dataset_origin") do
+      # Set up span capture (uses unit test state internally, but we override state for API calls)
+      rig = setup_otel_test_rig
+      # Get integration state for real API calls via VCR
+      state = get_integration_test_state
+
+      api = Braintrust::API.new(state: state)
+
+      # Create/reuse test dataset (idempotent)
+      project_name = "ruby-sdk-test"
+      dataset_name = "test-ruby-sdk-dataset-origin"
+
+      result = api.datasets.create(
+        name: dataset_name,
+        project_name: project_name,
+        description: "Test dataset for origin integration"
+      )
+      dataset_id = result["dataset"]["id"]
+
+      # Insert test record
+      api.datasets.insert(
+        id: dataset_id,
+        events: [{input: "origin-test", expected: "ORIGIN-TEST"}]
+      )
+
+      # Run eval with remote dataset
+      task = ->(input) { input.upcase }
+      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+      eval_result = Braintrust::Eval.run(
+        project: project_name,
+        experiment: "test-ruby-sdk-exp-origin",
+        dataset: dataset_name,
+        task: task,
+        scorers: [scorer],
+        state: state,
+        tracer_provider: rig.tracer_provider,
+        quiet: true
+      )
+
+      assert eval_result.success?
+
+      # Verify origin was set on eval spans
+      spans = rig.drain
+      eval_spans = spans.select { |s| s.name == "eval" }
+      assert eval_spans.any?, "Expected at least one eval span"
+
+      # All eval spans from a dataset should have origin
+      eval_spans.each do |span|
+        origin_json = span.attributes["braintrust.origin"]
+        assert origin_json, "Expected braintrust.origin on eval span"
+
+        # Verify origin structure matches expected format
+        origin = JSON.parse(origin_json)
+        assert_equal "dataset", origin["object_type"]
+        assert origin["object_id"], "origin.object_id should be present"
+        assert origin["id"], "origin.id (record id) should be present"
+        assert origin["_xact_id"], "origin._xact_id should be present"
+      end
+    end
+  end
 end

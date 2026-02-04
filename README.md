@@ -22,7 +22,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
   - [Viewing traces](#viewing-traces)
 - [Evals](#evals)
   - [Datasets](#datasets)
-  - [Remote scorers](#remote-scorers)
+  - [Scorers](#scorers)
 - [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -260,7 +260,7 @@ Braintrust::Eval.run(
 
 ### Datasets
 
-Load test cases from a Braintrust dataset:
+Use test cases from a Braintrust dataset:
 
 ```ruby
 Braintrust::Eval.run(
@@ -271,7 +271,22 @@ Braintrust::Eval.run(
 )
 ```
 
-### Remote scorers
+Or define test cases inline with metadata and tags:
+
+```ruby
+Braintrust::Eval.run(
+  project: "my-project",
+  experiment: "classifier-v1",
+  cases: [
+    {input: "apple", expected: "fruit", tags: ["produce"], metadata: {difficulty: "easy"}},
+    {input: "salmon", expected: "protein", tags: ["seafood"], metadata: {difficulty: "medium"}}
+  ],
+  task: ->(input) { classify(input) },
+  scorers: [...]
+)
+```
+
+### Scorers
 
 Use scoring functions defined in Braintrust:
 
@@ -281,7 +296,22 @@ Braintrust::Eval.run(
   cases: [...],
   task: ->(input) { ... },
   scorers: [
-    Braintrust::Scorer.remote("my-project", "accuracy-scorer")
+    Braintrust::Eval::Functions.scorer(project: "my-project", slug: "accuracy-scorer")
+  ]
+)
+```
+
+Or define scorers inline with `Eval.scorer`:
+
+```ruby
+Braintrust::Eval.run(
+  project: "my-project",
+  cases: [...],
+  task: ->(input) { ... },
+  scorers: [
+    Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+      output == expected ? 1.0 : 0.0
+    end
   ]
 )
 ```
