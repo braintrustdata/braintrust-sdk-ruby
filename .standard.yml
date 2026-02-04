@@ -1,0 +1,5 @@
+# StandardRB configuration
+# https://github.com/standardrb/standard
+
+ignore:
+  - "lib/braintrust/vendor/**/*"  # Vendored code follows upstream conventions

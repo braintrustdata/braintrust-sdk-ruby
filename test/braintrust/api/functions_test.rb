@@ -378,4 +378,93 @@ class Braintrust::API::FunctionsTest < Minitest::Test
       end
     end
   end
+
+  def test_functions_get_by_id
+    VCR.use_cassette("functions/get") do
+      api = get_test_api
+      # This test verifies that we can get the full function data by ID,
+      # including prompt_data which is needed for Prompt.load()
+      function_slug = "test-ruby-sdk-get-func"
+
+      # Create a function with prompt_data
+      create_response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a helpful assistant."},
+              {role: "user", content: "Hello {{name}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0.7}
+          }
+        }
+      )
+      function_id = create_response["id"]
+
+      # Get the full function data
+      result = api.functions.get(id: function_id)
+
+      assert_instance_of Hash, result
+      assert_equal function_id, result["id"]
+      assert_equal function_slug, result["slug"]
+
+      # Verify prompt_data is included
+      assert result.key?("prompt_data")
+      prompt_data = result["prompt_data"]
+      assert prompt_data.key?("prompt")
+      assert prompt_data["prompt"].key?("messages")
+      assert_equal 2, prompt_data["prompt"]["messages"].length
+
+      # Verify options are included
+      assert prompt_data.key?("options")
+      assert_equal "gpt-4o-mini", prompt_data["options"]["model"]
+
+      # Clean up
+      api.functions.delete(id: function_id)
+    end
+  end
+
+  def test_functions_get_with_version
+    VCR.use_cassette("functions/get_with_version") do
+      api = get_test_api
+      function_slug = "test-ruby-sdk-get-version"
+
+      # Create a function and capture its version (_xact_id)
+      create_response = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Version test message"}
+            ]
+          },
+          options: {model: "gpt-4o-mini"}
+        }
+      )
+      function_id = create_response["id"]
+      version_id = create_response["_xact_id"]
+
+      assert version_id, "Expected _xact_id in create response"
+
+      # Get the function with explicit version
+      result = api.functions.get(id: function_id, version: version_id)
+
+      assert_instance_of Hash, result
+      assert_equal function_id, result["id"]
+      assert_equal function_slug, result["slug"]
+      assert result.key?("prompt_data")
+
+      # Clean up
+      api.functions.delete(id: function_id)
+    end
+  end
 end

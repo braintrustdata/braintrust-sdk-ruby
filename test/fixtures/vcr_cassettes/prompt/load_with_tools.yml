@@ -1,0 +1,397 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://www.braintrust.dev/api/apikey/login
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - www.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,
+        Content-Type, Date, X-Api-Version
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS,PATCH,DELETE,POST,PUT
+      Access-Control-Allow-Origin:
+      - "*"
+      Cache-Control:
+      - public, max-age=0, must-revalidate
+      Content-Length:
+      - '395'
+      Content-Security-Policy:
+      - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
+        ''nonce-ZDFkMGEyMzAtYmU1Zi00ZTE0LWI4MjItYjY3YTNhYWZjMjE5''  *.js.stripe.com
+        js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
+        btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com
+        d4tuoctqmanu0.cloudfront.net; font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com
+        cdn.jsdelivr.net d4tuoctqmanu0.cloudfront.net fonts.googleapis.com mintlify-assets.b-cdn.net
+        fonts.cdnfonts.com; object-src ''none''; base-uri ''self''; form-action ''self'';
+        frame-ancestors ''self''; worker-src ''self'' blob:; report-uri https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=16;
+        report-to csp-endpoint-0'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Tue, 03 Feb 2026 16:42:24 GMT
+      Etag:
+      - '"12n7ok4b5phaz"'
+      Reporting-Endpoints:
+      - csp-endpoint-0="https://o4507221741076480.ingest.us.sentry.io/api/4507221754380288/security/?sentry_key=27fa5ac907cf7c6ce4a1ab2a03f805b4&sentry_environment=production&sentry_release=16"
+      Server:
+      - Vercel
+      Strict-Transport-Security:
+      - max-age=63072000
+      X-Clerk-Auth-Message:
+      - Invalid JWT form. A JWT consists of three parts separated by dots. (reason=token-invalid,
+        token-carrier=header)
+      X-Clerk-Auth-Reason:
+      - token-invalid
+      X-Clerk-Auth-Status:
+      - signed-out
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Matched-Path:
+      - "/api/apikey/login"
+      X-Nonce:
+      - ZDFkMGEyMzAtYmU1Zi00ZTE0LWI4MjItYjY3YTNhYWZjMjE5
+      X-Vercel-Cache:
+      - MISS
+      X-Vercel-Id:
+      - cle1::iad1::h84s4-1770136944328-d672984a107e
+    body:
+      encoding: UTF-8
+      string: '{"org_info":[{"id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"braintrustdata.com","api_url":"https://staging-api.braintrust.dev","git_metadata":{"fields":["commit","branch","tag","author_name","author_email","commit_message","commit_time","dirty"],"collect":"some"},"is_universal_api":true,"proxy_url":"https://staging-api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
+  recorded_at: Tue, 03 Feb 2026 16:42:24 GMT
+- request:
+    method: get
+    uri: https://staging-api.braintrust.dev/v1/project?project_name=ruby-sdk-test
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '269'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - CMH68-P1
+      - CMH68-P1
+      Date:
+      - Tue, 03 Feb 2026 16:42:24 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 64ed7b2f-c6af-4fe3-9a5c-dfe27d66375c
+      X-Bt-Internal-Trace-Id:
+      - 698225700000000073d4803fef0b51bd
+      X-Amz-Apigw-Id:
+      - YNrJpH4GoAMEvVw=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"10d-SEV8zdYyFxsGQVbFPF9yW/SqrIE"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-69822570-02a97bb7600882560cae1380;Parent=04f434b89e4e7c8b;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 a325baefc1f21c1691e3e84bbf7b8906.cloudfront.net (CloudFront), 1.1 e076775a891ac80c1e3adb1434253734.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - jFjTHgK9HY--VEoaSl8Srz9HR0m0L0p5iRwogo4e6lDoakm0mlx20A==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"objects":[{"id":"ac86d18e-af78-4caf-918d-b89ad108ec67","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"ruby-sdk-test","description":null,"created":"2025-10-22T03:32:12.324Z","deleted_at":null,"user_id":"f2ddc4e6-a51a-4a60-9734-9af4ea05c6ef","settings":null}]}'
+  recorded_at: Tue, 03 Feb 2026 16:42:24 GMT
+- request:
+    method: post
+    uri: https://staging-api.braintrust.dev/v1/function
+    body:
+      encoding: UTF-8
+      string: '{"project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-prompt-tools","name":"test-prompt-tools","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"user","content":"What
+        is the weather in {{city}}?"}],"tools":"[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+        the current weather in a location\",\"parameters\":{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"City
+        name\"}},\"required\":[\"location\"]}}}]"},"options":{"model":"gpt-4o-mini"}}}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '746'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - CMH68-P1
+      - CMH68-P1
+      Date:
+      - Tue, 03 Feb 2026 16:42:25 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 898ddabf-814d-4d58-b383-2590fb58fe9a
+      X-Bt-Internal-Trace-Id:
+      - 6982257000000000022807ed4476bdfa
+      X-Amz-Apigw-Id:
+      - YNrJrFK6IAMEvXw=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"2ea-LYRoVaHbEKEatY1aVi6aOl18504"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-69822570-30e10891009922183e64f79e;Parent=7b452c25456c1491;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 597391769ad998307dcc74a3c790e7c6.cloudfront.net (CloudFront), 1.1 8cfefd272d22e2fc7f6429802eca79b0.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - KA3EiiqSY6neuoto7Z3UgBnshyT0zYSSM2jjG6jIfGo0LSbDVUScyw==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"log_id":"p","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-prompt-tools","name":"test-prompt-tools","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"user","content":"What
+        is the weather in {{city}}?"}],"tools":"[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+        the current weather in a location\",\"parameters\":{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"City
+        name\"}},\"required\":[\"location\"]}}}]"},"options":{"model":"gpt-4o-mini"}},"id":"54bf3889-e339-4869-9dea-2d9524fc0540","created":"2026-02-03T16:42:24.919Z","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","_xact_id":"1000196599947750956"}'
+  recorded_at: Tue, 03 Feb 2026 16:42:25 GMT
+- request:
+    method: get
+    uri: https://staging-api.braintrust.dev/v1/function?project_name=ruby-sdk-test&slug=test-prompt-tools
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '865'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - CMH68-P1
+      - CMH68-P1
+      Date:
+      - Tue, 03 Feb 2026 16:42:26 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 56c51e8b-f77b-4175-aba3-83aae0476841
+      X-Bt-Internal-Trace-Id:
+      - 69822571000000003e48a514d09e88a5
+      X-Amz-Apigw-Id:
+      - YNrJyHh0oAMETAw=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"361-O3S4Sbw84UNJFYmmKW8EAmWnk28"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-69822571-6fb5640633651db97d7df84c;Parent=478ef94a42d603d5;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 597391769ad998307dcc74a3c790e7c6.cloudfront.net (CloudFront), 1.1 784ffc262e0c17e3566b62b0f85f34d0.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - gH9jk_MH0CT3lTYjHOmUVdzWAW4RkpI9WaSUBZsoPeGNeHl4wRx_NQ==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"objects":[{"id":"54bf3889-e339-4869-9dea-2d9524fc0540","_xact_id":"1000196599947750956","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","log_id":"p","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"test-prompt-tools","slug":"test-prompt-tools","description":null,"created":"2026-02-03T16:42:24.919Z","prompt_data":{"prompt":{"type":"chat","tools":"[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+        the current weather in a location\",\"parameters\":{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"City
+        name\"}},\"required\":[\"location\"]}}}]","messages":[{"role":"user","content":"What
+        is the weather in {{city}}?"}]},"options":{"model":"gpt-4o-mini"}},"tags":null,"metadata":null,"function_type":null,"function_data":{"type":"prompt"},"origin":null,"function_schema":null}]}'
+  recorded_at: Tue, 03 Feb 2026 16:42:26 GMT
+- request:
+    method: get
+    uri: https://staging-api.braintrust.dev/v1/function/54bf3889-e339-4869-9dea-2d9524fc0540
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '851'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - CMH68-P1
+      - CMH68-P1
+      Date:
+      - Tue, 03 Feb 2026 16:42:26 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - 05d3c865-33f7-4adc-b255-8e3ea2e06338
+      X-Bt-Internal-Trace-Id:
+      - 6982257200000000624807f7fb72df2b
+      X-Amz-Apigw-Id:
+      - YNrJ5HcmoAMEBGw=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"353-R0sY6kMiNsBCrx543jboP5r6O70"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-69822572-5d8d21811e4871550e692e44;Parent=28e49ed67466dc55;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 7d742df65452f74d1ef6daa93f595db8.cloudfront.net (CloudFront), 1.1 788c5a18883f334d0b09e6cda9d22c86.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - 6TwiapmAgQoawdDSZ19MIkBCKmI-WW7woUQePg50ENerX416PMFdYA==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"id":"54bf3889-e339-4869-9dea-2d9524fc0540","_xact_id":"1000196599947750956","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","log_id":"p","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"test-prompt-tools","slug":"test-prompt-tools","description":null,"created":"2026-02-03T16:42:24.919Z","prompt_data":{"prompt":{"type":"chat","tools":"[{\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"description\":\"Get
+        the current weather in a location\",\"parameters\":{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"City
+        name\"}},\"required\":[\"location\"]}}}]","messages":[{"role":"user","content":"What
+        is the weather in {{city}}?"}]},"options":{"model":"gpt-4o-mini"}},"tags":null,"metadata":null,"function_type":null,"function_data":{"type":"prompt"},"origin":null,"function_schema":null}'
+  recorded_at: Tue, 03 Feb 2026 16:42:26 GMT
+- request:
+    method: delete
+    uri: https://staging-api.braintrust.dev/v1/function/54bf3889-e339-4869-9dea-2d9524fc0540
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - staging-api.braintrust.dev
+      Authorization:
+      - Bearer <BRAINTRUST_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '277'
+      Connection:
+      - keep-alive
+      X-Amz-Cf-Pop:
+      - CMH68-P1
+      - CMH68-P1
+      Date:
+      - Tue, 03 Feb 2026 16:42:27 GMT
+      Access-Control-Allow-Credentials:
+      - 'true'
+      X-Amzn-Requestid:
+      - db1d0f4b-0533-4584-8d62-b30b3afc176f
+      X-Bt-Internal-Trace-Id:
+      - 69822572000000002917c3a08e258b31
+      X-Amz-Apigw-Id:
+      - YNrJ-Hm_IAMEjXA=
+      Vary:
+      - Origin, Accept-Encoding
+      Etag:
+      - W/"115-DyUp6466yAVGFZroE14vpI62SXI"
+      Access-Control-Expose-Headers:
+      - x-bt-cursor,x-bt-found-existing,x-bt-query-plan
+      X-Amzn-Trace-Id:
+      - Root=1-69822572-49dedce72c152701310955c8;Parent=282dd59264c300c8;Sampled=0;Lineage=1:fc3b4ff1:0
+      Via:
+      - 1.1 597391769ad998307dcc74a3c790e7c6.cloudfront.net (CloudFront), 1.1 a325baefc1f21c1691e3e84bbf7b8906.cloudfront.net
+        (CloudFront)
+      X-Cache:
+      - Miss from cloudfront
+      X-Amz-Cf-Id:
+      - 2VzPBA3zxdDfWmKlG9iU57yS_fHYINtWuSGjxebGgeSrXvPienHA6A==
+    body:
+      encoding: ASCII-8BIT
+      string: '{"log_id":"p","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-prompt-tools","id":"54bf3889-e339-4869-9dea-2d9524fc0540","created":"2026-02-03T16:42:26.748Z","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","_object_delete":true,"_xact_id":"1000196599947884626"}'
+  recorded_at: Tue, 03 Feb 2026 16:42:27 GMT
+recorded_with: VCR 6.4.0
