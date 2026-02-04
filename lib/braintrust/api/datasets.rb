@@ -85,7 +85,7 @@ module Braintrust
       # @param id [String] Dataset UUID
       # @return [String] Permalink URL
       def permalink(id:)
-        "#{@state.app_url}/app/#{@state.org_name}/object?object_type=dataset&object_id=#{id}"
+        @state.object_permalink(object_type: "dataset", object_id: id)
       end
 
       # Fetch records from dataset using BTQL

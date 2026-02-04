@@ -139,6 +139,16 @@ module Braintrust
       end
     end
 
+    # Generate a permalink URL to view an object in the Braintrust UI
+    # This is for the /object endpoint (experiments, datasets, etc.)
+    # For trace span permalinks, use Trace.permalink instead.
+    # @param object_type [String] Type of object (e.g., "experiment", "dataset")
+    # @param object_id [String] Object UUID
+    # @return [String] Permalink URL
+    def object_permalink(object_type:, object_id:)
+      "#{@app_url}/app/#{@org_name}/object?object_type=#{object_type}&object_id=#{object_id}"
+    end
+
     # Login to Braintrust API in a background thread with retry logic
     # Retries indefinitely with exponential backoff until success
     # Idempotent: returns early if already logged in

@@ -24,7 +24,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input.upcase },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -43,7 +43,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input.upcase },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -71,7 +71,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input },
       scorers: [Braintrust::Eval.scorer("test") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -95,7 +95,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -127,7 +127,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
           1.0
         }
       ],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -156,7 +156,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input },
       scorers: [Braintrust::Eval.scorer("test") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -174,7 +174,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input },
       scorers: [Braintrust::Eval.scorer("test") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -193,7 +193,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input },
       scorers: [Braintrust::Eval.scorer("test") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -220,7 +220,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -250,7 +250,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
           1.0
         }
       ],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -279,7 +279,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -307,7 +307,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -339,7 +339,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -368,7 +368,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -395,7 +395,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -419,7 +419,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input.upcase },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -442,7 +442,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input.upcase },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -465,7 +465,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input.upcase },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -491,7 +491,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         Braintrust::Eval.scorer("accuracy") { |i, e, o| 0.95 },
         Braintrust::Eval.scorer("relevance") { |i, e, o| 0.87 }
       ],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -526,7 +526,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -551,7 +551,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
         input.upcase
       },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 
@@ -575,7 +575,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       project_name: "test-project",
       task: ->(input) { input.upcase },
       scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }],
-      state: rig.state,
+      api: rig.api,
       tracer_provider: rig.tracer_provider
     )
 

@@ -200,34 +200,33 @@ module Braintrust
       # @param metadata [Hash] Optional experiment metadata
       # @param update [Boolean] If true, allow reusing existing experiment (default: false)
       # @param quiet [Boolean] If true, suppress result output (default: false)
-      # @param state [State, nil] Braintrust state (defaults to global state)
+      # @param api [API, nil] Braintrust API client (defaults to API.new using global state)
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider (defaults to global)
       # @return [Result]
       def run(project:, experiment:, task:, scorers:,
         cases: nil, dataset: nil,
         parallelism: 1, tags: nil, metadata: nil, update: false, quiet: false,
-        state: nil, tracer_provider: nil)
+        api: nil, tracer_provider: nil)
         # Validate required parameters
         validate_params!(project: project, experiment: experiment,
           cases: cases, dataset: dataset, task: task, scorers: scorers)
 
-        # Get state from parameter or global
-        state ||= Braintrust.current_state
-        raise Error, "No state available" unless state
+        # Get API from parameter or create from global state
+        api ||= API.new
 
-        # Ensure state is logged in (to populate org_name, etc.)
+        # Ensure logged in (to populate org_name, etc.)
         # login is idempotent and returns early if already logged in
-        state.login
+        api.login
 
         # Resolve dataset to cases if dataset parameter provided
         if dataset
-          api = API.new(state: state)
           cases = resolve_dataset(dataset, project, api)
         end
 
         # Register project and experiment via API
+        # Note: Internal::Experiments still takes state, will be refactored later
         result = Internal::Experiments.get_or_create(
-          experiment, project, state: state,
+          experiment, project, state: api.state,
           tags: tags, metadata: metadata, update: update
         )
 
@@ -243,7 +242,7 @@ module Braintrust
           project_name: project_name,
           task: task,
           scorers: scorers,
-          state: state,
+          api: api,
           tracer_provider: tracer_provider
         )
         result = runner.run(cases, parallelism: parallelism)

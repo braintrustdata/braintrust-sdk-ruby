@@ -18,14 +18,14 @@ module Braintrust
       MAX_PARALLELISM = Internal::ThreadPool::MAX_PARALLELISM
 
       def initialize(experiment_id:, experiment_name:, project_id:, project_name:,
-        task:, scorers:, state:, tracer_provider: nil)
+        task:, scorers:, api:, tracer_provider: nil)
         @experiment_id = experiment_id
         @experiment_name = experiment_name
         @project_id = project_id
         @project_name = project_name
         @task = task
         @scorers = normalize_scorers(scorers)
-        @state = state
+        @api = api
         @tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
         @tracer = @tracer_provider.tracer("braintrust-eval")
         @parent_attr = "experiment_id:#{experiment_id}"
@@ -61,7 +61,7 @@ module Braintrust
         duration = Time.now - start_time
 
         # Generate permalink
-        permalink = "#{state.app_url}/app/#{state.org_name}/object?object_type=experiment&object_id=#{experiment_id}"
+        permalink = @api.object_permalink(object_type: "experiment", object_id: experiment_id)
 
         Result.new(
           experiment_id: experiment_id,
@@ -78,7 +78,7 @@ module Braintrust
       private
 
       attr_reader :experiment_id, :experiment_name, :project_id, :project_name,
-        :task, :scorers, :state, :tracer, :parent_attr
+        :task, :scorers, :tracer, :parent_attr
 
       # Run a single test case with OpenTelemetry tracing
       # Creates eval span (parent) with task and score as children

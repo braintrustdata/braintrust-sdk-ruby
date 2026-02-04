@@ -64,8 +64,8 @@ module Test
         Braintrust.init(set_global: false, blocking_login: true, **options)
       end
 
-      # Creates an API client for integration tests (without polluting global state)
-      # This is the preferred way to get an API client for tests.
+      # Creates an API for integration tests
+      # This is the preferred way to get an API for tests.
       # @param options [Hash] Options to pass to get_integration_test_state
       # @return [Braintrust::API]
       def get_integration_test_api(**options)
@@ -74,8 +74,9 @@ module Test
       end
 
       # Helper to run eval internally without API calls for testing
+      # @param api [API] Braintrust API client
       def run_test_eval(experiment_id:, experiment_name:, project_id:, project_name:,
-        cases:, task:, scorers:, state:, parallelism: 1, tracer_provider: nil)
+        cases:, task:, scorers:, api:, parallelism: 1, tracer_provider: nil)
         runner = Braintrust::Eval::Runner.new(
           experiment_id: experiment_id,
           experiment_name: experiment_name,
@@ -83,7 +84,7 @@ module Test
           project_name: project_name,
           task: task,
           scorers: scorers,
-          state: state,
+          api: api,
           tracer_provider: tracer_provider
         )
         runner.run(cases, parallelism: parallelism)

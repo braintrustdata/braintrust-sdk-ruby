@@ -37,6 +37,12 @@ module Test
           @state = state
         end
 
+        # Get API client for the test state
+        # @return [Braintrust::API]
+        def api
+          @api ||= Braintrust::API.new(state: @state)
+        end
+
         # Get a tracer from the provider
         # @param name [String] tracer name (default: "test")
         # @return [OpenTelemetry::Trace::Tracer]
