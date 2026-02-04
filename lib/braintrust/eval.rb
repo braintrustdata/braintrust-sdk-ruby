@@ -3,6 +3,7 @@
 require_relative "eval/scorer"
 require_relative "eval/runner"
 require_relative "internal/experiments"
+require_relative "internal/origin"
 
 require "opentelemetry/sdk"
 require "json"
@@ -354,15 +355,35 @@ module Braintrust
         end
 
         # Filter records to only include Case-compatible fields
-        # Case accepts: input, expected, tags, metadata
+        # Case accepts: input, expected, tags, metadata, origin
         records.map do |record|
           filtered = {}
           filtered[:input] = record["input"] if record.key?("input")
           filtered[:expected] = record["expected"] if record.key?("expected")
           filtered[:tags] = record["tags"] if record.key?("tags")
           filtered[:metadata] = record["metadata"] if record.key?("metadata")
+
+          origin = build_dataset_origin(record, dataset_id)
+          filtered[:origin] = origin if origin
+
           filtered
         end
+      end
+
+      # Build origin JSON for a dataset record
+      # @param record [Hash] Record from dataset fetch API
+      # @param dataset_id [String] Dataset ID (fallback if not in record)
+      # @return [String, nil] JSON-serialized origin, or nil if record lacks required fields
+      def build_dataset_origin(record, dataset_id)
+        return nil unless record["id"] && record["_xact_id"]
+
+        Internal::Origin.to_json(
+          object_type: "dataset",
+          object_id: record["dataset_id"] || dataset_id,
+          id: record["id"],
+          xact_id: record["_xact_id"],
+          created: record["created"]
+        )
       end
     end
   end
