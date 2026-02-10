@@ -249,23 +249,31 @@ module Braintrust
         project_id = project_result["id"]
         project_name = project_result["name"]
 
-        # Instantiate Runner and run evaluation
-        runner = Runner.new(
-          experiment_id: experiment_id,
-          experiment_name: experiment,
-          project_id: project_id,
-          project_name: project_name,
-          task: task,
-          scorers: scorers,
-          api: api,
-          tracer_provider: tracer_provider
-        )
-        result = runner.run(cases, parallelism: parallelism)
+        # Enable span cache for evaluation
+        api.state.span_cache.start
 
-        # Print result summary unless quiet
-        print_result(result) unless quiet
+        begin
+          # Instantiate Runner and run evaluation
+          runner = Runner.new(
+            experiment_id: experiment_id,
+            experiment_name: experiment,
+            project_id: project_id,
+            project_name: project_name,
+            task: task,
+            scorers: scorers,
+            api: api,
+            tracer_provider: tracer_provider
+          )
+          result = runner.run(cases, parallelism: parallelism)
 
-        result
+          # Print result summary unless quiet
+          print_result(result) unless quiet
+
+          result
+        ensure
+          # Disable and clear span cache after evaluation
+          api.state.span_cache.stop
+        end
       end
 
       private
