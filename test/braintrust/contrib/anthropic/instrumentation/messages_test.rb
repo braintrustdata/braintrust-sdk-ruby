@@ -130,7 +130,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       message = client.messages.create(
         model: "claude-sonnet-4-20250514",
         max_tokens: 20,
-        system: "You are a helpful assistant that always responds briefly.",
+        system_: "You are a helpful assistant that always responds briefly.",
         messages: [
           {role: "user", content: "Say hello"}
         ]
