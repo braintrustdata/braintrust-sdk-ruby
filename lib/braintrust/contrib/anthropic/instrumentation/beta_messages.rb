@@ -169,8 +169,8 @@ module Braintrust
               input_messages = []
 
               begin
-                if params[:system]
-                  system_content = params[:system]
+                if params[:system_]
+                  system_content = params[:system_]
                   if system_content.is_a?(Array)
                     system_text = system_content.map { |blk|
                       blk.is_a?(Hash) ? blk[:text] : blk
