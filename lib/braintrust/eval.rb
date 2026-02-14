@@ -220,8 +220,14 @@ module Braintrust
         api.login
 
         # Resolve dataset to cases if dataset parameter provided
+        dataset_id = nil
+        dataset_version = nil
+
         if dataset
-          cases = resolve_dataset(dataset, project, api)
+          resolved = resolve_dataset(dataset, project, api)
+          cases = resolved[:cases]
+          dataset_id = resolved[:dataset_id]
+          dataset_version = resolved[:dataset_version]
         end
 
         # Register project and experiment via internal API
@@ -234,7 +240,9 @@ module Braintrust
           project_id: project_result["id"],
           ensure_new: !update,
           tags: tags,
-          metadata: metadata
+          metadata: metadata,
+          dataset_id: dataset_id,
+          dataset_version: dataset_version
         )
 
         experiment_id = experiment_result["id"]
@@ -292,11 +300,11 @@ module Braintrust
         end
       end
 
-      # Resolve dataset parameter to an array of case records
+      # Resolve dataset parameter to cases with metadata for experiment linking
       # @param dataset [String, Hash, Dataset] Dataset specifier or instance
       # @param project [String] Project name (used as default if not specified)
       # @param api [API] Braintrust API client
-      # @return [Array<Hash>] Array of case records
+      # @return [Hash] Hash with :cases, :dataset_id, and :dataset_version
       def resolve_dataset(dataset, project, api)
         limit = nil
 
@@ -315,7 +323,15 @@ module Braintrust
           raise ArgumentError, "dataset must be String, Hash, or Dataset, got #{dataset.class}"
         end
 
-        dataset_obj.fetch_all(limit: limit)
+        cases = dataset_obj.fetch_all(limit: limit)
+
+        # Use pinned version if available, otherwise compute from max(_xact_id)
+        version = dataset_obj.version
+        version ||= cases
+          .filter_map { |c| c[:origin] && JSON.parse(c[:origin])["_xact_id"] }
+          .max
+
+        {cases: cases, dataset_id: dataset_obj.id, dataset_version: version}
       end
     end
   end
