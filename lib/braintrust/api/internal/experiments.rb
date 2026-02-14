@@ -22,7 +22,8 @@ module Braintrust
         # @param tags [Array<String>, nil] Optional tags
         # @param metadata [Hash, nil] Optional metadata
         # @return [Hash] Experiment data with "id", "name", "project_id", etc.
-        def create(name:, project_id:, ensure_new: true, tags: nil, metadata: nil)
+        def create(name:, project_id:, ensure_new: true, tags: nil, metadata: nil,
+          dataset_id: nil, dataset_version: nil)
           uri = URI("#{@state.api_url}/v1/experiment")
 
           payload = {
@@ -32,6 +33,8 @@ module Braintrust
           }
           payload[:tags] = tags if tags
           payload[:metadata] = metadata if metadata
+          payload[:dataset_id] = dataset_id if dataset_id
+          payload[:dataset_version] = dataset_version if dataset_version
 
           request = Net::HTTP::Post.new(uri)
           request["Content-Type"] = "application/json"
