@@ -299,7 +299,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       result = scorer.call("hello", "HELLO", "HELLO", {})
 
       assert_kind_of Numeric, result
-      assert result >= 0.0 && result <= 1.0
+      assert result.between?(0.0, 1.0)
     end
   end
 
@@ -336,7 +336,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       result = scorer.call("test", "test", "test", {})
 
       assert_kind_of Numeric, result
-      assert result >= 0.0 && result <= 1.0
+      assert result.between?(0.0, 1.0)
     end
   end
 
@@ -373,7 +373,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       result = scorer.call("test", "test", "test", {})
 
       assert_kind_of Numeric, result
-      assert result >= 0.0 && result <= 1.0
+      assert result.between?(0.0, 1.0)
     end
   end
 end
