@@ -257,4 +257,123 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       assert_equal 0, result.errors.length, "Remote scorer should not error"
     end
   end
+
+  def test_scorer_parses_structured_response_with_score_and_metadata
+    VCR.use_cassette("eval_functions/scorer_structured_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-structured"
+
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Evaluate if the output matches the expected value."},
+              {role: "user", content: "Does '{{output}}' match '{{expected}}'? Answer 'correct' or 'incorrect'."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0},
+            parser: {
+              type: "llm_classifier",
+              use_cot: true,
+              choice_scores: {
+                "correct" => 1.0,
+                "incorrect" => 0.0
+              }
+            }
+          }
+        }
+      )
+
+      scorer = Braintrust::Eval::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call("hello", "HELLO", "HELLO", {})
+
+      assert_kind_of Numeric, result
+      assert result >= 0.0 && result <= 1.0
+    end
+  end
+
+  def test_scorer_parses_numeric_response
+    VCR.use_cassette("eval_functions/scorer_numeric_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-numeric"
+
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return ONLY a number between 0 and 1."},
+              {role: "user", content: "Score how well '{{output}}' matches '{{expected}}'. Return just a decimal number like 1.0 or 0.5"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      scorer = Braintrust::Eval::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call("test", "test", "test", {})
+
+      assert_kind_of Numeric, result
+      assert result >= 0.0 && result <= 1.0
+    end
+  end
+
+  def test_scorer_parses_string_numeric_response
+    VCR.use_cassette("eval_functions/scorer_string_numeric_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-string-numeric"
+
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Always respond with exactly: 0.75"},
+              {role: "user", content: "Score this: {{output}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      scorer = Braintrust::Eval::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call("test", "test", "test", {})
+
+      assert_kind_of Numeric, result
+      assert result >= 0.0 && result <= 1.0
+    end
+  end
 end

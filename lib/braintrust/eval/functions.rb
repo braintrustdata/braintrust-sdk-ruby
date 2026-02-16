@@ -99,8 +99,13 @@ module Braintrust
                 result = api.functions.invoke(id: function_id, input: scorer_input)
 
                 # Parse result as float score
-                # The remote function should return a number
-                score = result.is_a?(Numeric) ? result.to_f : result.to_s.to_f
+                score = if result.is_a?(Numeric)
+                  result.to_f
+                elsif result.is_a?(Hash) && result.key?("score")
+                  result["score"].to_f
+                else
+                  result.to_s.to_f
+                end
 
                 span.set_attribute("braintrust.output_json", JSON.dump(score))
                 score
