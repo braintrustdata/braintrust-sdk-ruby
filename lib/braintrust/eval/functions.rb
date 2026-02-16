@@ -98,7 +98,6 @@ module Braintrust
                 # The remote scorer receives all scorer arguments
                 result = api.functions.invoke(id: function_id, input: scorer_input)
 
-                # Parse result as float score
                 score = if result.is_a?(Numeric)
                   result.to_f
                 elsif result.is_a?(Hash) && result.key?("score")
