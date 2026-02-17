@@ -837,6 +837,44 @@ class Braintrust::EvalTest < Minitest::Test
         assert origin["id"], "origin.id (record id) should be present"
         assert origin["_xact_id"], "origin._xact_id should be present"
       end
+
+      # Verify experiment was linked to dataset via the actual HTTP request
+      assert_requested :post, %r{v1/experiment} do |req|
+        body = JSON.parse(req.body)
+        assert_equal dataset_id, body["dataset_id"],
+          "Expected dataset_id in experiment creation payload"
+        assert body["dataset_version"],
+          "Expected dataset_version in experiment creation payload"
+      end
+    end
+  end
+
+  def test_eval_run_without_dataset_does_not_send_dataset_fields
+    # When no dataset is provided, dataset_id and dataset_version should be nil
+    VCR.use_cassette("eval/run_basic") do
+      api = get_integration_test_api
+
+      task = ->(input) { input.upcase }
+      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+      Braintrust::Eval.run(
+        project: "ruby-sdk-test",
+        experiment: "test-ruby-sdk-basic",
+        cases: [{input: "hello", expected: "HELLO"}],
+        task: task,
+        scorers: [scorer],
+        api: api,
+        quiet: true
+      )
+
+      # Verify experiment creation did not include dataset fields
+      assert_requested :post, /v1\/experiment/ do |req|
+        body = JSON.parse(req.body)
+        assert_nil body["dataset_id"],
+          "Expected no dataset_id when no dataset provided"
+        assert_nil body["dataset_version"],
+          "Expected no dataset_version when no dataset provided"
+      end
     end
   end
 end
