@@ -79,41 +79,44 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_creates_span_with_class_level_patching
-    VCR.use_cassette("anthropic/basic_message") do
-      # Set up test rig
-      rig = setup_otel_test_rig
+    # Run in fork to isolate class-level patching and OTLP exporter side effects
+    assert_in_fork do
+      VCR.use_cassette("anthropic/basic_message") do
+        # Set up test rig
+        rig = setup_otel_test_rig
 
-      # For class-level patching, set the default tracer provider via Braintrust.init
-      # (instance-level patching uses target: which stores tracer_provider in context)
-      Braintrust.init(tracer_provider: rig.tracer_provider)
+        # For class-level patching, set the default tracer provider via Braintrust.init
+        # (instance-level patching uses target: which stores tracer_provider in context)
+        Braintrust.init(api_key: get_braintrust_key, tracer_provider: rig.tracer_provider)
 
-      # Instrument at class level (no target:) - patches Anthropic::Resources::Messages
-      Braintrust.instrument!(:anthropic)
+        # Instrument at class level (no target:) - patches Anthropic::Resources::Messages
+        Braintrust.instrument!(:anthropic)
 
-      # Create client AFTER class-level instrumentation
-      client = Anthropic::Client.new(api_key: get_anthropic_key)
+        # Create client AFTER class-level instrumentation
+        client = Anthropic::Client.new(api_key: get_anthropic_key)
 
-      # Make a simple message request
-      message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 10,
-        messages: [
-          {role: "user", content: "Say 'test'"}
-        ]
-      )
+        # Make a simple message request
+        message = client.messages.create(
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 10,
+          messages: [
+            {role: "user", content: "Say 'test'"}
+          ]
+        )
 
-      # Verify response
-      refute_nil message
+        # Verify response
+        refute_nil message
 
-      # Drain and verify span was created
-      span = rig.drain_one
+        # Drain and verify span was created
+        span = rig.drain_one
 
-      # Verify span name and key attributes
-      assert_equal "anthropic.messages.create", span.name
-      assert span.attributes.key?("braintrust.input_json")
-      assert span.attributes.key?("braintrust.output_json")
-      assert span.attributes.key?("braintrust.metadata")
-      assert span.attributes.key?("braintrust.metrics")
+        # Verify span name and key attributes
+        assert_equal "anthropic.messages.create", span.name
+        assert span.attributes.key?("braintrust.input_json")
+        assert span.attributes.key?("braintrust.output_json")
+        assert span.attributes.key?("braintrust.metadata")
+        assert span.attributes.key?("braintrust.metrics")
+      end
     end
   end
 
