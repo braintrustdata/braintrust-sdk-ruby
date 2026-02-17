@@ -271,7 +271,6 @@ end
 
 class Braintrust::PromptLoadTest < Minitest::Test
   def setup
-    flunk "BRAINTRUST_API_KEY not set" unless ENV["BRAINTRUST_API_KEY"]
     @project_name = "ruby-sdk-test"
   end
 

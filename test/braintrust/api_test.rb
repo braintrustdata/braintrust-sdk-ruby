@@ -4,7 +4,6 @@ require "test_helper"
 
 class Braintrust::APITest < Minitest::Test
   def setup
-    flunk "BRAINTRUST_API_KEY not set" unless ENV["BRAINTRUST_API_KEY"]
   end
 
   def test_api_new_with_explicit_state
