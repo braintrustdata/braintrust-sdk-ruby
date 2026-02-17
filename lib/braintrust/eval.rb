@@ -2,9 +2,11 @@
 
 require_relative "eval/scorer"
 require_relative "eval/runner"
+require_relative "eval/context"
 require_relative "api/internal/projects"
 require_relative "api/internal/experiments"
 require_relative "dataset"
+require_relative "trace/span_registry"
 
 require "opentelemetry/sdk"
 require "json"
@@ -241,8 +243,11 @@ module Braintrust
         project_id = project_result["id"]
         project_name = project_result["name"]
 
-        # Enable span cache for evaluation
-        api.state.span_cache.start
+        # Create evaluation context with span cache
+        eval_context = Eval::Context.new(experiment_id: experiment_id)
+
+        # Register span cache for this evaluation
+        Trace::SpanRegistry.register(eval_context.span_cache)
 
         begin
           # Instantiate Runner and run evaluation
@@ -254,7 +259,8 @@ module Braintrust
             task: task,
             scorers: scorers,
             api: api,
-            tracer_provider: tracer_provider
+            tracer_provider: tracer_provider,
+            eval_context: eval_context
           )
           result = runner.run(cases, parallelism: parallelism)
 
@@ -263,8 +269,9 @@ module Braintrust
 
           result
         ensure
-          # Disable and clear span cache after evaluation
-          api.state.span_cache.stop
+          # Unregister and dispose evaluation context
+          Trace::SpanRegistry.unregister
+          eval_context&.dispose
         end
       end
 

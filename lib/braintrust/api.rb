@@ -45,9 +45,9 @@ module Braintrust
     end
 
     # Access to BTQL API
-    # @return [API::Btql]
+    # @return [API::BTQL]
     def btql
-      @btql ||= API::Btql.new(self)
+      @btql ||= API::BTQL.new(self)
     end
   end
 end

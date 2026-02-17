@@ -12,10 +12,13 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       api_url: "https://api.braintrust.dev",
       enable_tracing: true
     )
+    @span_cache = Braintrust::SpanCache.new
+    Braintrust::Trace::SpanRegistry.register(@span_cache)
   end
 
   def teardown
-    @state&.span_cache&.stop
+    Braintrust::Trace::SpanRegistry.unregister
+    Thread.current[:braintrust_span_cache_data] = nil
   end
 
   def test_scorer_receives_trace_context
@@ -30,10 +33,10 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
 
-    @state.span_cache.start
     result = scorer.call("input", "expected", "output", {}, trace_context)
 
     assert_equal 1.0, result
@@ -53,11 +56,11 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
 
-    @state.span_cache.start
-    @state.span_cache.write("root-abc", "span1", {
+    @span_cache.write("root-abc", "span1", {
       input: {messages: [{role: "user", content: "Hello"}]},
       output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
       span_attributes: {type: "llm"}
@@ -82,13 +85,13 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
 
-    @state.span_cache.start
-    @state.span_cache.write("root-abc", "span1", {span_attributes: {type: "llm"}})
-    @state.span_cache.write("root-abc", "span2", {span_attributes: {type: "task"}})
-    @state.span_cache.write("root-abc", "span3", {span_attributes: {type: "llm"}})
+    @span_cache.write("root-abc", "span1", {span_attributes: {type: "llm"}})
+    @span_cache.write("root-abc", "span2", {span_attributes: {type: "task"}})
+    @span_cache.write("root-abc", "span3", {span_attributes: {type: "llm"}})
 
     scorer.call("input", "expected", "output", {}, trace_context)
 
@@ -110,11 +113,11 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
 
-    @state.span_cache.start
-    @state.span_cache.write("root-abc", "span1", {
+    @span_cache.write("root-abc", "span1", {
       input: {messages: [{role: "user", content: "Hello"}]},
       output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
       span_attributes: {type: "llm"}
@@ -136,6 +139,7 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
 
@@ -155,13 +159,13 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
 
-    @state.span_cache.start
-    @state.span_cache.write("root-abc", "span1", {span_attributes: {type: "llm"}})
-    @state.span_cache.write("root-abc", "span2", {span_attributes: {type: "score", purpose: "scorer"}})
-    @state.span_cache.write("root-abc", "span3", {span_attributes: {type: "task"}})
+    @span_cache.write("root-abc", "span1", {span_attributes: {type: "llm"}})
+    @span_cache.write("root-abc", "span2", {span_attributes: {type: "score", purpose: "scorer"}})
+    @span_cache.write("root-abc", "span3", {span_attributes: {type: "task"}})
 
     scorer.call("input", "expected", "output", {}, trace_context)
 
@@ -171,19 +175,14 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
     end
   end
 
-  def test_span_cache_lifecycle
-    refute @state.span_cache.enabled?
-
-    @state.span_cache.start
-    assert @state.span_cache.enabled?
-
-    @state.span_cache.write("root1", "span1", {input: "test"})
-    spans = @state.span_cache.get("root1")
+  def test_span_cache_writes_and_reads
+    # SpanCache is now always active when registered
+    @span_cache.write("root1", "span1", {input: "test"})
+    spans = @span_cache.get("root1")
     assert_equal 1, spans.size
 
-    @state.span_cache.stop
-    refute @state.span_cache.enabled?
-    assert_equal 0, @state.span_cache.size
+    @span_cache.clear_all
+    assert_equal 0, @span_cache.size
   end
 
   def test_trace_context_configuration
@@ -191,6 +190,7 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-456",
       root_span_id: "root-xyz",
+      span_cache: @span_cache,
       state: @state
     )
 
@@ -217,11 +217,9 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
+      span_cache: @span_cache,
       state: @state
     )
-
-    @state.span_cache.start
-
     scorer1.call("input", "expected", "output", {}, trace_context)
     scorer2.call("input", "expected", "output", {}, trace_context)
 

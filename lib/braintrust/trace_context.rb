@@ -3,6 +3,7 @@
 require "json"
 require "net/http"
 require "uri"
+require_relative "api"
 
 module Braintrust
   # TraceContext provides scorers access to span data from the evaluation trace.
@@ -12,10 +13,11 @@ module Braintrust
     MAX_RETRIES = 8
     INITIAL_BACKOFF = 0.25 # seconds
 
-    def initialize(object_type:, object_id:, root_span_id:, state:, ensure_spans_flushed: nil)
+    def initialize(object_type:, object_id:, root_span_id:, span_cache:, state:, ensure_spans_flushed: nil)
       @object_type = object_type
       @object_id = object_id
       @root_span_id = root_span_id
+      @span_cache = span_cache
       @state = state
       @ensure_spans_flushed = ensure_spans_flushed
       @spans_ready_mutex = Mutex.new
@@ -41,7 +43,7 @@ module Braintrust
       types = span_type && Array(span_type)
 
       # Try cache first
-      cached = @state.span_cache.get(@root_span_id)
+      cached = @span_cache.get(@root_span_id)
       spans = cached || fetch_spans_via_btql(types)
 
       # Filter out scorer spans
@@ -171,7 +173,6 @@ module Braintrust
     # @param filter [Hash] AST filter
     # @return [Hash] {spans: Array<Hash>, freshness_state: String}
     def query_btql(filter)
-      require_relative "api"
       api = API.new(state: @state)
       response = api.btql.query(
         query: filter,

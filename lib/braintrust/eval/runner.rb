@@ -19,7 +19,7 @@ module Braintrust
       MAX_PARALLELISM = Internal::ThreadPool::MAX_PARALLELISM
 
       def initialize(experiment_id:, experiment_name:, project_id:, project_name:,
-        task:, scorers:, api:, tracer_provider: nil)
+        task:, scorers:, api:, tracer_provider: nil, eval_context: nil)
         @experiment_id = experiment_id
         @experiment_name = experiment_name
         @project_id = project_id
@@ -30,6 +30,7 @@ module Braintrust
         @tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
         @tracer = @tracer_provider.tracer("braintrust-eval")
         @parent_attr = "experiment_id:#{experiment_id}"
+        @eval_context = eval_context
 
         # Mutex for thread-safe score collection
         @score_mutex = Mutex.new
@@ -247,8 +248,11 @@ module Braintrust
 
       # Create a TraceContext for scorers to access span data
       # @param eval_span [OpenTelemetry::Trace::Span] The eval span
-      # @return [TraceContext]
+      # @return [TraceContext, nil] TraceContext if eval_context present, nil otherwise
       def create_trace_context(eval_span)
+        # Skip if no eval_context (e.g., in tests)
+        return nil unless @eval_context
+
         # Extract root_span_id from the eval span's trace_id
         root_span_id = eval_span.context.trace_id.unpack1("H*")
 
@@ -256,6 +260,7 @@ module Braintrust
           object_type: "experiment",
           object_id: experiment_id,
           root_span_id: root_span_id,
+          span_cache: @eval_context.span_cache,
           state: @api.state,
           ensure_spans_flushed: -> { @tracer_provider.force_flush }
         )
