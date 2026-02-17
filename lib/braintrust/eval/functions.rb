@@ -98,12 +98,19 @@ module Braintrust
                 # The remote scorer receives all scorer arguments
                 result = api.functions.invoke(id: function_id, input: scorer_input)
 
-                score = if result.is_a?(Numeric)
+                score = case result
+                when Numeric
                   result.to_f
-                elsif result.is_a?(Hash) && result.key?("score")
-                  result["score"].to_f
-                else
+                when Hash
+                  if result.key?("score")
+                    result["score"].to_f
+                  else
+                    raise Error, "Hash result must contain 'score' key"
+                  end
+                when String
                   result.to_s.to_f
+                else
+                  raise Error, "Unsupported result type: #{result.class}"
                 end
 
                 span.set_attribute("braintrust.output_json", JSON.dump(score))

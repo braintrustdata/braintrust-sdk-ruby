@@ -37,7 +37,7 @@ http_interactions:
       - '395'
       Content-Security-Policy:
       - 'script-src ''self'' ''unsafe-eval'' ''wasm-unsafe-eval'' ''strict-dynamic''
-        ''nonce-MmE3ZTZiMWItZDAwMC00NGQ1LWE5MTctMGJjZTcwMjczN2Iz''  *.js.stripe.com
+        ''nonce-ZGJkYzE1NzUtOTA5OS00NTY4LThjZmQtMzUwMDI5YzUwOGMy''  *.js.stripe.com
         js.stripe.com maps.googleapis.com ; style-src ''self'' ''unsafe-inline'' *.braintrust.dev
         btcm6qilbbhv4yi1.public.blob.vercel-storage.com fonts.googleapis.com www.gstatic.com
         d4tuoctqmanu0.cloudfront.net; font-src ''self'' data: fonts.gstatic.com btcm6qilbbhv4yi1.public.blob.vercel-storage.com
@@ -48,7 +48,7 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Mon, 16 Feb 2026 17:04:37 GMT
+      - Tue, 17 Feb 2026 18:12:28 GMT
       Etag:
       - '"12n7ok4b5phaz"'
       Reporting-Endpoints:
@@ -71,15 +71,15 @@ http_interactions:
       X-Matched-Path:
       - "/api/apikey/login"
       X-Nonce:
-      - MmE3ZTZiMWItZDAwMC00NGQ1LWE5MTctMGJjZTcwMjczN2Iz
+      - ZGJkYzE1NzUtOTA5OS00NTY4LThjZmQtMzUwMDI5YzUwOGMy
       X-Vercel-Cache:
       - MISS
       X-Vercel-Id:
-      - cle1::iad1::z9vg4-1771261477235-33e183d0d0ea
+      - cle1::iad1::mqs9g-1771351948563-d223090365c4
     body:
       encoding: UTF-8
       string: '{"org_info":[{"id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"braintrustdata.com","api_url":"https://staging-api.braintrust.dev","git_metadata":{"fields":["commit","branch","tag","author_name","author_email","commit_message","commit_time","dirty"],"collect":"some"},"is_universal_api":true,"proxy_url":"https://staging-api.braintrust.dev","realtime_url":"wss://realtime.braintrustapi.com"}]}'
-  recorded_at: Mon, 16 Feb 2026 17:04:37 GMT
+  recorded_at: Tue, 17 Feb 2026 18:12:28 GMT
 - request:
     method: get
     uri: https://staging-api.braintrust.dev/v1/project?project_name=ruby-sdk-test
@@ -112,15 +112,15 @@ http_interactions:
       - ORD56-P14
       - ORD58-P11
       Date:
-      - Mon, 16 Feb 2026 17:04:37 GMT
+      - Tue, 17 Feb 2026 18:12:29 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - b3561347-b71c-4100-afba-e7f845f46c52
+      - 374bf42e-053f-498f-9a34-a9e6978b7939
       X-Bt-Internal-Trace-Id:
-      - 69934e250000000073548a11ca104e36
+      - 6994af8c0000000008a4638485c14527
       X-Amz-Apigw-Id:
-      - Y4kl7HbEoAMECIg=
+      - Y8BeFEEqIAMEItA=
       Vary:
       - Origin, Accept-Encoding
       Etag:
@@ -128,27 +128,26 @@ http_interactions:
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan,x-bt-api-duration-ms,x-bt-brainstore-duration-ms
       X-Amzn-Trace-Id:
-      - Root=1-69934e25-35b81b332c67de7240ee1679;Parent=1d960d45b5898416;Sampled=0;Lineage=1:fc3b4ff1:0
+      - Root=1-6994af8c-4199e0cc74edbf5717c4bf8c;Parent=0f262b8985ea5180;Sampled=0;Lineage=1:fc3b4ff1:0
       Via:
-      - 1.1 d884a7e5570bb8aa899bfdbc5fc0d29c.cloudfront.net (CloudFront), 1.1 f32d51a7cb8381fafc77676561ae21e8.cloudfront.net
+      - 1.1 d90c6f2271c89398e6144cc762852e94.cloudfront.net (CloudFront), 1.1 16b0dacc4c427c8708d78d58833b8460.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - b_B5nOaCZV6eyb7PWNHMmSD3A3ip54Gqh3E1sUGhZ4CbSene4hD2_w==
+      - 3HvlonnAxcO0Y2DtBJC7bic6E-W3IXPcsYMfU_jHMZkanhHIVr-Oyg==
     body:
       encoding: ASCII-8BIT
       string: '{"objects":[{"id":"ac86d18e-af78-4caf-918d-b89ad108ec67","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"ruby-sdk-test","description":null,"created":"2025-10-22T03:32:12.324Z","deleted_at":null,"user_id":"f2ddc4e6-a51a-4a60-9734-9af4ea05c6ef","settings":null}]}'
-  recorded_at: Mon, 16 Feb 2026 17:04:37 GMT
+  recorded_at: Tue, 17 Feb 2026 18:12:29 GMT
 - request:
     method: post
     uri: https://staging-api.braintrust.dev/v1/function
     body:
       encoding: UTF-8
-      string: '{"project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-scorer-numeric","name":"test-ruby-sdk-scorer-numeric","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"system","content":"You
-        are a scorer. Return ONLY a number between 0 and 1."},{"role":"user","content":"Score
-        how well ''{{output}}'' matches ''{{expected}}''. Return just a decimal number
-        like 1.0 or 0.5"}]},"options":{"model":"gpt-4o-mini","params":{"temperature":0}}}}'
+      string: '{"project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-scorer-structured","name":"test-ruby-sdk-scorer-structured","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"system","content":"You
+        are a scorer. Evaluate if the output matches the expected value."},{"role":"user","content":"Does
+        ''{{output}}'' match ''{{expected}}''? Answer ''correct'' or ''incorrect''."}]},"options":{"model":"gpt-4o-mini","params":{"temperature":0}},"parser":{"type":"llm_classifier","use_cot":true,"choice_scores":{"correct":1.0,"incorrect":0.0}}},"function_type":"scorer"}'
     headers:
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
@@ -170,47 +169,46 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Content-Length:
-      - '664'
+      - '778'
       Connection:
       - keep-alive
       X-Amz-Cf-Pop:
       - ORD56-P14
       - ORD58-P11
       Date:
-      - Mon, 16 Feb 2026 17:04:38 GMT
+      - Tue, 17 Feb 2026 18:12:29 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - d6789c7b-3211-44fa-9c7c-fbf3e4ad632d
+      - e7dd0cdc-a5e8-4587-b1ee-cdcb443169e5
       X-Bt-Internal-Trace-Id:
-      - 69934e25000000003a97e27902b9d406
+      - 6994af8d0000000023c944255646bff0
       X-Amz-Apigw-Id:
-      - Y4kl-EgWIAMEFAg=
+      - Y8BeHFpDIAMEqpw=
       Vary:
       - Origin, Accept-Encoding
       Etag:
-      - W/"298-shL+RuvXWndET7/uvq4ofj576as"
+      - W/"30a-DZ9F9e25Om0PsuR4ljmPffQpQzo"
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan,x-bt-api-duration-ms,x-bt-brainstore-duration-ms
       X-Amzn-Trace-Id:
-      - Root=1-69934e25-7b4b7fdb57fa20327960b0ba;Parent=4cd0b686c764646b;Sampled=0;Lineage=1:fc3b4ff1:0
+      - Root=1-6994af8d-193dd83674d345410cfc2a9f;Parent=53b341665c2edd13;Sampled=0;Lineage=1:fc3b4ff1:0
       Via:
-      - 1.1 d884a7e5570bb8aa899bfdbc5fc0d29c.cloudfront.net (CloudFront), 1.1 f7da53b1e8d211ec11d888343978cd1c.cloudfront.net
+      - 1.1 1aebe508570fbf79f0ea7310363a7184.cloudfront.net (CloudFront), 1.1 180a4e1c2aa6a4d95dc2a1b2b749e54a.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - QGK4_Xr8vDTwY1tttZSnPGj0NdbwQxDYlZXxAIwbkEgShS5bV0Jl2Q==
+      - HMfw8EmOrRlcIr6JWjCDTE3YsSbMxNH-YXnyqDvd6-42pTck_dKokQ==
     body:
       encoding: ASCII-8BIT
-      string: '{"log_id":"p","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-scorer-numeric","name":"test-ruby-sdk-scorer-numeric","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"system","content":"You
-        are a scorer. Return ONLY a number between 0 and 1."},{"role":"user","content":"Score
-        how well ''{{output}}'' matches ''{{expected}}''. Return just a decimal number
-        like 1.0 or 0.5"}]},"options":{"model":"gpt-4o-mini","params":{"temperature":0}}},"id":"e6dbd7a8-470a-4a50-9e91-4517dd70afb9","created":"2026-02-16T17:04:37.922Z","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","_xact_id":"1000196673645125336"}'
-  recorded_at: Mon, 16 Feb 2026 17:04:38 GMT
+      string: '{"log_id":"p","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","slug":"test-ruby-sdk-scorer-structured","name":"test-ruby-sdk-scorer-structured","function_data":{"type":"prompt"},"prompt_data":{"prompt":{"type":"chat","messages":[{"role":"system","content":"You
+        are a scorer. Evaluate if the output matches the expected value."},{"role":"user","content":"Does
+        ''{{output}}'' match ''{{expected}}''? Answer ''correct'' or ''incorrect''."}]},"options":{"model":"gpt-4o-mini","params":{"temperature":0}},"parser":{"type":"llm_classifier","use_cot":true,"choice_scores":{"correct":1,"incorrect":0}}},"function_type":"scorer","id":"2131402b-d1f6-4614-b723-96590e2d6167","created":"2026-02-17T18:12:29.305Z","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","_xact_id":"1000196679574311003"}'
+  recorded_at: Tue, 17 Feb 2026 18:12:29 GMT
 - request:
     method: get
-    uri: https://staging-api.braintrust.dev/v1/function?project_name=ruby-sdk-test&slug=test-ruby-sdk-scorer-numeric
+    uri: https://staging-api.braintrust.dev/v1/function?project_name=ruby-sdk-test&slug=test-ruby-sdk-scorer-structured
     body:
       encoding: US-ASCII
       string: ''
@@ -233,50 +231,49 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Content-Length:
-      - '783'
+      - '876'
       Connection:
       - keep-alive
       X-Amz-Cf-Pop:
       - ORD56-P14
       - ORD58-P11
       Date:
-      - Mon, 16 Feb 2026 17:04:38 GMT
+      - Tue, 17 Feb 2026 18:12:30 GMT
       Access-Control-Allow-Credentials:
       - 'true'
       X-Amzn-Requestid:
-      - 2f7fd1ea-97d6-48ae-9b27-a956b9f991b8
+      - 41f77cd8-250e-491a-9a23-343bad17a36f
       X-Bt-Internal-Trace-Id:
-      - 69934e26000000004fa77928de1a97e5
+      - 6994af8d00000000484120975c8262ff
       X-Amz-Apigw-Id:
-      - Y4kmDFH6IAMEjOQ=
+      - Y8BeOEkroAMEdAw=
       Vary:
       - Origin, Accept-Encoding
       Etag:
-      - W/"30f-J5PAsh3U+n3r2K9E2F0ViXYUwSA"
+      - W/"36c-C0ckg7bmtuDeMvuYX50xa1Ko2wE"
       Access-Control-Expose-Headers:
       - x-bt-cursor,x-bt-found-existing,x-bt-query-plan,x-bt-api-duration-ms,x-bt-brainstore-duration-ms
       X-Amzn-Trace-Id:
-      - Root=1-69934e26-46b048e91ab2a79252a2de65;Parent=1f7434f278bbbda5;Sampled=0;Lineage=1:fc3b4ff1:0
+      - Root=1-6994af8d-33a1b4ed4ac17aa86e708a77;Parent=60d02df4436fdddc;Sampled=0;Lineage=1:fc3b4ff1:0
       Via:
-      - 1.1 bf89839dd141364aec15e919e53bb54a.cloudfront.net (CloudFront), 1.1 a1df6d6150d749ef6922ff69e92bb5b6.cloudfront.net
+      - 1.1 c41d7e84814c40081afb134b22aff29a.cloudfront.net (CloudFront), 1.1 6855fdf8afbd8b7dbea1a21b40c161be.cloudfront.net
         (CloudFront)
       X-Cache:
       - Miss from cloudfront
       X-Amz-Cf-Id:
-      - S0AEr_c6htrihCCnBP8gSvEuyay1Z_vXcViZPogqN81amBdFQ-GM9Q==
+      - 1OkJjKB-jOkQ8XyimEl6U24T4gWVXZzrMgU5oPokwmXYscAHX9TYuw==
     body:
       encoding: ASCII-8BIT
-      string: '{"objects":[{"id":"e6dbd7a8-470a-4a50-9e91-4517dd70afb9","_xact_id":"1000196673645125336","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","log_id":"p","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"test-ruby-sdk-scorer-numeric","slug":"test-ruby-sdk-scorer-numeric","description":null,"created":"2026-02-16T17:04:37.922Z","prompt_data":{"prompt":{"type":"chat","messages":[{"role":"system","content":"You
-        are a scorer. Return ONLY a number between 0 and 1."},{"role":"user","content":"Score
-        how well ''{{output}}'' matches ''{{expected}}''. Return just a decimal number
-        like 1.0 or 0.5"}]},"options":{"model":"gpt-4o-mini","params":{"temperature":0}}},"tags":null,"metadata":null,"function_type":null,"function_data":{"type":"prompt"},"origin":null,"function_schema":null}]}'
-  recorded_at: Mon, 16 Feb 2026 17:04:38 GMT
+      string: '{"objects":[{"id":"2131402b-d1f6-4614-b723-96590e2d6167","_xact_id":"1000196679574311003","project_id":"ac86d18e-af78-4caf-918d-b89ad108ec67","log_id":"p","org_id":"5d7c97d7-fef1-4cb7-bda6-7e3756a0ca8e","name":"test-ruby-sdk-scorer-structured","slug":"test-ruby-sdk-scorer-structured","description":null,"created":"2026-02-17T18:12:29.305Z","prompt_data":{"parser":{"type":"llm_classifier","use_cot":true,"choice_scores":{"correct":1,"incorrect":0}},"prompt":{"type":"chat","messages":[{"role":"system","content":"You
+        are a scorer. Evaluate if the output matches the expected value."},{"role":"user","content":"Does
+        ''{{output}}'' match ''{{expected}}''? Answer ''correct'' or ''incorrect''."}]},"options":{"model":"gpt-4o-mini","params":{"temperature":0}}},"tags":null,"metadata":null,"function_type":"scorer","function_data":{"type":"prompt"},"origin":null,"function_schema":null}]}'
+  recorded_at: Tue, 17 Feb 2026 18:12:30 GMT
 - request:
     method: post
-    uri: https://staging-api.braintrust.dev/v1/function/e6dbd7a8-470a-4a50-9e91-4517dd70afb9/invoke
+    uri: https://staging-api.braintrust.dev/v1/function/2131402b-d1f6-4614-b723-96590e2d6167/invoke
     body:
       encoding: UTF-8
-      string: '{"input":{"input":"test","expected":"test","output":"test","metadata":{}}}'
+      string: '{"input":{"input":"hello","expected":"HELLO","output":"HELLO","metadata":{}}}'
     headers:
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
@@ -302,17 +299,17 @@ http_interactions:
       Connection:
       - keep-alive
       Date:
-      - Mon, 16 Feb 2026 17:04:39 GMT
+      - Tue, 17 Feb 2026 18:12:30 GMT
       X-Bt-Used-Endpoint:
       - OPENAI_API_KEY
       X-Amzn-Requestid:
-      - 5596ae14-06c8-4ee8-b567-8a0002f6ed7c
+      - fc221f80-b1c3-45a1-a6fe-bb87f8667046
       Cf-Ray:
-      - 9cee9c70ddd6d47f-IAD
+      - 9cf72717991b58d2-IAD
       X-Ratelimit-Remaining-Requests:
       - '29999'
       Openai-Processing-Ms:
-      - '1981'
+      - '1206'
       Cf-Cache-Status:
       - DYNAMIC
       Strict-Transport-Security:
@@ -326,11 +323,11 @@ http_interactions:
       Openai-Organization:
       - braintrust-data
       X-Request-Id:
-      - req_414f843b503a4b05aeaf992c672d5b91
+      - req_1df2fe2106194b7aa91626a0c48367b1
       Set-Cookie:
-      - __cf_bm=SMYGTA6kBfvOTHhG2fdS6Dy2wwAPSpMLmGmFgGq_esc-1771261330.0513866-1.0.1.1-o0FWxhvvNJxemZWVMjfc49E1wGEKU4HJZjJmCgjbZf88ZnSvsRqEoQjKVSYGescRnDFRx3jOXd4sB_sN4ch2nKw2qZDtLXgVL6gUeqgfBxZD87FuCY9JbneKOg8VCkJZ;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Mon, 16 Feb 2026
-        17:32:12 GMT
+      - __cf_bm=BNBQFAhlpS6iaAacKqQeu8CHqWx8fW0SLHdhy6Hjj88-1771350895.2923052-1.0.1.1-puJE8Xo8H2iaJRhYo1OOIzP_7U5_EdeAAjSUgvv3A8J9FWLZDqz3IqRNyCd665enSG7Wn193xbvko2lbEhjoeXcojMzoim8D3Lq1B0Ukk1PkxuNNofuQ8Qaibl.o6Uai;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Tue, 17 Feb 2026
+        18:24:56 GMT
       Cache-Control:
       - max-age=604800
       X-Ratelimit-Limit-Tokens:
@@ -338,11 +335,11 @@ http_interactions:
       X-Content-Type-Options:
       - nosniff
       X-Ratelimit-Remaining-Tokens:
-      - '149999962'
+      - '149999965'
       X-Bt-Function-Creds-Cached:
       - HIT
       X-Amzn-Trace-Id:
-      - Root=1-69934e27-2c988f6f74456026255c1975;Parent=6cd7d842d3290a0d;Sampled=0;Lineage=1:98839c8e:0
+      - Root=1-6994af8e-15560f245aa9a778511bcf11;Parent=04358a05cd592781;Sampled=0;Lineage=1:98839c8e:0
       X-Bt-Function-Meta-Cached:
       - MISS
       X-Ratelimit-Reset-Tokens:
@@ -356,15 +353,18 @@ http_interactions:
       X-Cache:
       - Miss from cloudfront
       Via:
-      - 1.1 03397fac234b81c200cdc8bf9c400b1a.cloudfront.net (CloudFront)
+      - 1.1 3687dc2c690d41a17862d629e7e00b90.cloudfront.net (CloudFront)
       X-Amz-Cf-Pop:
       - ORD56-P14
       X-Amz-Cf-Id:
-      - 57Tz5dZVa0Oko4djLgvqWS5ogUSOeu8bNSr5cH3URbWXeyVY0V8KDQ==
+      - AJgb3xiFVy3BYtLWp8QndNKaz9XOUhSg5CNRdErn1x5bhjvR7WGECg==
       Age:
-      - '147'
+      - '1052'
     body:
       encoding: UTF-8
-      string: '"1.0"'
-  recorded_at: Mon, 16 Feb 2026 17:04:39 GMT
+      string: '{"name":"test-ruby-sdk-scorer-structured","score":1,"metadata":{"rationale":"The
+        two strings ''HELLO'' and ''HELLO'' are identical. They have the same characters
+        in the same order, and there are no differences in case or spacing. Therefore,
+        they match perfectly.","choice":"correct"}}'
+  recorded_at: Tue, 17 Feb 2026 18:12:30 GMT
 recorded_with: VCR 6.4.0
