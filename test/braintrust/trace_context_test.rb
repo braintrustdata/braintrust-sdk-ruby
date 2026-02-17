@@ -4,6 +4,7 @@ require "test_helper"
 require "braintrust/trace_context"
 require "braintrust/state"
 require "braintrust/span_cache"
+require "braintrust/trace/span_registry"
 
 module Braintrust
   class TraceContextTest < Minitest::Test
@@ -14,18 +15,22 @@ module Braintrust
         api_url: "https://api.braintrust.dev",
         enable_tracing: false
       )
-      @state.span_cache.start
+
+      @span_cache = SpanCache.new
+      Trace::SpanRegistry.register(@span_cache)
 
       @trace_context = TraceContext.new(
         object_type: "experiment",
         object_id: "exp-123",
         root_span_id: "root-abc",
+        span_cache: @span_cache,
         state: @state
       )
     end
 
     def teardown
-      @state&.span_cache&.stop
+      Trace::SpanRegistry.unregister
+      Thread.current[:braintrust_span_cache_data] = nil
     end
 
     def test_configuration_returns_correct_hash
@@ -36,7 +41,7 @@ module Braintrust
     end
 
     def test_get_spans_returns_cached_spans
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         input: {messages: [{role: "user", content: "Hello"}]},
         output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
         span_attributes: {type: "llm"}
@@ -48,10 +53,10 @@ module Braintrust
     end
 
     def test_get_spans_filters_by_single_type
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         span_attributes: {type: "llm"}
       })
-      @state.span_cache.write("root-abc", "span2", {
+      @span_cache.write("root-abc", "span2", {
         span_attributes: {type: "score"}
       })
 
@@ -61,13 +66,13 @@ module Braintrust
     end
 
     def test_get_spans_filters_by_multiple_types
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         span_attributes: {type: "llm"}
       })
-      @state.span_cache.write("root-abc", "span2", {
+      @span_cache.write("root-abc", "span2", {
         span_attributes: {type: "score"}
       })
-      @state.span_cache.write("root-abc", "span3", {
+      @span_cache.write("root-abc", "span3", {
         span_attributes: {type: "task"}
       })
 
@@ -79,10 +84,10 @@ module Braintrust
     end
 
     def test_get_spans_excludes_scorer_spans
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         span_attributes: {type: "llm"}
       })
-      @state.span_cache.write("root-abc", "span2", {
+      @span_cache.write("root-abc", "span2", {
         span_attributes: {type: "score", purpose: "scorer"}
       })
 
@@ -92,12 +97,12 @@ module Braintrust
     end
 
     def test_get_thread_reconstructs_message_thread
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         input: {messages: [{role: "user", content: "Hello"}]},
         output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
         span_attributes: {type: "llm"}
       })
-      @state.span_cache.write("root-abc", "span2", {
+      @span_cache.write("root-abc", "span2", {
         input: {messages: [{role: "user", content: "How are you?"}]},
         output: {choices: [{message: {role: "assistant", content: "Good"}}]},
         span_attributes: {type: "llm"}
@@ -115,12 +120,12 @@ module Braintrust
       msg1 = {role: "user", content: "Hello"}
       msg2 = {role: "user", content: "Hello"}
 
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         input: {messages: [msg1]},
         output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
         span_attributes: {type: "llm"}
       })
-      @state.span_cache.write("root-abc", "span2", {
+      @span_cache.write("root-abc", "span2", {
         input: {messages: [msg2]},
         output: {choices: [{message: {role: "assistant", content: "Hello again"}}]},
         span_attributes: {type: "llm"}
@@ -133,12 +138,12 @@ module Braintrust
     end
 
     def test_get_thread_always_includes_output_messages
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         input: {messages: [{role: "user", content: "Hello"}]},
         output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
         span_attributes: {type: "llm"}
       })
-      @state.span_cache.write("root-abc", "span2", {
+      @span_cache.write("root-abc", "span2", {
         input: {messages: [{role: "user", content: "Hello"}]},
         output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
         span_attributes: {type: "llm"}
@@ -150,7 +155,7 @@ module Braintrust
     end
 
     def test_get_thread_handles_missing_input
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
         span_attributes: {type: "llm"}
       })
@@ -161,7 +166,7 @@ module Braintrust
     end
 
     def test_get_thread_handles_missing_output
-      @state.span_cache.write("root-abc", "span1", {
+      @span_cache.write("root-abc", "span1", {
         input: {messages: [{role: "user", content: "Hello"}]},
         span_attributes: {type: "llm"}
       })
@@ -171,10 +176,13 @@ module Braintrust
       assert_equal "user", thread[0][:role]
     end
 
-    def test_get_spans_returns_empty_when_no_cache
-      @state.span_cache.stop
-      spans = @trace_context.get_spans
-      assert_equal [], spans
+    def test_get_spans_returns_empty_when_cache_empty
+      VCR.use_cassette("trace_context/get_spans_empty_btql") do
+        # Cache is empty (no spans written)
+        spans = @trace_context.get_spans
+        # Should fall back to BTQL and return empty
+        assert_equal [], spans
+      end
     end
   end
 end

@@ -1,0 +1,42 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.braintrust.dev/btql
+    body:
+      encoding: UTF-8
+      string: '{"query":{"op":"and","operands":[{"path":["root_span_id"],"op":"=","value":"root-abc"},{"op":"or","operands":[{"path":["span_attributes","purpose"],"op":"is
+        null"},{"path":["span_attributes","purpose"],"op":"!=","value":"scorer"}]}]},"object_type":"experiment","object_id":"exp-123","fmt":"jsonl"}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+      Host:
+      - api.braintrust.dev
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer test-key
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/x-ndjson; charset=utf-8
+      Content-Length:
+      - '0'
+      Connection:
+      - keep-alive
+      Date:
+      - Mon, 16 Feb 2026 14:10:42 GMT
+      X-Bt-Freshness-State:
+      - complete
+    body:
+      encoding: UTF-8
+      string: ''
+  recorded_at: Mon, 16 Feb 2026 14:10:42 GMT
+recorded_with: VCR 6.4.0

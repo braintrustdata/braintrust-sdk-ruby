@@ -1,128 +1,87 @@
 # frozen_string_literal: true
 
 module Braintrust
-  # Thread-safe in-memory cache for spans during evaluation runs.
-  # Stores spans indexed by root_span_id to enable fast local lookups
-  # before falling back to BTQL queries.
+  # Lock-free in-memory cache for spans during evaluation runs.
+  # Uses thread-local storage for zero-contention performance in multi-threaded evals.
+  # Each thread maintains its own cache, eliminating all synchronization overhead.
+  #
+  # Lifecycle is managed by EvalContext - no start/stop/enabled state needed.
   class SpanCache
     DEFAULT_TTL = 300 # 5 minutes
     DEFAULT_MAX_ENTRIES = 1000
+    THREAD_KEY = :braintrust_span_cache_data
 
     def initialize(ttl: DEFAULT_TTL, max_entries: DEFAULT_MAX_ENTRIES)
       @ttl = ttl
       @max_entries = max_entries
-      @cache = {} # {root_span_id => {spans: {span_id => data}, accessed_at: Time}}
-      @mutex = Mutex.new
-      @enabled = false
     end
 
-    # Write or merge a span into the cache
+    # Write or merge a span into the cache (thread-local, lock-free)
     # @param root_span_id [String] The root span ID
     # @param span_id [String] The span ID
     # @param span_data [Hash] Span data (input, output, metadata, etc.)
     def write(root_span_id, span_id, span_data)
-      return unless @enabled
+      local = Thread.current[THREAD_KEY] ||= {}
 
-      @mutex.synchronize do
-        evict_expired
-        evict_lru if @cache.size >= @max_entries
+      evict_expired(local)
+      evict_lru(local) if local.size >= @max_entries
 
-        @cache[root_span_id] ||= {spans: {}, accessed_at: Time.now}
-        entry = @cache[root_span_id]
+      local[root_span_id] ||= {spans: {}, accessed_at: Time.now}
+      entry = local[root_span_id]
 
-        # Merge: incoming non-nil values override existing
-        existing = entry[:spans][span_id] || {}
-        entry[:spans][span_id] = existing.merge(span_data.compact)
-        entry[:accessed_at] = Time.now
-      end
+      # Merge: incoming non-nil values override existing
+      existing = entry[:spans][span_id] || {}
+      entry[:spans][span_id] = existing.merge(span_data.compact)
+      entry[:accessed_at] = Time.now
     end
 
-    # Get all cached spans for a root span
+    # Get all cached spans for a root span (thread-local, lock-free)
     # @param root_span_id [String] The root span ID
     # @return [Array<Hash>, nil] Array of span data hashes, or nil if not cached
     def get(root_span_id)
-      return nil unless @enabled
+      local = Thread.current[THREAD_KEY] || {}
+      entry = local[root_span_id]
+      return nil unless entry
 
-      @mutex.synchronize do
-        evict_expired
-        entry = @cache[root_span_id]
-        return nil unless entry
-
-        entry[:accessed_at] = Time.now
-        entry[:spans].values
-      end
+      entry[:accessed_at] = Time.now
+      entry[:spans].values
     end
 
     # Check if root span has cached data
     # @param root_span_id [String] The root span ID
     # @return [Boolean]
     def has?(root_span_id)
-      return false unless @enabled
-
-      @mutex.synchronize do
-        evict_expired
-        @cache.key?(root_span_id)
-      end
+      local = Thread.current[THREAD_KEY] || {}
+      evict_expired(local)
+      local.key?(root_span_id)
     end
 
-    # Clear one or all cache entries
-    # @param root_span_id [String, nil] Specific root span ID, or nil to clear all
-    def clear(root_span_id = nil)
-      @mutex.synchronize do
-        if root_span_id
-          @cache.delete(root_span_id)
-        else
-          @cache.clear
-        end
-      end
+    # Clear all cached data for the current thread
+    # Used by EvalContext.dispose for cleanup
+    def clear_all
+      Thread.current[THREAD_KEY] = nil
     end
 
-    # Number of cached root spans
+    # Number of cached root spans in current thread
     # @return [Integer]
     def size
-      @mutex.synchronize { @cache.size }
+      local = Thread.current[THREAD_KEY] || {}
+      local.size
     end
 
-    # Check if cache is enabled
-    # @return [Boolean]
-    def enabled?
-      @enabled
-    end
-
-    # Enable and clear the cache (called at eval start)
-    def start
-      @mutex.synchronize do
-        @enabled = true
-        @cache.clear
-      end
-    end
-
-    # Disable and clear the cache (called at eval end)
-    def stop
-      @mutex.synchronize do
-        @enabled = false
-        @cache.clear
-      end
-    end
-
-    # Disable the cache without clearing
-    def disable
-      @enabled = false
-    end
-
-    private
-
-    def evict_expired
+    # Evict expired entries from cache
+    def evict_expired(cache)
       now = Time.now
-      @cache.delete_if { |_id, entry| now - entry[:accessed_at] > @ttl }
+      cache.delete_if { |_id, entry| now - entry[:accessed_at] > @ttl }
     end
 
-    def evict_lru
-      return if @cache.size < @max_entries
+    # Evict least recently used entry
+    def evict_lru(cache)
+      return if cache.size < @max_entries
 
       # Remove the least recently accessed entry
-      lru_key = @cache.min_by { |_id, entry| entry[:accessed_at] }&.first
-      @cache.delete(lru_key) if lru_key
+      lru_key = cache.min_by { |_id, entry| entry[:accessed_at] }&.first
+      cache.delete(lru_key) if lru_key
     end
   end
 end

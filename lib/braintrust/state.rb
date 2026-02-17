@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "api/internal/auth"
-require_relative "span_cache"
 
 module Braintrust
   # State object that holds Braintrust configuration
   # Thread-safe global state management
   class State
-    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config, :span_cache
+    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config
 
     @mutex = Mutex.new
     @global_state = nil
@@ -77,7 +76,6 @@ module Braintrust
       @api_url = api_url || "https://api.braintrust.dev"
       @proxy_url = proxy_url
       @config = config
-      @span_cache = SpanCache.new
 
       # If org_id is provided, we're already "logged in" (useful for testing)
       # Otherwise, perform login to discover org info

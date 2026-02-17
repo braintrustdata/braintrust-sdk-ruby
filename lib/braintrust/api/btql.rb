@@ -9,7 +9,7 @@ module Braintrust
   class API
     # BTQL API namespace
     # Provides methods for querying spans and other data using BTQL
-    class Btql
+    class BTQL
       def initialize(api)
         @api = api
         @state = api.state
