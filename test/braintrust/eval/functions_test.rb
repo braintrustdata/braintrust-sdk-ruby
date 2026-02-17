@@ -302,37 +302,6 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
     end
   end
 
-  def test_scorer_parses_code_numeric_response
-    VCR.use_cassette("eval_functions/scorer_parses_code_numeric_response") do
-      state, api = get_test_state_and_api
-      function_slug = "test-ruby-sdk-code-scorer"
-
-      api.functions.create(
-        project_name: @project_name,
-        slug: function_slug,
-        function_data: {
-          type: "code",
-          data: {
-            type: "inline",
-            runtime_context: {runtime: "node", version: "18"},
-            code: "function handler({ input, output, expected }) { return 0.75; }"
-          }
-        }
-      )
-
-      scorer = Braintrust::Eval::Functions.scorer(
-        project: @project_name,
-        slug: function_slug,
-        state: state
-      )
-
-      result = scorer.call("test", "test", "test", {})
-
-      assert_kind_of Numeric, result
-      assert_equal 0.75, result
-    end
-  end
-
   def test_scorer_parses_code_string_response
     VCR.use_cassette("eval_functions/scorer_parses_code_string_response") do
       state, api = get_test_state_and_api

@@ -99,8 +99,6 @@ module Braintrust
                 result = api.functions.invoke(id: function_id, input: scorer_input)
 
                 score = case result
-                when Numeric
-                  result.to_f
                 when Hash
                   if result.key?("score")
                     result["score"].to_f
