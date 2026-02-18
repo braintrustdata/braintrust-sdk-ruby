@@ -106,7 +106,7 @@ module Braintrust
                     raise Error, "Hash result must contain 'score' key"
                   end
                 when String
-                  result.to_s.to_f
+                  result.to_f
                 else
                   raise Error, "Unsupported result type: #{result.class}"
                 end
