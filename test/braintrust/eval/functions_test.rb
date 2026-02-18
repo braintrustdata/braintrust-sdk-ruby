@@ -257,4 +257,79 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       assert_equal 0, result.errors.length, "Remote scorer should not error"
     end
   end
+
+  def test_scorer_parses_structured_response
+    VCR.use_cassette("eval_functions/scorer_parses_structured_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-structured"
+
+      api.functions.create_scorer(
+        project_name: @project_name,
+        slug: function_slug,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Evaluate if the output matches the expected value."},
+              {role: "user", content: "Does '{{output}}' match '{{expected}}'? Answer 'correct' or 'incorrect'."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          },
+          parser: {
+            type: "llm_classifier",
+            use_cot: true,
+            choice_scores: {
+              "correct" => 1.0,
+              "incorrect" => 0.0
+            }
+          }
+        }
+      )
+
+      scorer = Braintrust::Eval::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call("hello", "HELLO", "HELLO", {})
+
+      assert_kind_of Numeric, result
+      assert_equal 1.0, result
+    end
+  end
+
+  def test_scorer_parses_code_string_response
+    VCR.use_cassette("eval_functions/scorer_parses_code_string_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-code-scorer"
+
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {
+          type: "code",
+          data: {
+            type: "inline",
+            runtime_context: {runtime: "node", version: "18"},
+            code: "function handler({ input, output, expected }) { return '0.45'; }"
+          }
+        }
+      )
+
+      scorer = Braintrust::Eval::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call("test", "test", "test", {})
+
+      assert_kind_of Numeric, result
+      assert_equal 0.45, result
+    end
+  end
 end
