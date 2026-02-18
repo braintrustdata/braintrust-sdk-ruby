@@ -2,6 +2,7 @@
 
 require "net/http"
 require_relative "../internal/encoding"
+require_relative "../internal/http"
 require "uri"
 
 module Braintrust
@@ -91,7 +92,8 @@ module Braintrust
       #   att = Braintrust::Trace::Attachment.from_url("https://example.com/image.png")
       def self.from_url(url)
         uri = URI.parse(url)
-        response = Net::HTTP.get_response(uri)
+        request = Net::HTTP::Get.new(uri)
+        response = Braintrust::Internal::Http.with_redirects(uri, request)
 
         unless response.is_a?(Net::HTTPSuccess)
           raise StandardError, "Failed to fetch URL: #{response.code} #{response.message}"

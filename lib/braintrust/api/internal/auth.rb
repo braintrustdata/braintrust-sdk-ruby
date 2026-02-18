@@ -4,6 +4,7 @@ require "net/http"
 require "json"
 require "uri"
 require_relative "../../logger"
+require_relative "../../internal/http"
 
 module Braintrust
   class API
@@ -44,12 +45,7 @@ module Braintrust
           request = Net::HTTP::Post.new(uri)
           request["Authorization"] = "Bearer #{api_key}"
 
-          http = Net::HTTP.new(uri.hostname, uri.port)
-          http.use_ssl = true if uri.scheme == "https"
-
-          response = http.start do |http_session|
-            http_session.request(request)
-          end
+          response = Braintrust::Internal::Http.with_redirects(uri, request)
 
           Log.debug("Login: received response [#{response.code}]")
 
