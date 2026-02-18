@@ -96,62 +96,47 @@ class Braintrust::Trace::AttachmentTest < Minitest::Test
   end
 
   def test_from_url_fetches_remote_image
-    # Mock HTTP response for testing
-    mock_response = Minitest::Mock.new
-    mock_response.expect(:is_a?, true, [Net::HTTPSuccess])
-    mock_response.expect(:content_type, "image/png")
-    mock_response.expect(:body, @test_png_data)
+    stub = stub_request(:get, "https://example.com/image.png")
+      .to_return(status: 200, body: @test_png_data, headers: {"Content-Type" => "image/png"})
 
-    Net::HTTP.stub(:get_response, mock_response) do
-      att = Braintrust::Trace::Attachment.from_url("https://example.com/image.png")
+    att = Braintrust::Trace::Attachment.from_url("https://example.com/image.png")
 
-      refute_nil att
-      assert_instance_of Braintrust::Trace::Attachment, att
+    refute_nil att
+    assert_instance_of Braintrust::Trace::Attachment, att
 
-      # Should be able to convert to data URL
-      data_url = att.to_data_url
-      assert_match(/^data:image\/png;base64,/, data_url)
-    end
-
-    mock_response.verify
+    # Should be able to convert to data URL
+    data_url = att.to_data_url
+    assert_match(/^data:image\/png;base64,/, data_url)
+  ensure
+    remove_request_stub(stub)
   end
 
   def test_from_url_handles_content_type_from_response
-    # Mock HTTP response with JPEG content type
-    mock_response = Minitest::Mock.new
-    mock_response.expect(:is_a?, true, [Net::HTTPSuccess])
-    mock_response.expect(:content_type, "image/jpeg")
-    mock_response.expect(:body, "fake jpeg data")
+    stub = stub_request(:get, "https://example.com/photo.jpg")
+      .to_return(status: 200, body: "fake jpeg data", headers: {"Content-Type" => "image/jpeg"})
 
-    Net::HTTP.stub(:get_response, mock_response) do
-      att = Braintrust::Trace::Attachment.from_url("https://example.com/photo.jpg")
+    att = Braintrust::Trace::Attachment.from_url("https://example.com/photo.jpg")
 
-      refute_nil att
-      data_url = att.to_data_url
+    refute_nil att
+    data_url = att.to_data_url
 
-      # Should detect JPEG content type
-      assert_match(/^data:image\/jpeg;base64,/, data_url)
-    end
-
-    mock_response.verify
+    # Should detect JPEG content type
+    assert_match(/^data:image\/jpeg;base64,/, data_url)
+  ensure
+    remove_request_stub(stub)
   end
 
   def test_from_url_raises_on_network_error
-    # Mock HTTP error response
-    mock_response = Minitest::Mock.new
-    mock_response.expect(:is_a?, false, [Net::HTTPSuccess])
-    mock_response.expect(:code, "404")
-    mock_response.expect(:message, "Not Found")
+    stub = stub_request(:get, "https://example.com/nonexistent.png")
+      .to_return(status: 404)
 
-    Net::HTTP.stub(:get_response, mock_response) do
-      error = assert_raises(StandardError) do
-        Braintrust::Trace::Attachment.from_url("https://example.com/nonexistent.png")
-      end
-
-      assert_match(/Failed to fetch URL: 404 Not Found/, error.message)
+    error = assert_raises(StandardError) do
+      Braintrust::Trace::Attachment.from_url("https://example.com/nonexistent.png")
     end
 
-    mock_response.verify
+    assert_match(/Failed to fetch URL: 404/, error.message)
+  ensure
+    remove_request_stub(stub)
   end
 
   def test_different_content_types

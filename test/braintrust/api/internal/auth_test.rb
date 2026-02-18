@@ -91,7 +91,7 @@ class Braintrust::API::Internal::AuthTest < Minitest::Test
 
   def test_login_unexpected_response
     stub = stub_request(:post, "https://www.braintrust.dev/api/apikey/login")
-      .to_return(status: 301, body: "", headers: {})
+      .to_return(status: 100, body: "", headers: {})
 
     error = assert_raises(Braintrust::Error) do
       Braintrust::API::Internal::Auth.login(
@@ -101,7 +101,7 @@ class Braintrust::API::Internal::AuthTest < Minitest::Test
     end
 
     assert_match(/unexpected response/i, error.message)
-    assert_match(/301/, error.message)
+    assert_match(/100/, error.message)
   ensure
     remove_request_stub(stub)
   end

@@ -4,6 +4,7 @@ require "net/http"
 require "json"
 require "uri"
 require_relative "../logger"
+require_relative "../internal/http"
 
 module Braintrust
   class API
@@ -111,6 +112,7 @@ module Braintrust
         payload[:version] = version if version
 
         response = http_post_json_raw("/btql", payload)
+        Braintrust::Internal::Http.decompress_response!(response)
 
         # Parse JSONL response
         records = response.body.lines
@@ -158,9 +160,7 @@ module Braintrust
         start_time = Time.now
         Log.debug("[API] #{method.upcase} #{uri}")
 
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = (uri.scheme == "https")
-        response = http.request(request)
+        response = Braintrust::Internal::Http.with_redirects(uri, request)
 
         duration_ms = ((Time.now - start_time) * 1000).round(2)
         Log.debug("[API] #{method.upcase} #{uri} -> #{response.code} (#{duration_ms}ms, #{response.body.bytesize} bytes)")

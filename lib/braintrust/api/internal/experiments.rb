@@ -3,6 +3,7 @@
 require "net/http"
 require "json"
 require "uri"
+require_relative "../../internal/http"
 
 module Braintrust
   class API
@@ -41,9 +42,7 @@ module Braintrust
           request["Authorization"] = "Bearer #{@state.api_key}"
           request.body = JSON.dump(payload)
 
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl = (uri.scheme == "https")
-          response = http.request(request)
+          response = Braintrust::Internal::Http.with_redirects(uri, request)
 
           unless response.is_a?(Net::HTTPSuccess)
             raise Error, "HTTP #{response.code} for POST #{uri}: #{response.body}"
