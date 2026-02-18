@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "opentelemetry/sdk"
+require "ostruct"
 
 class Braintrust::Trace::SpanProcessorTest < Minitest::Test
   def setup
@@ -157,5 +158,91 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
     assert_equal "experiment_id:abc-123", child_span_data.attributes["braintrust.parent"]
     assert_equal rig.state.org_name, child_span_data.attributes["braintrust.org"]
     assert_equal rig.state.app_url, child_span_data.attributes["braintrust.app_url"]
+  end
+
+  # Cache integration tests
+  def test_writes_to_span_registry_cache_when_registered
+    require_relative "../../../lib/braintrust/trace/span_registry"
+    require_relative "../../../lib/braintrust/span_cache"
+
+    # Clean up any previous state
+    Thread.current[:braintrust_span_cache_data] = nil
+    Braintrust::Trace::SpanRegistry.unregister
+
+    # Create a cache and register it
+    cache = Braintrust::SpanCache.new
+    Braintrust::Trace::SpanRegistry.register(cache)
+
+    # Set up otel test rig with our processor
+    rig = setup_otel_test_rig_with_cache(cache)
+
+    # Create and finish a span with braintrust attributes
+    tracer = rig.tracer("test")
+    span = tracer.start_span("test-span")
+    span.set_attribute("braintrust.input_json", '{"input": "test"}')
+    span.set_attribute("braintrust.output_json", '{"output": "result"}')
+    span.finish
+
+    # Drain spans to trigger processing
+    spans = rig.drain
+    assert_equal 1, spans.size
+
+    # Verify data was written to registry cache
+    root_span_id = spans.first.trace_id.unpack1("H*")
+    cached_spans = cache.get(root_span_id)
+
+    assert cached_spans, "Span should be written to registry cache"
+    assert_equal 1, cached_spans.size
+
+    span_data = cached_spans.first
+    assert_equal({input: "test"}, span_data[:input])
+    assert_equal({output: "result"}, span_data[:output])
+  ensure
+    Braintrust::Trace::SpanRegistry.unregister
+    Thread.current[:braintrust_span_cache_data] = nil
+  end
+
+  def test_skips_cache_write_when_no_registry
+    require_relative "../../../lib/braintrust/trace/span_registry"
+
+    # Clean up any previous state
+    Thread.current[:braintrust_span_cache_data] = nil
+    Braintrust::Trace::SpanRegistry.unregister
+
+    # Set up otel test rig without registering cache
+    rig = setup_otel_test_rig
+
+    # Verify no registry entry
+    assert_nil Braintrust::Trace::SpanRegistry.current, "Registry should be empty"
+
+    # Create and finish a span
+    tracer = rig.tracer("test")
+    span = tracer.start_span("test-span")
+    span.set_attribute("braintrust.input_json", '{"input": "test"}')
+    span.finish
+
+    # Drain spans - should not raise an error
+    spans = rig.drain
+    assert_equal 1, spans.size
+
+    # Verify span was processed but cache write was skipped
+    # (no error means it handled the missing cache gracefully)
+  ensure
+    Thread.current[:braintrust_span_cache_data] = nil
+  end
+
+  private
+
+  # Helper to set up test rig with custom cache registered
+  def setup_otel_test_rig_with_cache(cache)
+    require_relative "../../../lib/braintrust/trace/span_registry"
+
+    # Use the existing helper
+    rig = setup_otel_test_rig
+
+    # Register the cache
+    Braintrust::Trace::SpanRegistry.register(cache)
+
+    rig
   end
 end

@@ -97,7 +97,7 @@ class Braintrust::Eval::ScorerTest < Minitest::Test
       end
     end
 
-    assert_match(/must accept 3 or 4 parameters/, error.message)
+    assert_match(/must accept 3, 4, or 5 parameters/, error.message)
   end
 
   def test_scorer_missing_callable
@@ -176,5 +176,92 @@ class Braintrust::Eval::ScorerTest < Minitest::Test
     assert_equal "my_scorer", scorer.name
     assert_equal 1.0, scorer.call("i", "match", "match")
     assert_equal 0.0, scorer.call("i", "match", "no_match")
+  end
+
+  def test_scorer_with_5_param_block
+    # Test scorer with 5 params (input, expected, output, metadata, trace)
+    trace_received = nil
+    scorer = Braintrust::Eval::Scorer.new("trace_scorer") do |input, expected, output, metadata, trace|
+      trace_received = trace
+      1.0
+    end
+
+    assert_equal "trace_scorer", scorer.name
+
+    mock_trace = Object.new
+    result = scorer.call("a", "b", "c", {}, mock_trace)
+    assert_equal 1.0, result
+    assert_equal mock_trace, trace_received
+  end
+
+  def test_scorer_3_params_ignores_metadata_and_trace
+    # Test that 3-param scorer ignores metadata and trace
+    scorer = Braintrust::Eval::Scorer.new("simple") do |input, expected, output|
+      "#{input}-#{expected}-#{output}"
+    end
+
+    mock_trace = Object.new
+    result = scorer.call("a", "b", "c", {foo: "bar"}, mock_trace)
+    assert_equal "a-b-c", result
+  end
+
+  def test_scorer_4_params_ignores_trace
+    # Test that 4-param scorer ignores trace but uses metadata
+    scorer = Braintrust::Eval::Scorer.new("with_metadata") do |input, expected, output, metadata|
+      metadata[:key].to_s
+    end
+
+    mock_trace = Object.new
+    result = scorer.call("a", "b", "c", {key: "value"}, mock_trace)
+    assert_equal "value", result
+  end
+
+  def test_scorer_5_params_with_callable_class
+    # Test 5-param scorer with callable class
+    callable = Class.new do
+      def initialize
+        @trace_received = nil
+      end
+
+      attr_reader :trace_received
+
+      def call(input, expected, output, metadata, trace)
+        @trace_received = trace
+        {name: "custom", score: 0.9}
+      end
+    end.new
+
+    scorer = Braintrust::Eval::Scorer.new("trace_class", callable)
+
+    mock_trace = Object.new
+    result = scorer.call("a", "b", "c", {}, mock_trace)
+    assert_equal({name: "custom", score: 0.9}, result)
+  end
+
+  def test_scorer_variadic_accepts_trace
+    # Test that variadic scorer (-1 arity) accepts trace
+    trace_received = nil
+    scorer = Braintrust::Eval::Scorer.new("variadic") do |*args|
+      trace_received = args[4] if args.length > 4
+      1.0
+    end
+
+    mock_trace = Object.new
+    result = scorer.call("a", "b", "c", {}, mock_trace)
+    assert_equal 1.0, result
+    assert_equal mock_trace, trace_received
+  end
+
+  def test_scorer_with_nil_trace
+    # Test that scorer handles nil trace gracefully
+    trace_received = "not_nil"
+    scorer = Braintrust::Eval::Scorer.new("nil_trace") do |input, expected, output, metadata, trace|
+      trace_received = trace
+      1.0
+    end
+
+    result = scorer.call("a", "b", "c", {}, nil)
+    assert_equal 1.0, result
+    assert_nil trace_received
   end
 end

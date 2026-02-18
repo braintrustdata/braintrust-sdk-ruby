@@ -2,6 +2,7 @@
 
 require_relative "api/datasets"
 require_relative "api/functions"
+require_relative "api/btql"
 
 module Braintrust
   # API client for Braintrust REST API
@@ -41,6 +42,12 @@ module Braintrust
     # @return [String] Permalink URL
     def object_permalink(object_type:, object_id:)
       @state.object_permalink(object_type: object_type, object_id: object_id)
+    end
+
+    # Access to BTQL API
+    # @return [API::BTQL]
+    def btql
+      @btql ||= API::BTQL.new(self)
     end
   end
 end
