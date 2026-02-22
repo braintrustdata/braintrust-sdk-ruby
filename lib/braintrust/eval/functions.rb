@@ -56,6 +56,27 @@ module Braintrust
           end
         end
 
+        # Create a scorer that invokes a remote function by ID
+        # @param id [String] Function UUID
+        # @param version [String, nil] Optional version to pin to
+        # @param state [State, nil] Braintrust state (defaults to global)
+        # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
+        # @return [Scorer] Scorer object that invokes remote function
+        def scorer_by_id(id:, state: nil, version: nil, tracer_provider: nil)
+          state ||= Braintrust.current_state
+          api = API.new(state: state)
+          api.login
+
+          function_metadata = api.functions.get(id: id, version: version)
+          function_id = function_metadata["id"]
+          function_name = function_metadata["name"] || id
+
+          tracer_provider ||= OpenTelemetry.tracer_provider
+          tracer = tracer_provider.tracer("braintrust.functions")
+
+          build_scorer(function_id: function_id, function_name: function_name, api: api, tracer: tracer)
+        end
+
         # Create a scorer that invokes a remote function
         # @param project [String] Project name
         # @param slug [String] Function slug
@@ -76,10 +97,21 @@ module Braintrust
           tracer_provider ||= OpenTelemetry.tracer_provider
           tracer = tracer_provider.tracer("braintrust.functions")
 
-          # Create a scorer that invokes the remote function
-          Scorer.new(slug) do |input, expected, output, metadata|
-            # Create a span for the function invocation
-            tracer.in_span("function: #{slug}") do |span|
+          build_scorer(function_id: function_id, function_name: function_name, api: api, tracer: tracer)
+        end
+
+        private
+
+        # Build a Scorer that invokes a remote function
+        # Shared implementation used by both scorer and scorer_by_id
+        # @param function_id [String] Function UUID
+        # @param function_name [String] Function display name
+        # @param api [API] Braintrust API client
+        # @param tracer [OpenTelemetry::Trace::Tracer] Tracer instance
+        # @return [Scorer]
+        def build_scorer(function_id:, function_name:, api:, tracer:)
+          Scorer.new(function_name) do |input, expected, output, metadata|
+            tracer.in_span("function: #{function_name}") do |span|
               scorer_input = {
                 input: input,
                 expected: expected,
@@ -91,11 +123,8 @@ module Braintrust
               span.set_attribute("braintrust.input_json", JSON.dump(scorer_input))
               span.set_attribute("braintrust.function.name", function_name)
               span.set_attribute("braintrust.function.id", function_id)
-              span.set_attribute("braintrust.function.slug", slug)
 
               begin
-                # Invoke the function via API
-                # The remote scorer receives all scorer arguments
                 result = api.functions.invoke(id: function_id, input: scorer_input)
 
                 score = case result
@@ -114,7 +143,6 @@ module Braintrust
                 span.set_attribute("braintrust.output_json", JSON.dump(score))
                 score
               rescue => e
-                # Record exception and set error status
                 span.record_exception(e)
                 span.status = OpenTelemetry::Trace::Status.error(e.message)
                 raise
@@ -122,8 +150,6 @@ module Braintrust
             end
           end
         end
-
-        private
 
         # Resolve function ID from project name and slug
         # @param api [API] API client

@@ -7,6 +7,7 @@ require "braintrust/eval/functions"
 class Braintrust::Eval::FunctionsTest < Minitest::Test
   def setup
     @project_name = "ruby-sdk-test"
+    @rig = setup_otel_test_rig
   end
 
   def get_test_state_and_api
@@ -180,7 +181,8 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
             output.to_s.include?(expected) ? 1.0 : 0.0
           end
         ],
-        api: api,
+        state: api.state,
+        tracer_provider: @rig.tracer_provider,
         quiet: true
       )
 
@@ -245,7 +247,8 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         ],
         task: task,
         scorers: [scorer],
-        api: api,
+        state: api.state,
+        tracer_provider: @rig.tracer_provider,
         quiet: true
       )
 
@@ -330,6 +333,73 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
 
       assert_kind_of Numeric, result
       assert_equal 0.45, result
+    end
+  end
+
+  # --- scorer_by_id tests ---
+
+  def test_scorer_by_id_returns_scorer
+    VCR.use_cassette("eval_functions/scorer_by_id") do
+      _, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-by-id"
+
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this: {{output}}. Return just a number."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      scorer = Braintrust::Eval::Functions.scorer_by_id(
+        id: created["id"],
+        state: api.state
+      )
+
+      assert_instance_of Braintrust::Eval::Scorer, scorer
+    end
+  end
+
+  def test_scorer_by_id_with_version
+    VCR.use_cassette("eval_functions/scorer_by_id_version") do
+      _, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-by-id-ver"
+
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer."},
+              {role: "user", content: "Score: {{output}}. Return a number."}
+            ]
+          },
+          options: {model: "gpt-4o-mini", params: {temperature: 0}}
+        }
+      )
+
+      # scorer_by_id with explicit version (nil just resolves latest)
+      scorer = Braintrust::Eval::Functions.scorer_by_id(
+        id: created["id"],
+        version: nil,
+        state: api.state
+      )
+
+      assert_instance_of Braintrust::Eval::Scorer, scorer
     end
   end
 end

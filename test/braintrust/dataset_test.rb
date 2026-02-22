@@ -9,41 +9,41 @@ class Braintrust::DatasetTest < Minitest::Test
   # ============================================
 
   def test_initialize_with_name_and_project
-    api = mock_api
-    dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project", state: state)
 
     assert_equal "my-dataset", dataset.name
     assert_equal "my-project", dataset.project
   end
 
   def test_initialize_with_id
-    api = mock_api
-    dataset = Braintrust::Dataset.new(id: "dataset-123", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
     assert_equal "dataset-123", dataset.id
   end
 
   def test_initialize_requires_name_or_id
-    api = mock_api
+    state = mock_state
     error = assert_raises(ArgumentError) do
-      Braintrust::Dataset.new(api: api)
+      Braintrust::Dataset.new(state: state)
     end
 
     assert_match(/must specify either :name or :id/, error.message)
   end
 
   def test_initialize_requires_project_when_using_name
-    api = mock_api
+    state = mock_state
     error = assert_raises(ArgumentError) do
-      Braintrust::Dataset.new(name: "my-dataset", api: api)
+      Braintrust::Dataset.new(name: "my-dataset", state: state)
     end
 
     assert_match(/:project is required when using :name/, error.message)
   end
 
   def test_initialize_with_version
-    api = mock_api
-    dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project", version: "1.0", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project", version: "1.0", state: state)
 
     assert_equal "1.0", dataset.version
   end
@@ -65,8 +65,8 @@ class Braintrust::DatasetTest < Minitest::Test
   # ============================================
 
   def test_id_returns_provided_id_directly
-    api = mock_api
-    dataset = Braintrust::Dataset.new(id: "dataset-123", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
     # Should return ID without making API calls
     assert_equal "dataset-123", dataset.id
@@ -77,8 +77,8 @@ class Braintrust::DatasetTest < Minitest::Test
   # ============================================
 
   def test_dataset_is_enumerable
-    api = mock_api
-    dataset = Braintrust::Dataset.new(id: "dataset-123", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
     assert dataset.respond_to?(:each)
     assert dataset.respond_to?(:map)
@@ -91,8 +91,8 @@ class Braintrust::DatasetTest < Minitest::Test
   # ============================================
 
   def test_build_origin_creates_valid_json
-    api = mock_api
-    dataset = Braintrust::Dataset.new(id: "dataset-123", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
     raw_record = {
       "id" => "record-456",
@@ -113,8 +113,8 @@ class Braintrust::DatasetTest < Minitest::Test
   end
 
   def test_build_origin_uses_fallback_dataset_id
-    api = mock_api
-    dataset = Braintrust::Dataset.new(id: "dataset-123", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
     raw_record = {
       "id" => "record-456",
@@ -129,8 +129,8 @@ class Braintrust::DatasetTest < Minitest::Test
   end
 
   def test_build_origin_returns_nil_when_missing_required_fields
-    api = mock_api
-    dataset = Braintrust::Dataset.new(id: "dataset-123", api: api)
+    state = mock_state
+    dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
     # Missing id
     record_no_id = {"_xact_id" => "123"}
@@ -167,7 +167,7 @@ class Braintrust::DatasetTest < Minitest::Test
       )
 
       # Use Dataset class to fetch
-      dataset = Braintrust::Dataset.new(name: dataset_name, project: project_name, api: api)
+      dataset = Braintrust::Dataset.new(name: dataset_name, project: project_name, state: state)
       records = dataset.fetch_all(limit: 1)
 
       assert records.any?, "Expected at least one record"
@@ -207,7 +207,7 @@ class Braintrust::DatasetTest < Minitest::Test
       )
 
       # Use take to only fetch what we need
-      dataset = Braintrust::Dataset.new(name: dataset_name, project: project_name, api: api)
+      dataset = Braintrust::Dataset.new(name: dataset_name, project: project_name, state: state)
       first_record = dataset.take(1).first
 
       assert first_record, "Expected to get first record"
@@ -217,8 +217,7 @@ class Braintrust::DatasetTest < Minitest::Test
 
   private
 
-  def mock_api
-    # Create a minimal mock API that won't make real calls
-    Minitest::Mock.new
+  def mock_state
+    get_unit_test_state
   end
 end

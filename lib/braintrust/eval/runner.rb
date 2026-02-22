@@ -17,18 +17,21 @@ module Braintrust
       # Maximum parallelism allowed (mirrors Internal::ThreadPool::MAX_PARALLELISM)
       MAX_PARALLELISM = Internal::ThreadPool::MAX_PARALLELISM
 
-      def initialize(experiment_id:, experiment_name:, project_id:, project_name:,
-        task:, scorers:, api:, tracer_provider: nil)
+      def initialize(task:, scorers:, experiment_id: nil, experiment_name: nil,
+        project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
+        on_progress: nil, parent: nil)
         @experiment_id = experiment_id
         @experiment_name = experiment_name
         @project_id = project_id
         @project_name = project_name
         @task = task
         @scorers = normalize_scorers(scorers)
-        @api = api
+        @state = state
         @tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
         @tracer = @tracer_provider.tracer("braintrust-eval")
-        @parent_attr = "experiment_id:#{experiment_id}"
+        @parent_attr = parent ? "#{parent[:object_type]}:#{parent[:object_id]}" : nil
+        @generation = parent&.dig(:generation)
+        @on_progress = on_progress
 
         # Mutex for thread-safe score collection
         @score_mutex = Mutex.new
@@ -60,8 +63,10 @@ module Braintrust
         # Calculate duration
         duration = Time.now - start_time
 
-        # Generate permalink
-        permalink = @api.object_permalink(object_type: "experiment", object_id: experiment_id)
+        # Generate permalink (only when state and experiment are available)
+        permalink = if @state && experiment_id
+          @state.object_permalink(object_type: "experiment", object_id: experiment_id)
+        end
 
         Result.new(
           experiment_id: experiment_id,
@@ -86,7 +91,7 @@ module Braintrust
       # @param errors [Queue] Thread-safe error collection queue
       def run_case(test_case, errors)
         tracer.in_span("eval") do |eval_span|
-          eval_span.set_attribute("braintrust.parent", parent_attr)
+          eval_span.set_attribute("braintrust.parent", parent_attr) if parent_attr
 
           # Set tags early so they're present even if task fails
           eval_span.set_attribute("braintrust.tags", test_case.tags) if test_case.tags
@@ -99,12 +104,14 @@ module Braintrust
             # Error already recorded on task span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
             errors << "Task failed for input '#{test_case.input}': #{e.message}"
+            @on_progress&.call({"error" => e.message})
             next
           end
 
           # Run scorers
+          case_scores = nil
           begin
-            run_scorers(test_case, output)
+            case_scores = run_scorers(test_case, output)
           rescue => e
             # Error already recorded on score span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
@@ -112,13 +119,15 @@ module Braintrust
           end
 
           # Set eval span attributes (after task and scorers complete)
-          set_json_attr(eval_span, "braintrust.span_attributes", {type: "eval"})
+          set_json_attr(eval_span, "braintrust.span_attributes", build_span_attributes("eval"))
           set_json_attr(eval_span, "braintrust.input_json", test_case.input)
           set_json_attr(eval_span, "braintrust.output_json", output)
           set_json_attr(eval_span, "braintrust.expected", test_case.expected) if test_case.expected
 
           # Set origin for cases from remote sources (already JSON-serialized)
           eval_span.set_attribute("braintrust.origin", test_case.origin) if test_case.origin
+
+          @on_progress&.call({"data" => output, "scores" => case_scores || {}})
         end
       end
 
@@ -128,8 +137,8 @@ module Braintrust
       # @return [Object] Task output
       def run_task(test_case)
         tracer.in_span("task") do |task_span|
-          task_span.set_attribute("braintrust.parent", parent_attr)
-          set_json_attr(task_span, "braintrust.span_attributes", {type: "task"})
+          task_span.set_attribute("braintrust.parent", parent_attr) if parent_attr
+          set_json_attr(task_span, "braintrust.span_attributes", build_span_attributes("task"))
           set_json_attr(task_span, "braintrust.input_json", test_case.input)
 
           begin
@@ -149,10 +158,11 @@ module Braintrust
       # Creates single score span for all scorers
       # @param test_case [Case] The test case
       # @param output [Object] Task output
+      # @return [Hash] Scores hash { scorer_name => score_value }
       def run_scorers(test_case, output)
         tracer.in_span("score") do |score_span|
-          score_span.set_attribute("braintrust.parent", parent_attr)
-          set_json_attr(score_span, "braintrust.span_attributes", {type: "score"})
+          score_span.set_attribute("braintrust.parent", parent_attr) if parent_attr
+          set_json_attr(score_span, "braintrust.span_attributes", build_span_attributes("score"))
 
           scores = {}
           scorer_error = nil
@@ -173,6 +183,8 @@ module Braintrust
 
           # Raise after setting scores so we can see which scorers succeeded
           raise scorer_error if scorer_error
+
+          scores
         end
       end
 
@@ -219,6 +231,17 @@ module Braintrust
           span.record_exception(error)
         end
         span.status = OpenTelemetry::Trace::Status.error(error.message)
+      end
+
+      # Build span_attributes hash with type, and optionally name and generation.
+      # Matches Java SDK behavior of including these on every span.
+      # @param type [String] Span type ("eval", "task", or "score")
+      # @return [Hash]
+      def build_span_attributes(type)
+        attrs = {type: type}
+        attrs[:name] = experiment_name if experiment_name
+        attrs[:generation] = @generation if @generation
+        attrs
       end
 
       # Set a span attribute by JSON encoding the value

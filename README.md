@@ -23,6 +23,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
 - [Evals](#evals)
   - [Datasets](#datasets)
   - [Scorers](#scorers)
+  - [Dev Server](#dev-server)
 - [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -317,6 +318,61 @@ Braintrust::Eval.run(
 ```
 
 See examples: [eval.rb](./examples/eval.rb), [dataset.rb](./examples/eval/dataset.rb), [remote_functions.rb](./examples/eval/remote_functions.rb)
+
+### Dev Server
+
+Run evaluations from the Braintrust web UI against code in your own application. Define evaluators, pass them to the dev server, and start serving:
+
+```ruby
+# eval_server.ru
+require "braintrust/eval"
+require "braintrust/server"
+
+# Define evaluators — these can reference your application code (models, services, etc.)
+food_classifier = Braintrust::Eval::Evaluator.new(
+  task: ->(input) { FoodClassifier.classify(input) },
+  scorers: [
+    Braintrust::Eval.scorer("exact_match") { |input, expected, output| output == expected ? 1.0 : 0.0 }
+  ]
+)
+
+# Initialize Braintrust (requires BRAINTRUST_API_KEY)
+Braintrust.init
+
+# Start the server
+run Braintrust::Server::Rack.app(
+  evaluators: {
+    "food-classifier" => food_classifier
+  }
+)
+```
+
+```bash
+bundle exec rackup eval_server.ru -p 8300 -o 0.0.0.0
+```
+
+Evaluators can also be defined as subclasses:
+
+```ruby
+class FoodClassifier < Braintrust::Eval::Evaluator
+  def task
+    ->(input) { classify(input) }
+  end
+
+  def scorers
+    [Braintrust::Eval.scorer("exact_match") { |i, e, o| o == e ? 1.0 : 0.0 }]
+  end
+end
+```
+
+The server requires the `rack` gem and a Rack-compatible server (e.g. `puma`, `falcon`, `webrick`). Add them to your Gemfile:
+
+```ruby
+gem "rack"
+gem "puma" # or any Rack-compatible server
+```
+
+See example: [server/eval.rb](./examples/server/eval.rb)
 
 ## Documentation
 
