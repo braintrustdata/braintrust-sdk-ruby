@@ -29,9 +29,9 @@ module Braintrust
 
           payload = {
             project_id: project_id,
-            name: name,
             ensure_new: ensure_new
           }
+          payload[:name] = name if name
           payload[:tags] = tags if tags
           payload[:metadata] = metadata if metadata
           payload[:dataset_id] = dataset_id if dataset_id

@@ -3,6 +3,7 @@
 require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
+require_relative "trace/span_exporter"
 require_relative "trace/span_filter"
 require_relative "internal/env"
 require_relative "logger"
@@ -88,11 +89,9 @@ module Braintrust
       config ||= state.respond_to?(:config) ? state.config : nil
 
       # Create OTLP HTTP exporter unless override provided
-      exporter ||= OpenTelemetry::Exporter::OTLP::Exporter.new(
+      exporter ||= SpanExporter.new(
         endpoint: "#{state.api_url}/otel/v1/traces",
-        headers: {
-          "Authorization" => "Bearer #{state.api_key}"
-        }
+        api_key: state.api_key
       )
 
       # Use SimpleSpanProcessor for InMemorySpanExporter (testing), BatchSpanProcessor for production

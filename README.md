@@ -23,6 +23,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
 - [Evals](#evals)
   - [Datasets](#datasets)
   - [Scorers](#scorers)
+  - [Dev Server](#dev-server)
 - [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -148,8 +149,8 @@ Braintrust.init(
 
 The SDK automatically instruments these LLM libraries:
 
-| Provider  | Gem           | Versions | Integration Name | Examples                                        |
-| --------- | ------------- | -------- | ---------------- | ----------------------------------------------- |
+| Provider  | Gem           | Versions | Integration Name | Examples                                  |
+| --------- | ------------- | -------- | ---------------- | ----------------------------------------- |
 | Anthropic | `anthropic`   | >= 0.3.0 | `:anthropic`     | [Link](./examples/contrib/anthropic.rb)   |
 | OpenAI    | `openai`      | >= 0.1.0 | `:openai`        | [Link](./examples/contrib/openai.rb)      |
 |           | `ruby-openai` | >= 7.0.0 | `:ruby_openai`   | [Link](./examples/contrib/ruby-openai.rb) |
@@ -317,6 +318,74 @@ Braintrust::Eval.run(
 ```
 
 See examples: [eval.rb](./examples/eval.rb), [dataset.rb](./examples/eval/dataset.rb), [remote_functions.rb](./examples/eval/remote_functions.rb)
+
+### Dev Server
+
+Run evaluations from the Braintrust web UI against code in your own application. Define evaluators, pass them to the dev server, and start serving:
+
+```ruby
+# eval_server.ru
+require "braintrust/eval"
+require "braintrust/server"
+
+# Define evaluators — these can reference your application code (models, services, etc.)
+food_classifier = Braintrust::Eval::Evaluator.new(
+  task: ->(input) { FoodClassifier.classify(input) },
+  scorers: [
+    Braintrust::Eval.scorer("exact_match") { |input, expected, output| output == expected ? 1.0 : 0.0 }
+  ]
+)
+
+# Initialize Braintrust (requires BRAINTRUST_API_KEY)
+Braintrust.init(blocking_login: true)
+
+# Start the server
+run Braintrust::Server::Rack.app(
+  evaluators: {
+    "food-classifier" => food_classifier
+  }
+)
+```
+
+```bash
+bundle exec rackup eval_server.ru -p 8300 -o 0.0.0.0
+```
+
+**Custom evaluators**
+
+Evaluators can also be defined as subclasses:
+
+```ruby
+class FoodClassifier < Braintrust::Eval::Evaluator
+  def task
+    ->(input) { classify(input) }
+  end
+
+  def scorers
+    [Braintrust::Eval.scorer("exact_match") { |i, e, o| o == e ? 1.0 : 0.0 }]
+  end
+end
+```
+
+**Supported web servers**
+
+The dev server requires the `rack` gem and a Rack-compatible web server.
+
+| Server                                         | Version Supported | Notes                                |
+| ---------------------------------------------- | ----------------- | ------------------------------------ |
+| [Puma](https://puma.io/)                       | 6.x               |                                      |
+| [Falcon](https://socketry.github.io/falcon/)   | 0.x               |                                      |
+| [Passenger](https://www.phusionpassenger.com/) | 6.x               |                                      |
+| [WEBrick](https://github.com/ruby/webrick)     | Not supported     | Does not support server-sent events. |
+
+Add your chosen server to your Gemfile:
+
+```ruby
+gem "rack"
+gem "puma" # recommended
+```
+
+See example: [server/eval.ru](./examples/server/eval.ru)
 
 ## Documentation
 
