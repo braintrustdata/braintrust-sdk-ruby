@@ -590,4 +590,202 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     result2 = runner.run([{input: "c", expected: "WRONG"}])
     assert_equal({"exact" => [0.0]}, result2.scores)
   end
+
+  # ============================================
+  # Runner#run tests - on_progress callback
+  # ============================================
+
+  def test_on_progress_called_for_each_case
+    progress_calls = []
+    runner = build_simple_runner(
+      task: ->(input) { input.upcase },
+      on_progress: ->(data) { progress_calls << data }
+    )
+
+    runner.run([{input: "a"}, {input: "b"}, {input: "c"}])
+
+    assert_equal 3, progress_calls.length
+  end
+
+  def test_on_progress_receives_output_data
+    progress_calls = []
+    runner = build_simple_runner(
+      task: ->(input) { input.upcase },
+      on_progress: ->(data) { progress_calls << data }
+    )
+
+    runner.run([{input: "hello"}])
+
+    assert_equal "HELLO", progress_calls.first["data"]
+  end
+
+  def test_on_progress_receives_scores
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    progress_calls = []
+    runner = build_simple_runner(
+      task: ->(input) { input.upcase },
+      scorers: [scorer],
+      on_progress: ->(data) { progress_calls << data }
+    )
+
+    runner.run([{input: "hello", expected: "HELLO"}])
+
+    assert_equal({"exact" => 1.0}, progress_calls.first["scores"])
+  end
+
+  def test_on_progress_receives_error_on_task_failure
+    progress_calls = []
+    runner = build_simple_runner(
+      task: ->(_) { raise "boom" },
+      on_progress: ->(data) { progress_calls << data }
+    )
+
+    runner.run([{input: "x"}])
+
+    assert_equal 1, progress_calls.length
+    assert_match(/boom/, progress_calls.first["error"])
+  end
+
+  def test_on_progress_not_required
+    runner = build_simple_runner(task: ->(input) { input.upcase })
+
+    result = runner.run([{input: "hello"}])
+
+    assert result.success?
+  end
+
+  def test_on_progress_with_parallelism
+    progress_calls = Queue.new
+    runner = build_simple_runner(
+      task: ->(input) { input.upcase },
+      on_progress: ->(data) { progress_calls << data }
+    )
+
+    runner.run([{input: "a"}, {input: "b"}, {input: "c"}], parallelism: 2)
+
+    assert_equal 3, progress_calls.size
+  end
+
+  def test_result_scores_still_collected_with_on_progress
+    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    runner = build_simple_runner(
+      task: ->(input) { input.upcase },
+      scorers: [scorer],
+      on_progress: ->(data) {}
+    )
+
+    result = runner.run([
+      {input: "hello", expected: "HELLO"},
+      {input: "world", expected: "WORLD"}
+    ])
+
+    assert_equal({"exact" => [1.0, 1.0]}, result.scores)
+  end
+
+  # ============================================
+  # Runner#run tests - parent parameter
+  # ============================================
+
+  def test_runner_with_explicit_parent_sets_parent_attr
+    rig = setup_otel_test_rig
+
+    runner = Braintrust::Eval::Runner.new(
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      task: ->(input) { input.upcase },
+      scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
+      api: rig.api,
+      tracer_provider: rig.tracer_provider,
+      parent: {object_type: "project_logs", object_id: "proj-789"}
+    )
+
+    runner.run([{input: "hello", expected: "HELLO"}])
+
+    spans = rig.exporter.finished_spans
+    eval_spans = spans.select { |s| s.name == "eval" }
+
+    assert_equal 1, eval_spans.length
+    assert_equal "project_logs:proj-789", eval_spans[0].attributes["braintrust.parent"]
+  end
+
+  def test_runner_parent_overrides_experiment_id
+    rig = setup_otel_test_rig
+
+    runner = Braintrust::Eval::Runner.new(
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      task: ->(input) { input.upcase },
+      scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
+      api: rig.api,
+      tracer_provider: rig.tracer_provider,
+      parent: {object_type: "experiment", object_id: "exp-override"}
+    )
+
+    runner.run([{input: "hello"}])
+
+    spans = rig.exporter.finished_spans
+    eval_span = spans.find { |s| s.name == "eval" }
+
+    # parent: should take precedence over experiment_id
+    assert_equal "experiment:exp-override", eval_span.attributes["braintrust.parent"]
+  end
+
+  def test_runner_without_parent_uses_experiment_id
+    rig = setup_otel_test_rig
+
+    runner = Braintrust::Eval::Runner.new(
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      task: ->(input) { input.upcase },
+      scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
+      api: rig.api,
+      tracer_provider: rig.tracer_provider
+    )
+
+    runner.run([{input: "hello"}])
+
+    spans = rig.exporter.finished_spans
+    eval_span = spans.find { |s| s.name == "eval" }
+
+    assert_equal "experiment_id:exp-123", eval_span.attributes["braintrust.parent"]
+  end
+
+  def test_runner_without_parent_or_experiment_id_has_nil_parent
+    # Use bare tracer provider without Braintrust SpanProcessor
+    # (SpanProcessor injects a default parent from state.default_project)
+    exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+    tracer_provider.add_span_processor(
+      OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
+    )
+
+    runner = Braintrust::Eval::Runner.new(
+      task: ->(input) { input.upcase },
+      scorers: [Braintrust::Eval.scorer("exact") { |i, e, o| 1.0 }],
+      tracer_provider: tracer_provider
+    )
+
+    runner.run([{input: "hello"}])
+
+    spans = exporter.finished_spans
+    eval_span = spans.find { |s| s.name == "eval" }
+
+    assert_nil eval_span.attributes["braintrust.parent"]
+  end
+
+  private
+
+  def build_simple_runner(task:, scorers: [], on_progress: nil)
+    Braintrust::Eval::Runner.new(
+      task: task,
+      scorers: scorers,
+      on_progress: on_progress
+    )
+  end
 end

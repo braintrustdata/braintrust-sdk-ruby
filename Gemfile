@@ -9,3 +9,5 @@ gemspec
 gem "minitest-reporters", "~> 1.6"
 gem "minitest-stub-const", "~> 0.6"
 gem "climate_control", "~> 1.2"
+gem "rack", "~> 3.0"
+gem "rack-test", "~> 2.1"

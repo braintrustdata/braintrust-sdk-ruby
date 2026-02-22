@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "eval/scorer"
+require_relative "eval/evaluator"
 require_relative "eval/runner"
+require_relative "eval/functions"
 require_relative "api/internal/projects"
 require_relative "api/internal/experiments"
 require_relative "dataset"
@@ -186,14 +188,17 @@ module Braintrust
       end
 
       # Run an evaluation
-      # @param project [String] The project name
-      # @param experiment [String] The experiment name
+      # @param project [String, nil] The project name (triggers full API mode: creates project + experiment)
+      # @param experiment [String, nil] The experiment name
       # @param cases [Array, Enumerable, nil] The test cases (mutually exclusive with dataset)
       # @param dataset [String, Hash, nil] Dataset to fetch (mutually exclusive with cases)
       #   - String: dataset name (fetches from same project)
       #   - Hash: {name:, id:, project:, version:, limit:}
       # @param task [#call] The task to evaluate (must be callable)
       # @param scorers [Array<Scorer, #call>] The scorers to use (Scorer objects or callables)
+      # @param on_progress [#call, nil] Optional callback fired after each test case.
+      #   Receives a Hash: {"data" => output, "scores" => {name => value}} on success,
+      #   or {"error" => message} on failure.
       # @param parallelism [Integer] Number of parallel workers (default: 1).
       #   When parallelism > 1, test cases are executed concurrently using a thread pool.
       #   The task and scorers MUST be thread-safe when using parallelism > 1.
@@ -204,50 +209,60 @@ module Braintrust
       # @param api [API, nil] Braintrust API client (defaults to API.new using global state)
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider (defaults to global)
       # @return [Result]
-      def run(project:, experiment:, task:, scorers:,
-        cases: nil, dataset: nil,
+      def run(task:, scorers:, project: nil, experiment: nil,
+        cases: nil, dataset: nil, on_progress: nil,
         parallelism: 1, tags: nil, metadata: nil, update: false, quiet: false,
-        api: nil, tracer_provider: nil)
+        api: nil, tracer_provider: nil, project_id: nil, parent: nil)
         # Validate required parameters
-        validate_params!(project: project, experiment: experiment,
-          cases: cases, dataset: dataset, task: task, scorers: scorers)
+        validate_params!(task: task, scorers: scorers, cases: cases, dataset: dataset)
 
-        # Get API from parameter or create from global state
-        api ||= API.new
+        # Resolve any ScorerId entries to real Scorer objects
+        scorers = resolve_scorers(scorers, api: api, tracer_provider: tracer_provider)
 
-        # Ensure logged in (to populate org_name, etc.)
-        # login is idempotent and returns early if already logged in
-        api.login
+        experiment_id = nil
+        project_name = project
 
-        # Resolve dataset to cases if dataset parameter provided
-        dataset_id = nil
-        dataset_version = nil
+        # Full API mode: project name or project_id provided, resolve via API
+        if project || project_id
+          raise ArgumentError, "experiment is required when project is specified" unless experiment
 
-        if dataset
-          resolved = resolve_dataset(dataset, project, api)
-          cases = resolved[:cases]
-          dataset_id = resolved[:dataset_id]
-          dataset_version = resolved[:dataset_version]
+          api ||= API.new
+          api.login
+
+          dataset_ref_id = nil
+          dataset_version = nil
+
+          if dataset
+            resolved = resolve_dataset(dataset, project, api)
+            cases = resolved[:cases]
+            dataset_ref_id = resolved[:dataset_id]
+            dataset_version = resolved[:dataset_version]
+          end
+
+          # When project_id is provided, skip project creation
+          if project_id
+            resolved_project_id = project_id
+          else
+            projects_api = API::Internal::Projects.new(api.state)
+            project_result = projects_api.create(name: project)
+            resolved_project_id = project_result["id"]
+            project_name = project_result["name"]
+          end
+
+          experiments_api = API::Internal::Experiments.new(api.state)
+          experiment_result = experiments_api.create(
+            name: experiment,
+            project_id: resolved_project_id,
+            ensure_new: !update,
+            tags: tags,
+            metadata: metadata,
+            dataset_id: dataset_ref_id,
+            dataset_version: dataset_version
+          )
+
+          experiment_id = experiment_result["id"]
+          project_id = resolved_project_id
         end
-
-        # Register project and experiment via internal API
-        projects_api = API::Internal::Projects.new(api.state)
-        experiments_api = API::Internal::Experiments.new(api.state)
-
-        project_result = projects_api.create(name: project)
-        experiment_result = experiments_api.create(
-          name: experiment,
-          project_id: project_result["id"],
-          ensure_new: !update,
-          tags: tags,
-          metadata: metadata,
-          dataset_id: dataset_id,
-          dataset_version: dataset_version
-        )
-
-        experiment_id = experiment_result["id"]
-        project_id = project_result["id"]
-        project_name = project_result["name"]
 
         # Instantiate Runner and run evaluation
         runner = Runner.new(
@@ -258,7 +273,9 @@ module Braintrust
           task: task,
           scorers: scorers,
           api: api,
-          tracer_provider: tracer_provider
+          tracer_provider: tracer_provider,
+          on_progress: on_progress,
+          parent: parent
         )
         result = runner.run(cases, parallelism: parallelism)
 
@@ -276,11 +293,31 @@ module Braintrust
         puts result.to_pretty
       end
 
+      # Resolve scorers array: ScorerId entries become real Scorer objects, others pass through
+      # @param scorers [Array] Scorers (Scorer, callable, or ScorerId)
+      # @param api [API, nil] Braintrust API client (required for ScorerId resolution)
+      # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
+      # @return [Array<Scorer, #call>] Resolved scorers
+      def resolve_scorers(scorers, api: nil, tracer_provider: nil)
+        scorers.map do |scorer|
+          if scorer.is_a?(ScorerId)
+            resolved_api = api || API.new
+            resolved_api.login
+            Functions.scorer_by_id(
+              id: scorer.function_id,
+              version: scorer.version,
+              api: resolved_api,
+              tracer_provider: tracer_provider
+            )
+          else
+            scorer
+          end
+        end
+      end
+
       # Validate required parameters
       # @raise [ArgumentError] if validation fails
-      def validate_params!(project:, experiment:, cases:, dataset:, task:, scorers:)
-        raise ArgumentError, "project is required" unless project
-        raise ArgumentError, "experiment is required" unless experiment
+      def validate_params!(task:, scorers:, cases:, dataset:)
         raise ArgumentError, "task is required" unless task
         raise ArgumentError, "scorers is required" unless scorers
 
@@ -311,6 +348,8 @@ module Braintrust
         dataset_obj = case dataset
         when Dataset
           dataset
+        when DatasetId
+          Dataset.new(id: dataset.id, api: api)
         when String
           Dataset.new(name: dataset, project: project, api: api)
         when Hash
@@ -320,7 +359,7 @@ module Braintrust
           opts[:api] = api
           Dataset.new(**opts)
         else
-          raise ArgumentError, "dataset must be String, Hash, or Dataset, got #{dataset.class}"
+          raise ArgumentError, "dataset must be String, Hash, Dataset, or DatasetId, got #{dataset.class}"
         end
 
         cases = dataset_obj.fetch_all(limit: limit)

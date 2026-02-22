@@ -82,6 +82,14 @@ module Braintrust
         http_post_json("/v1/dataset/#{id}/insert", {events: events})
       end
 
+      # Delete a dataset by ID
+      # DELETE /v1/dataset/{id}
+      # @param id [String] Dataset UUID
+      # @return [Hash] Delete response
+      def delete(id:)
+        http_request(:delete, "/v1/dataset/#{id}")
+      end
+
       # Generate a permalink URL to view a dataset in the Braintrust UI
       # @param id [String] Dataset UUID
       # @return [String] Permalink URL
@@ -150,6 +158,8 @@ module Braintrust
           req["Content-Type"] = "application/json"
           req.body = JSON.dump(payload) if payload
           req
+        when :delete
+          Net::HTTP::Delete.new(uri)
         else
           raise ArgumentError, "Unsupported HTTP method: #{method}"
         end

@@ -30,8 +30,11 @@ BRAINTRUST_DEBUG=true ruby examples/login/login_basic.rb
 
 - **`login/login_basic.rb`**: Basic login example showing how to authenticate and retrieve organization information
 
+### Dev Server Examples
+
+- **`server/eval.rb`**: Set up a dev server for remote evals — define evaluators (subclass or inline) and serve them via a Rack app. Start with: `bundle exec rackup examples/server/eval.rb -p 8300 -o 0.0.0.0`
+
 ## Coming Soon
 
 - OpenTelemetry tracing examples
 - OpenAI integration examples
-- Eval framework examples

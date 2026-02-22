@@ -105,4 +105,8 @@ module Braintrust
       end
     end
   end
+
+  # Value object wrapping a remote scorer function UUID.
+  # Used by Eval.run to distinguish remote scorers from local callables.
+  ScorerId = Struct.new(:function_id, :version, keyword_init: true)
 end

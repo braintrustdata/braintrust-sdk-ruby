@@ -877,4 +877,278 @@ class Braintrust::EvalTest < Minitest::Test
       end
     end
   end
+
+  # ============================================
+  # DatasetId integration tests
+  # ============================================
+
+  # Test DatasetId: resolve dataset by UUID through Eval.run
+  def test_eval_run_with_dataset_id_struct
+    VCR.use_cassette("eval/dataset_id_struct") do
+      api = get_integration_test_api
+
+      project_name = "ruby-sdk-test"
+      uid = SecureRandom.hex(4)
+      dataset_id = nil
+
+      begin
+        result = api.datasets.create(
+          name: "test-ruby-sdk-dataset-id-struct-#{uid}",
+          project_name: project_name
+        )
+        dataset_id = result["dataset"]["id"]
+
+        api.datasets.insert(
+          id: dataset_id,
+          events: [
+            {input: "alpha", expected: "ALPHA"},
+            {input: "beta", expected: "BETA"}
+          ]
+        )
+
+        task = ->(input) { input.upcase }
+        scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+        eval_result = Braintrust::Eval.run(
+          project: project_name,
+          experiment: "test-ruby-sdk-exp-dataset-id-struct-#{uid}",
+          dataset: Braintrust::DatasetId.new(id: dataset_id),
+          task: task,
+          scorers: [scorer],
+          api: api,
+          quiet: true
+        )
+
+        assert eval_result.success?
+        assert_equal [], eval_result.errors
+        assert_equal [1.0, 1.0], eval_result.scores["exact"]
+      ensure
+        api.datasets.delete(id: dataset_id) if dataset_id
+      end
+    end
+  end
+
+  # Test DatasetId: experiment is linked to the dataset
+  def test_eval_run_with_dataset_id_struct_links_experiment
+    VCR.use_cassette("eval/dataset_id_struct_links") do
+      api = get_integration_test_api
+
+      project_name = "ruby-sdk-test"
+      uid = SecureRandom.hex(4)
+      dataset_id = nil
+
+      begin
+        result = api.datasets.create(
+          name: "test-ruby-sdk-dataset-id-struct-links-#{uid}",
+          project_name: project_name
+        )
+        dataset_id = result["dataset"]["id"]
+
+        api.datasets.insert(
+          id: dataset_id,
+          events: [{input: "hello", expected: "HELLO"}]
+        )
+
+        task = ->(input) { input.upcase }
+        scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+        Braintrust::Eval.run(
+          project: project_name,
+          experiment: "test-ruby-sdk-exp-dataset-id-struct-links-#{uid}",
+          dataset: Braintrust::DatasetId.new(id: dataset_id),
+          task: task,
+          scorers: [scorer],
+          api: api,
+          quiet: true
+        )
+
+        # Verify experiment creation included dataset fields
+        assert_requested :post, %r{v1/experiment} do |req|
+          body = JSON.parse(req.body)
+          assert_equal dataset_id, body["dataset_id"],
+            "Expected dataset_id in experiment creation payload"
+          assert body["dataset_version"],
+            "Expected dataset_version in experiment creation payload"
+        end
+      ensure
+        api.datasets.delete(id: dataset_id) if dataset_id
+      end
+    end
+  end
+
+  # ============================================
+  # ScorerId integration tests
+  # ============================================
+
+  # Test ScorerId: resolve remote scorer by function UUID through Eval.run
+  def test_eval_run_with_scorer_id
+    VCR.use_cassette("eval/scorer_id") do
+      api = get_integration_test_api
+
+      project_name = "ruby-sdk-test"
+      uid = SecureRandom.hex(4)
+      function_id = nil
+
+      begin
+        # Create a deterministic code scorer function
+        created = api.functions.create(
+          project_name: project_name,
+          slug: "test-ruby-sdk-scorer-id-eval-#{uid}",
+          function_data: {
+            type: "code",
+            data: {
+              type: "inline",
+              runtime_context: {runtime: "node", version: "18"},
+              code: "function handler({ output, expected }) { return { score: output === expected ? 1.0 : 0.0 }; }"
+            }
+          }
+        )
+        function_id = created["id"]
+
+        task = ->(input) { input.upcase }
+
+        eval_result = Braintrust::Eval.run(
+          project: project_name,
+          experiment: "test-ruby-sdk-exp-scorer-id-#{uid}",
+          cases: [
+            {input: "hello", expected: "HELLO"},
+            {input: "world", expected: "WORLD"}
+          ],
+          task: task,
+          scorers: [Braintrust::ScorerId.new(function_id: function_id)],
+          api: api,
+          quiet: true
+        )
+
+        assert_instance_of Braintrust::Eval::Result, eval_result
+        assert_equal 0, eval_result.errors.length, "Remote scorer should not error: #{eval_result.errors}"
+        assert eval_result.duration > 0
+      ensure
+        api.functions.delete(id: function_id) if function_id
+      end
+    end
+  end
+
+  # Test ScorerId: mixed local + remote scorers
+  def test_eval_run_with_scorer_id_and_local_scorers
+    VCR.use_cassette("eval/scorer_id_mixed") do
+      api = get_integration_test_api
+
+      project_name = "ruby-sdk-test"
+      uid = SecureRandom.hex(4)
+      function_id = nil
+
+      begin
+        # Create a deterministic code scorer
+        created = api.functions.create(
+          project_name: project_name,
+          slug: "test-ruby-sdk-scorer-id-mixed-#{uid}",
+          function_data: {
+            type: "code",
+            data: {
+              type: "inline",
+              runtime_context: {runtime: "node", version: "18"},
+              code: "function handler({ output, expected }) { return { score: output === expected ? 1.0 : 0.0 }; }"
+            }
+          }
+        )
+        function_id = created["id"]
+
+        task = ->(input) { input.upcase }
+        local_scorer = Braintrust::Eval.scorer("local_exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+
+        eval_result = Braintrust::Eval.run(
+          project: project_name,
+          experiment: "test-ruby-sdk-exp-scorer-id-mixed-#{uid}",
+          cases: [{input: "hello", expected: "HELLO"}],
+          task: task,
+          scorers: [
+            local_scorer,
+            Braintrust::ScorerId.new(function_id: function_id)
+          ],
+          api: api,
+          quiet: true
+        )
+
+        assert eval_result.success?
+        assert eval_result.scores.key?("local_exact"), "Should have local scorer results"
+        assert_equal [1.0], eval_result.scores["local_exact"]
+      ensure
+        api.functions.delete(id: function_id) if function_id
+      end
+    end
+  end
+
+  # ============================================
+  # Combined DatasetId + ScorerId integration
+  # ============================================
+
+  # Test DatasetId + ScorerId together: full remote eval path
+  def test_eval_run_with_dataset_id_and_scorer_id
+    VCR.use_cassette("eval/dataset_id_and_scorer_id") do
+      api = get_integration_test_api
+
+      project_name = "ruby-sdk-test"
+      uid = SecureRandom.hex(4)
+      dataset_id = nil
+      function_id = nil
+
+      begin
+        # Create dataset
+        ds_result = api.datasets.create(
+          name: "test-ruby-sdk-ds-combined-#{uid}",
+          project_name: project_name
+        )
+        dataset_id = ds_result["dataset"]["id"]
+
+        api.datasets.insert(
+          id: dataset_id,
+          events: [
+            {input: "foo", expected: "FOO"},
+            {input: "bar", expected: "BAR"}
+          ]
+        )
+
+        # Create remote scorer
+        fn_result = api.functions.create(
+          project_name: project_name,
+          slug: "test-ruby-sdk-scorer-combined-#{uid}",
+          function_data: {
+            type: "code",
+            data: {
+              type: "inline",
+              runtime_context: {runtime: "node", version: "18"},
+              code: "function handler({ output, expected }) { return { score: output === expected ? 1.0 : 0.0 }; }"
+            }
+          }
+        )
+        function_id = fn_result["id"]
+
+        task = ->(input) { input.upcase }
+
+        eval_result = Braintrust::Eval.run(
+          project: project_name,
+          experiment: "test-ruby-sdk-exp-combined-#{uid}",
+          dataset: Braintrust::DatasetId.new(id: dataset_id),
+          task: task,
+          scorers: [Braintrust::ScorerId.new(function_id: function_id)],
+          api: api,
+          quiet: true
+        )
+
+        assert eval_result.success?
+        assert_equal [], eval_result.errors
+        assert eval_result.duration > 0
+
+        # Verify experiment was linked to dataset
+        assert_requested :post, %r{v1/experiment} do |req|
+          body = JSON.parse(req.body)
+          assert_equal dataset_id, body["dataset_id"]
+        end
+      ensure
+        api.datasets.delete(id: dataset_id) if dataset_id
+        api.functions.delete(id: function_id) if function_id
+      end
+    end
+  end
 end
