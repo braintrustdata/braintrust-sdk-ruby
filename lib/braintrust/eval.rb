@@ -2,6 +2,7 @@
 
 require_relative "eval/scorer"
 require_relative "eval/runner"
+require_relative "eval/context"
 require_relative "api/internal/projects"
 require_relative "api/internal/experiments"
 require_relative "dataset"
@@ -249,23 +250,32 @@ module Braintrust
         project_id = project_result["id"]
         project_name = project_result["name"]
 
-        # Instantiate Runner and run evaluation
-        runner = Runner.new(
-          experiment_id: experiment_id,
-          experiment_name: experiment,
-          project_id: project_id,
-          project_name: project_name,
-          task: task,
-          scorers: scorers,
-          api: api,
-          tracer_provider: tracer_provider
-        )
-        result = runner.run(cases, parallelism: parallelism)
+        # Create evaluation context
+        eval_context = Eval::Context.new(experiment_id: experiment_id)
 
-        # Print result summary unless quiet
-        print_result(result) unless quiet
+        begin
+          # Instantiate Runner and run evaluation
+          runner = Runner.new(
+            experiment_id: experiment_id,
+            experiment_name: experiment,
+            project_id: project_id,
+            project_name: project_name,
+            task: task,
+            scorers: scorers,
+            api: api,
+            tracer_provider: tracer_provider,
+            eval_context: eval_context
+          )
+          result = runner.run(cases, parallelism: parallelism)
 
-        result
+          # Print result summary unless quiet
+          print_result(result) unless quiet
+
+          result
+        ensure
+          # Dispose evaluation context
+          eval_context&.dispose
+        end
       end
 
       private

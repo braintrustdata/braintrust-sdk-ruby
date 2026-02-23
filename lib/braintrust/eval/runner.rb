@@ -6,6 +6,7 @@ require_relative "scorer"
 require_relative "result"
 require_relative "summary"
 require_relative "../internal/thread_pool"
+require_relative "../trace_context"
 
 require "opentelemetry/sdk"
 require "json"
@@ -18,7 +19,7 @@ module Braintrust
       MAX_PARALLELISM = Internal::ThreadPool::MAX_PARALLELISM
 
       def initialize(experiment_id:, experiment_name:, project_id:, project_name:,
-        task:, scorers:, api:, tracer_provider: nil)
+        task:, scorers:, api:, tracer_provider: nil, eval_context: nil)
         @experiment_id = experiment_id
         @experiment_name = experiment_name
         @project_id = project_id
@@ -29,6 +30,7 @@ module Braintrust
         @tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
         @tracer = @tracer_provider.tracer("braintrust-eval")
         @parent_attr = "experiment_id:#{experiment_id}"
+        @eval_context = eval_context
 
         # Mutex for thread-safe score collection
         @score_mutex = Mutex.new
@@ -103,8 +105,11 @@ module Braintrust
           end
 
           # Run scorers
+          # Create TraceContext for scorers (if scorers exist)
+          trace = scorers.empty? ? nil : create_trace_context(eval_span)
+
           begin
-            run_scorers(test_case, output)
+            run_scorers(test_case, output, trace)
           rescue => e
             # Error already recorded on score span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
@@ -149,15 +154,16 @@ module Braintrust
       # Creates single score span for all scorers
       # @param test_case [Case] The test case
       # @param output [Object] Task output
-      def run_scorers(test_case, output)
+      # @param trace [TraceContext, nil] Optional trace context for scorers
+      def run_scorers(test_case, output, trace = nil)
         tracer.in_span("score") do |score_span|
           score_span.set_attribute("braintrust.parent", parent_attr)
-          set_json_attr(score_span, "braintrust.span_attributes", {type: "score"})
+          set_json_attr(score_span, "braintrust.span_attributes", {type: "score", purpose: "scorer"})
 
           scores = {}
           scorer_error = nil
           scorers.each do |scorer|
-            score_value = scorer.call(test_case.input, test_case.expected, output, test_case.metadata || {})
+            score_value = scorer.call(test_case.input, test_case.expected, output, test_case.metadata || {}, trace)
             scores[scorer.name] = score_value
 
             # Collect raw score for summary (thread-safe)
@@ -238,6 +244,25 @@ module Braintrust
         @score_mutex.synchronize do
           (@scores[name] ||= []) << value
         end
+      end
+
+      # Create a TraceContext for scorers to access span data
+      # @param eval_span [OpenTelemetry::Trace::Span] The eval span
+      # @return [TraceContext, nil] TraceContext if eval_context present, nil otherwise
+      def create_trace_context(eval_span)
+        # Skip if no eval_context (e.g., in tests)
+        return nil unless @eval_context
+
+        # Extract root_span_id from the eval span's trace_id
+        root_span_id = eval_span.context.trace_id.unpack1("H*")
+
+        TraceContext.new(
+          object_type: "experiment",
+          object_id: experiment_id,
+          root_span_id: root_span_id,
+          state: @api.state,
+          ensure_spans_flushed: -> { @tracer_provider.force_flush }
+        )
       end
     end
   end

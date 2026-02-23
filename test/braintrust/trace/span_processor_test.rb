@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "opentelemetry/sdk"
+require "ostruct"
 
 class Braintrust::Trace::SpanProcessorTest < Minitest::Test
   def setup
