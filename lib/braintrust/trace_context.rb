@@ -4,24 +4,26 @@ require "json"
 require "net/http"
 require "uri"
 require_relative "api"
+require_relative "span_cache"
 
 module Braintrust
   # TraceContext provides scorers access to span data from the evaluation trace.
-  # It first attempts to retrieve spans from the local in-memory cache, then
-  # falls back to BTQL queries if needed.
+  # It queries BTQL and caches the results internally for subsequent access.
+  # The cache is only populated by BTQL API results, never by the tracer.
   class TraceContext
     MAX_RETRIES = 8
     INITIAL_BACKOFF = 0.25 # seconds
 
-    def initialize(object_type:, object_id:, root_span_id:, span_cache:, state:, ensure_spans_flushed: nil)
+    def initialize(object_type:, object_id:, root_span_id:, state:, ensure_spans_flushed: nil)
       @object_type = object_type
       @object_id = object_id
       @root_span_id = root_span_id
-      @span_cache = span_cache
       @state = state
       @ensure_spans_flushed = ensure_spans_flushed
       @spans_ready_mutex = Mutex.new
       @spans_ready = false
+      # Internal cache populated only from BTQL responses
+      @btql_cache = SpanCache.new
     end
 
     # Returns configuration hash
@@ -42,9 +44,9 @@ module Braintrust
       # Normalize span_type to array
       types = span_type && Array(span_type)
 
-      # Try cache first
-      cached = @span_cache.get(@root_span_id)
-      spans = cached || fetch_spans_via_btql(types)
+      # Try cache first, otherwise fetch via BTQL and populate cache
+      cached = @btql_cache.get(@root_span_id)
+      spans = cached || fetch_and_cache_spans(types)
 
       # Filter out scorer spans
       spans = spans.reject { |s| s.dig(:span_attributes, :purpose) == "scorer" }
@@ -103,14 +105,14 @@ module Braintrust
       end
     end
 
-    # Fetch spans via BTQL with retry logic
-    # @param types [Array<String>, nil] Span types to filter by
+    # Fetch spans via BTQL with retry logic and populate the internal cache
+    # @param types [Array<String>, nil] Span types to filter by (note: filtering happens after cache)
     # @return [Array<Hash>] Array of spans
-    def fetch_spans_via_btql(types)
+    def fetch_and_cache_spans(types)
       ensure_spans_ready
 
-      # Build AST filter
-      filter = build_btql_filter(types)
+      # Build AST filter (without type filtering, as we cache all spans)
+      filter = build_btql_filter(nil)
 
       retries = 0
       backoff = INITIAL_BACKOFF
@@ -120,7 +122,12 @@ module Braintrust
 
         # Check freshness
         if result[:freshness_state] == "complete" || retries >= MAX_RETRIES
-          return result[:spans]
+          # Populate cache with all spans for this root_span_id
+          spans = result[:spans]
+          spans.each do |span|
+            @btql_cache.write(@root_span_id, span[:span_id], span)
+          end
+          return spans
         end
 
         # Exponential backoff

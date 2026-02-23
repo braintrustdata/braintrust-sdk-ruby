@@ -2,7 +2,6 @@
 
 require "test_helper"
 require "braintrust/span_cache"
-require "braintrust/trace/span_registry"
 
 module Braintrust
   class SpanCacheTest < Minitest::Test
@@ -10,16 +9,13 @@ module Braintrust
       @cache = SpanCache.new
       # Clean up thread-local storage
       Thread.current[:braintrust_span_cache_data] = nil
-      Trace::SpanRegistry.unregister
     end
 
     def teardown
       Thread.current[:braintrust_span_cache_data] = nil
-      Trace::SpanRegistry.unregister
     end
 
     def test_write_and_read
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test", output: "result"})
 
       spans = @cache.get("root1")
@@ -29,7 +25,6 @@ module Braintrust
     end
 
     def test_write_multiple_spans_same_root
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test1"})
       @cache.write("root1", "span2", {input: "test2"})
 
@@ -38,7 +33,6 @@ module Braintrust
     end
 
     def test_merge_behavior
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test", metadata: {a: 1}})
       @cache.write("root1", "span1", {output: "result", metadata: {b: 2}})
 
@@ -51,7 +45,6 @@ module Braintrust
     end
 
     def test_merge_with_nil_values
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test", output: "result"})
       @cache.write("root1", "span1", {input: nil, metadata: {a: 1}})
 
@@ -63,14 +56,12 @@ module Braintrust
     end
 
     def test_has_returns_true_when_cached
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test"})
       assert @cache.has?("root1")
       refute @cache.has?("root2")
     end
 
     def test_clear_all_clears_thread_local_storage
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test"})
 
       assert @cache.get("root1")
@@ -81,7 +72,6 @@ module Braintrust
     end
 
     def test_size_returns_number_of_root_spans
-      Trace::SpanRegistry.register(@cache)
       @cache.write("root1", "span1", {input: "test1"})
       @cache.write("root1", "span2", {input: "test2"})
       @cache.write("root2", "span3", {input: "test3"})
@@ -91,7 +81,6 @@ module Braintrust
 
     def test_ttl_expiration
       cache = SpanCache.new(ttl: 0.1)
-      Trace::SpanRegistry.register(cache)
       cache.write("root1", "span1", {input: "test"})
 
       assert cache.has?("root1")
@@ -103,7 +92,6 @@ module Braintrust
 
     def test_lru_eviction
       cache = SpanCache.new(max_entries: 2)
-      Trace::SpanRegistry.register(cache)
 
       cache.write("root1", "span1", {input: "test1"})
       sleep 0.001
@@ -119,15 +107,12 @@ module Braintrust
     end
 
     def test_thread_isolation
-      Trace::SpanRegistry.register(@cache)
-
       # Write in main thread
       @cache.write("root1", "span1", {input: "main"})
 
       # Check from another thread - should not see main thread's data
       other_result = nil
       thread = Thread.new do
-        Trace::SpanRegistry.register(@cache)
         other_result = @cache.get("root1")
       end
       thread.join
@@ -137,8 +122,7 @@ module Braintrust
     end
 
     def test_writes_to_thread_local_storage_directly
-      # SpanCache writes to thread-local storage directly,
-      # regardless of registry status (registry is only used by SpanProcessor)
+      # SpanCache writes to thread-local storage directly
       @cache.write("root1", "span1", {input: "test"})
 
       # Data is written to thread-local storage
@@ -151,13 +135,11 @@ module Braintrust
       cache1 = SpanCache.new
       cache2 = SpanCache.new
 
-      # Register cache1 in main thread
-      Trace::SpanRegistry.register(cache1)
+      # Write to cache1 in main thread
       cache1.write("root1", "span1", {input: "cache1"})
 
-      # Register cache2 in another thread
+      # Write to cache2 in another thread
       thread = Thread.new do
-        Trace::SpanRegistry.register(cache2)
         cache2.write("root2", "span2", {input: "cache2"})
 
         # Verify cache2 has its data

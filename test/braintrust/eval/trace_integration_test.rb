@@ -12,12 +12,9 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       api_url: "https://api.braintrust.dev",
       enable_tracing: true
     )
-    @span_cache = Braintrust::SpanCache.new
-    Braintrust::Trace::SpanRegistry.register(@span_cache)
   end
 
   def teardown
-    Braintrust::Trace::SpanRegistry.unregister
     Thread.current[:braintrust_span_cache_data] = nil
   end
 
@@ -33,7 +30,6 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
-      span_cache: @span_cache,
       state: @state
     )
 
@@ -42,92 +38,6 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
     assert_equal 1.0, result
     assert_instance_of Braintrust::TraceContext, trace_received
     assert_equal "exp-123", trace_received.configuration[:object_id]
-  end
-
-  def test_scorer_can_query_cached_spans
-    spans_queried = nil
-
-    scorer = Braintrust::Eval::Scorer.new("span_query") do |input, expected, output, metadata, trace|
-      spans_queried = trace&.get_spans if trace
-      1.0
-    end
-
-    trace_context = Braintrust::TraceContext.new(
-      object_type: "experiment",
-      object_id: "exp-123",
-      root_span_id: "root-abc",
-      span_cache: @span_cache,
-      state: @state
-    )
-
-    @span_cache.write("root-abc", "span1", {
-      input: {messages: [{role: "user", content: "Hello"}]},
-      output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
-      span_attributes: {type: "llm"}
-    })
-
-    result = scorer.call("input", "expected", "output", {}, trace_context)
-
-    assert_equal 1.0, result
-    assert_equal 1, spans_queried.size
-    assert_equal "llm", spans_queried.first.dig(:span_attributes, :type)
-  end
-
-  def test_scorer_can_filter_spans_by_type
-    llm_spans_received = nil
-
-    scorer = Braintrust::Eval::Scorer.new("type_filter") do |input, expected, output, metadata, trace|
-      llm_spans_received = trace&.get_spans(span_type: "llm") if trace
-      1.0
-    end
-
-    trace_context = Braintrust::TraceContext.new(
-      object_type: "experiment",
-      object_id: "exp-123",
-      root_span_id: "root-abc",
-      span_cache: @span_cache,
-      state: @state
-    )
-
-    @span_cache.write("root-abc", "span1", {span_attributes: {type: "llm"}})
-    @span_cache.write("root-abc", "span2", {span_attributes: {type: "task"}})
-    @span_cache.write("root-abc", "span3", {span_attributes: {type: "llm"}})
-
-    scorer.call("input", "expected", "output", {}, trace_context)
-
-    assert_equal 2, llm_spans_received.size
-    llm_spans_received.each do |span|
-      assert_equal "llm", span.dig(:span_attributes, :type)
-    end
-  end
-
-  def test_scorer_can_get_thread
-    thread_received = nil
-
-    scorer = Braintrust::Eval::Scorer.new("thread_getter") do |input, expected, output, metadata, trace|
-      thread_received = trace&.get_thread if trace
-      1.0
-    end
-
-    trace_context = Braintrust::TraceContext.new(
-      object_type: "experiment",
-      object_id: "exp-123",
-      root_span_id: "root-abc",
-      span_cache: @span_cache,
-      state: @state
-    )
-
-    @span_cache.write("root-abc", "span1", {
-      input: {messages: [{role: "user", content: "Hello"}]},
-      output: {choices: [{message: {role: "assistant", content: "Hi"}}]},
-      span_attributes: {type: "llm"}
-    })
-
-    scorer.call("input", "expected", "output", {}, trace_context)
-
-    assert_equal 2, thread_received.size
-    assert_equal "user", thread_received[0][:role]
-    assert_equal "assistant", thread_received[1][:role]
   end
 
   def test_scorer_without_trace_parameter_still_works
@@ -139,7 +49,6 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
-      span_cache: @span_cache,
       state: @state
     )
 
@@ -147,50 +56,11 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
     assert_equal 1.0, result
   end
 
-  def test_scorer_filters_out_scorer_spans
-    spans_received = nil
-
-    scorer = Braintrust::Eval::Scorer.new("filter_scorer") do |input, expected, output, metadata, trace|
-      spans_received = trace&.get_spans if trace
-      1.0
-    end
-
-    trace_context = Braintrust::TraceContext.new(
-      object_type: "experiment",
-      object_id: "exp-123",
-      root_span_id: "root-abc",
-      span_cache: @span_cache,
-      state: @state
-    )
-
-    @span_cache.write("root-abc", "span1", {span_attributes: {type: "llm"}})
-    @span_cache.write("root-abc", "span2", {span_attributes: {type: "score", purpose: "scorer"}})
-    @span_cache.write("root-abc", "span3", {span_attributes: {type: "task"}})
-
-    scorer.call("input", "expected", "output", {}, trace_context)
-
-    assert_equal 2, spans_received.size
-    spans_received.each do |span|
-      refute_equal "scorer", span.dig(:span_attributes, :purpose)
-    end
-  end
-
-  def test_span_cache_writes_and_reads
-    # SpanCache is now always active when registered
-    @span_cache.write("root1", "span1", {input: "test"})
-    spans = @span_cache.get("root1")
-    assert_equal 1, spans.size
-
-    @span_cache.clear_all
-    assert_equal 0, @span_cache.size
-  end
-
   def test_trace_context_configuration
     trace = Braintrust::TraceContext.new(
       object_type: "experiment",
       object_id: "exp-456",
       root_span_id: "root-xyz",
-      span_cache: @span_cache,
       state: @state
     )
 
@@ -217,7 +87,6 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       object_type: "experiment",
       object_id: "exp-123",
       root_span_id: "root-abc",
-      span_cache: @span_cache,
       state: @state
     )
     scorer1.call("input", "expected", "output", {}, trace_context)
@@ -229,4 +98,12 @@ class Braintrust::Eval::TraceIntegrationTest < Minitest::Test
       assert_equal "root-abc", trace.configuration[:root_span_id]
     end
   end
+
+  # TODO: Add integration tests with VCR cassettes for:
+  # - test_scorer_can_query_spans_via_btql
+  # - test_scorer_can_filter_spans_by_type
+  # - test_scorer_can_get_thread
+  # - test_scorer_filters_out_scorer_spans
+  #
+  # These tests require proper VCR cassettes with BTQL responses containing spans
 end

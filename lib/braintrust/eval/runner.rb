@@ -260,7 +260,6 @@ module Braintrust
           object_type: "experiment",
           object_id: experiment_id,
           root_span_id: root_span_id,
-          span_cache: @eval_context.span_cache,
           state: @api.state,
           ensure_spans_flushed: -> { @tracer_provider.force_flush }
         )
