@@ -87,7 +87,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
         # For class-level patching, set the default tracer provider via Braintrust.init
         # (instance-level patching uses target: which stores tracer_provider in context)
-        Braintrust.init(api_key: get_braintrust_key, tracer_provider: rig.tracer_provider)
+        Braintrust.init(api_key: "test-api-key", blocking_login: true, tracer_provider: rig.tracer_provider)
 
         # Instrument at class level (no target:) - patches Anthropic::Resources::Messages
         Braintrust.instrument!(:anthropic)

@@ -65,8 +65,11 @@ text_summarizer = Braintrust::Eval::Evaluator.new(
 # This ensures experiments appear in the Braintrust UI with their spans.
 # Without this, evals still run but experiment spans won't be recorded.
 #
+# blocking_login: true ensures the SDK resolves the org-specific API
+# endpoint before the server starts accepting requests.
+#
 # Requires BRAINTRUST_API_KEY env var (or pass api_key: directly).
-Braintrust.init
+Braintrust.init(blocking_login: true)
 
 # --- Step 3: Start the server ---
 #

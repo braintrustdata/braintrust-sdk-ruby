@@ -25,7 +25,11 @@ module Braintrust
         failed = false
         span_data.group_by { |sd| sd.attributes&.[](PARENT_ATTR_KEY) }.each do |parent_value, spans|
           @headers[PARENT_HEADER] = parent_value if parent_value
-          failed = true unless super(spans, timeout: timeout) == SUCCESS
+          result = super(spans, timeout: timeout)
+          if result != SUCCESS
+            Log.error("Failed to export #{spans.size} spans to #{@uri} (parent: #{parent_value})")
+            failed = true
+          end
         ensure
           @headers.delete(PARENT_HEADER)
         end

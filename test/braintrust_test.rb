@@ -70,7 +70,7 @@ class BraintrustTest < Minitest::Test
     # Verify we start with the default proxy provider
     assert_instance_of OpenTelemetry::Internal::ProxyTracerProvider, OpenTelemetry.tracer_provider
 
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, blocking_login: true)
 
     # Should have created and set a real TracerProvider
     assert_instance_of OpenTelemetry::SDK::Trace::TracerProvider, OpenTelemetry.tracer_provider
@@ -102,14 +102,14 @@ class BraintrustTest < Minitest::Test
     assert_instance_of OpenTelemetry::Internal::ProxyTracerProvider, OpenTelemetry.tracer_provider
 
     # Call init without tracing parameter
-    Braintrust.init(api_key: "test-api-key", set_global: false)
+    Braintrust.init(api_key: "test-api-key", set_global: false, blocking_login: true)
 
     # Should have enabled tracing by default
     assert_instance_of OpenTelemetry::SDK::Trace::TracerProvider, OpenTelemetry.tracer_provider
   end
 
   def test_init_with_tracing_adds_span_processor
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, blocking_login: true)
 
     provider = OpenTelemetry.tracer_provider
     processors = provider.instance_variable_get(:@span_processors)
@@ -122,7 +122,7 @@ class BraintrustTest < Minitest::Test
     # Create a custom tracer provider
     custom_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, tracer_provider: custom_provider)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, tracer_provider: custom_provider, blocking_login: true)
 
     # Should NOT set the custom provider as global (user is managing it themselves)
     refute_same custom_provider, OpenTelemetry.tracer_provider
