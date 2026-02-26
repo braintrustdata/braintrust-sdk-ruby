@@ -14,6 +14,7 @@ class SpanFilterTest < Minitest::Test
       api_key: "test-api-key",
       set_global: false,
       enable_tracing: true,
+      blocking_login: true,
       tracer_provider: tracer_provider,
       exporter: exporter,
       filter_ai_spans: true
@@ -216,6 +217,7 @@ class SpanFilterTest < Minitest::Test
       api_key: "test-api-key",
       set_global: false,
       enable_tracing: true,
+      blocking_login: true,
       tracer_provider: tracer_provider,
       exporter: exporter,
       filter_ai_spans: filter_ai_spans,

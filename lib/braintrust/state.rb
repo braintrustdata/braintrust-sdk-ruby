@@ -77,27 +77,22 @@ module Braintrust
       @proxy_url = proxy_url
       @config = config
 
-      # If org_id is provided, we're already "logged in" (useful for testing)
-      # Otherwise, perform login to discover org info
+      # Store tracing config for deferred setup. Tracing must be initialized
+      # after login completes because login may update @api_url to an
+      # org-specific endpoint that the OTLP exporter needs.
+      @tracing_config = if enable_tracing
+        {tracer_provider: tracer_provider, exporter: exporter}
+      end
+
       if org_id
         @logged_in = true
+        complete_tracing_setup
       elsif blocking_login
         @logged_in = false
         login
       else
         @logged_in = false
         login_in_thread
-      end
-
-      # Setup tracing if requested
-      if enable_tracing
-        require_relative "trace"
-        Trace.setup(self, tracer_provider, exporter: exporter)
-
-        # Propagate tracer_provider to Contrib if loaded (soft dependency check)
-        if defined?(Braintrust::Contrib)
-          Braintrust::Contrib.init(tracer_provider: tracer_provider)
-        end
       end
     end
 
@@ -134,6 +129,8 @@ module Braintrust
         @api_url = result.api_url
         @proxy_url = result.proxy_url
         @logged_in = true
+
+        complete_tracing_setup
 
         self
       end
@@ -201,6 +198,23 @@ module Braintrust
       end
 
       self
+    end
+
+    private
+
+    # Initialize OpenTelemetry tracing after login so the OTLP exporter
+    # uses the final (org-specific) api_url. Runs at most once.
+    def complete_tracing_setup
+      return unless @tracing_config
+      config = @tracing_config
+      @tracing_config = nil
+
+      require_relative "trace"
+      Trace.setup(self, config[:tracer_provider], exporter: config[:exporter])
+
+      if defined?(Braintrust::Contrib)
+        Braintrust::Contrib.init(tracer_provider: config[:tracer_provider])
+      end
     end
   end
 end
