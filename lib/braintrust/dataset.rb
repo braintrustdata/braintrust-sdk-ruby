@@ -12,9 +12,9 @@ module Braintrust
   #   dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project")
   #   dataset.each { |record| puts record[:input] }
   #
-  # @example With explicit API client
-  #   api = Braintrust::API.new(state: my_state)
-  #   dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project", api: api)
+  # @example With explicit state
+  #   state = Braintrust.init(api_key: "...")
+  #   dataset = Braintrust::Dataset.new(name: "my-dataset", project: "my-project", state: state)
   #
   # @example Eager loading for small datasets
   #   records = dataset.fetch_all(limit: 100)
@@ -38,13 +38,13 @@ module Braintrust
     # @param id [String, nil] Dataset UUID (required if name not provided)
     # @param project [String, nil] Project name (required if using name)
     # @param version [String, nil] Optional version to pin to
-    # @param api [API, nil] Braintrust API client (defaults to API.new using global state)
-    def initialize(name: nil, id: nil, project: nil, version: nil, api: nil)
+    # @param state [State, nil] Braintrust state (defaults to global state)
+    def initialize(name: nil, id: nil, project: nil, version: nil, state: nil)
       @name = name
       @provided_id = id
       @project = project
       @version = version
-      @api = api || API.new
+      @api = API.new(state: state)
       @resolved_id = nil
       @metadata = nil
 
@@ -182,4 +182,8 @@ module Braintrust
       )
     end
   end
+
+  # Value object wrapping a dataset UUID for resolution by ID.
+  # Used by Eval.run to distinguish dataset-by-ID from dataset-by-name.
+  DatasetId = Struct.new(:id, keyword_init: true)
 end

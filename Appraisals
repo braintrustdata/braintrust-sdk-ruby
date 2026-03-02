@@ -80,6 +80,20 @@ appraise "contrib" do
   gem "base64" # needed for openai gem on Ruby 3.4+
 end
 
+# Server testing - all latest LLM SDKs + server deps for eval dev server
+appraise "server" do
+  gem "openai", ">= 0.34"
+  gem "anthropic", ">= 1.11"
+  gem "ruby_llm", ">= 1.9"
+  gem "base64" # needed for openai gem on Ruby 3.4+
+  gem "rack", "~> 3.0"
+  gem "rack-test", "~> 2.1"
+  gem "rackup", "~> 2.3"
+  gem "puma", "~> 6.0"
+  gem "falcon", "~> 0.48"
+  gem "passenger", "~> 6.0"
+end
+
 # Rails integration testing (minimal dependencies)
 appraise "rails" do
   gem "activesupport", "~> 8.0"
