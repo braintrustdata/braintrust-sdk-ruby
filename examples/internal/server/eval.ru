@@ -7,7 +7,7 @@
 # so experiments show real LLM metrics (tokens, latency, cost).
 #
 # Usage:
-#   OPENAI_API_KEY=your-key bundle exec appraisal openai \
+#   OPENAI_API_KEY=your-key bundle exec appraisal server \
 #     rackup examples/internal/server/eval.ru -p 8300 -o 0.0.0.0
 
 require "bundler/setup"

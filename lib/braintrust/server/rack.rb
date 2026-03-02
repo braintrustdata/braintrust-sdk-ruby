@@ -4,7 +4,7 @@ begin
   require "rack"
 rescue LoadError
   raise LoadError,
-    "The 'rack' gem is required for the Braintrust eval server. " \
+    "The 'rack' gem is required for the Braintrust server. " \
     "Add `gem 'rack'` to your Gemfile."
 end
 

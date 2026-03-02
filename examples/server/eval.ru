@@ -11,7 +11,7 @@
 #
 # Usage:
 #   # Start the server (requires rack and a Rack-compatible server like puma):
-#   bundle exec rackup examples/server/eval.ru -p 8300 -o 0.0.0.0
+#   bundle exec appraisal server rackup examples/server/eval.ru -p 8300 -o 0.0.0.0
 
 require "bundler/setup"
 require "braintrust"

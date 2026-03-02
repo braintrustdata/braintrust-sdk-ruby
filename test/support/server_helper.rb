@@ -1,6 +1,19 @@
+# Try to load server dependencies.
+SERVER_AVAILABLE = begin
+  require "braintrust/server"
+  require "rack/test"
+  true
+rescue LoadError
+  false
+end
+
 module Test
   module Support
     module ServerHelper
+      def skip_unless_server!
+        skip "rack gem not available (run with: bundle exec appraisal server rake test)" unless SERVER_AVAILABLE
+      end
+
       # Parse an SSE event stream string into an array of {event:, data:} hashes.
       def parse_sse_events(text)
         events = []

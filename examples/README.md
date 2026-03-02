@@ -32,7 +32,7 @@ BRAINTRUST_DEBUG=true ruby examples/login/login_basic.rb
 
 ### Dev Server Examples
 
-- **`server/eval.rb`**: Set up a dev server for remote evals — define evaluators (subclass or inline) and serve them via a Rack app. Start with: `bundle exec rackup examples/server/eval.rb -p 8300 -o 0.0.0.0`
+- **`server/eval.ru`**: Set up a dev server for remote evals — define evaluators (subclass or inline) and serve them via a Rack app. Start with: `bundle exec appraisal server rackup examples/server/eval.ru -p 8300 -o 0.0.0.0`
 
 ## Coming Soon
 
