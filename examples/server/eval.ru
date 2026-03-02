@@ -61,12 +61,11 @@ text_summarizer = Braintrust::Eval::Evaluator.new(
 
 # --- Step 2: Initialize Braintrust tracing ---
 #
-# Call Braintrust.init before building the Rack app to enable span export.
-# This ensures experiments appear in the Braintrust UI with their spans.
-# Without this, evals still run but experiment spans won't be recorded.
+# Call Braintrust.init with blocking_login: true to ensure the SDK
+# has reached a ready state.
 #
 # Requires BRAINTRUST_API_KEY env var (or pass api_key: directly).
-Braintrust.init
+Braintrust.init(blocking_login: true)
 
 # --- Step 3: Start the server ---
 #
