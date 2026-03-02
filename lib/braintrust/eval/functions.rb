@@ -128,6 +128,12 @@ module Braintrust
                 result = api.functions.invoke(id: function_id, input: scorer_input)
 
                 score = case result
+                when Numeric
+                  result.to_f
+                when true
+                  1.0
+                when false
+                  0.0
                 when Hash
                   if result.key?("score")
                     result["score"].to_f
@@ -136,6 +142,8 @@ module Braintrust
                   end
                 when String
                   result.to_f
+                when nil
+                  nil
                 else
                   raise Error, "Unsupported result type: #{result.class}"
                 end

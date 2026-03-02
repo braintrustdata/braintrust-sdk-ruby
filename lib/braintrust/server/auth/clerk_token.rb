@@ -59,7 +59,7 @@ module Braintrust
           return nil unless response.code == "200"
 
           JSON.parse(response.body)
-        rescue StandardError
+        rescue
           nil
         end
       end
