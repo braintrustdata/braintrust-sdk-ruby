@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "case"
-require_relative "cases"
-require_relative "scorer"
 require_relative "result"
 require_relative "summary"
 require_relative "../internal/thread_pool"
@@ -12,48 +10,41 @@ require "json"
 
 module Braintrust
   module Eval
-    # Internal runner class that performs the execution of the Eval and returns the result
+    # Internal runner class that performs the execution of the Eval and returns the result.
+    # Receives a fully-normalized Context — all callables are already typed wrappers.
     class Runner
       # Maximum parallelism allowed (mirrors Internal::ThreadPool::MAX_PARALLELISM)
       MAX_PARALLELISM = Internal::ThreadPool::MAX_PARALLELISM
 
-      def initialize(task:, scorers:, experiment_id: nil, experiment_name: nil,
-        project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
-        on_progress: nil, parent: nil)
-        @experiment_id = experiment_id
-        @experiment_name = experiment_name
-        @project_id = project_id
-        @project_name = project_name
-        @task = task
-        @scorers = normalize_scorers(scorers)
-        @state = state
-        @tracer_provider = tracer_provider || OpenTelemetry.tracer_provider
-        @tracer = @tracer_provider.tracer("braintrust-eval")
-        @parent_attr = parent ? "#{parent[:object_type]}:#{parent[:object_id]}" : nil
-        @generation = parent&.dig(:generation)
-        @on_progress = on_progress
+      # Per-case mutable accumulator. Built from Case, populated by task and scoring stages.
+      CaseContext = Struct.new(:input, :expected, :output, :metadata, :tags, :trace, :origin, keyword_init: true)
+
+      # @param eval_context [Context] Normalized eval context
+      def initialize(eval_context)
+        @eval_context = eval_context
+        tracer_provider = eval_context.tracer_provider || OpenTelemetry.tracer_provider
+        @tracer = tracer_provider.tracer("braintrust-eval")
 
         # Mutex for thread-safe score collection
         @score_mutex = Mutex.new
       end
 
       # Run evaluation and return Result
-      # @param cases [Array, Enumerable] Test cases
       # @param parallelism [Integer] Number of parallel workers (default: 1)
       # @return [Result]
-      def run(cases, parallelism: 1)
+      def run(parallelism: 1)
         start_time = Time.now
-        normalized_cases = normalize_cases(cases)
+        eval_cases = eval_context.cases
         errors = Queue.new
         @scores = {} # Reset for each run: { scorer_name => Array<Numeric> }
 
         if parallelism && parallelism > 1
-          Internal::ThreadPool.each(normalized_cases, parallelism: parallelism) do |test_case|
-            run_case(test_case, errors)
+          Internal::ThreadPool.each(eval_cases, parallelism: parallelism) do |eval_case|
+            run_eval_case(build_case_context(eval_case), errors)
           end
         else
-          normalized_cases.each do |test_case|
-            run_case(test_case, errors)
+          eval_cases.each do |eval_case|
+            run_eval_case(build_case_context(eval_case), errors)
           end
         end
 
@@ -64,15 +55,15 @@ module Braintrust
         duration = Time.now - start_time
 
         # Generate permalink (only when state and experiment are available)
-        permalink = if @state && experiment_id
-          @state.object_permalink(object_type: "experiment", object_id: experiment_id)
+        permalink = if eval_context.state && eval_context.experiment_id
+          eval_context.state.object_permalink(object_type: "experiment", object_id: eval_context.experiment_id)
         end
 
         Result.new(
-          experiment_id: experiment_id,
-          experiment_name: experiment_name,
-          project_id: project_id,
-          project_name: project_name,
+          experiment_id: eval_context.experiment_id,
+          experiment_name: eval_context.experiment_name,
+          project_id: eval_context.project_id,
+          project_name: eval_context.project_name,
           permalink: permalink,
           errors: error_array,
           duration: duration,
@@ -82,86 +73,65 @@ module Braintrust
 
       private
 
-      attr_reader :experiment_id, :experiment_name, :project_id, :project_name,
-        :task, :scorers, :tracer, :parent_attr
+      attr_reader :eval_context, :tracer
 
       # Run a single test case with OpenTelemetry tracing
       # Creates eval span (parent) with task and score as children
-      # @param test_case [Case] The test case
+      # @param case_context [CaseContext] The per-case accumulator
       # @param errors [Queue] Thread-safe error collection queue
-      def run_case(test_case, errors)
+      def run_eval_case(case_context, errors)
         tracer.in_span("eval") do |eval_span|
-          eval_span.set_attribute("braintrust.parent", parent_attr) if parent_attr
+          eval_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
 
           # Set tags early so they're present even if task fails
-          eval_span.set_attribute("braintrust.tags", test_case.tags) if test_case.tags
+          eval_span.set_attribute("braintrust.tags", case_context.tags) if case_context.tags
 
           # Run task
-          output = nil
           begin
-            output = run_task(test_case)
+            case_context.output = run_task(case_context)
           rescue => e
             # Error already recorded on task span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
-            errors << "Task failed for input '#{test_case.input}': #{e.message}"
-            if @on_progress
-              error_progress = {
-                "id" => eval_span.context.hex_span_id,
-                "error" => e.message
-              }
-              if test_case.origin
-                error_progress["origin"] = test_case.origin.is_a?(String) ? JSON.parse(test_case.origin) : test_case.origin
-              end
-              @on_progress.call(error_progress)
-            end
+            errors << "Task failed for input '#{case_context.input}': #{e.message}"
+            report_progress(eval_span, case_context, error: e.message)
             next
           end
 
           # Run scorers
           case_scores = nil
           begin
-            case_scores = run_scorers(test_case, output)
+            case_scores = run_scorers(case_context)
           rescue => e
             # Error already recorded on score span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
-            errors << "Scorers failed for input '#{test_case.input}': #{e.message}"
+            errors << "Scorers failed for input '#{case_context.input}': #{e.message}"
           end
 
           # Set eval span attributes (after task and scorers complete)
           set_json_attr(eval_span, "braintrust.span_attributes", build_span_attributes("eval"))
-          set_json_attr(eval_span, "braintrust.input_json", test_case.input)
-          set_json_attr(eval_span, "braintrust.output_json", output)
-          set_json_attr(eval_span, "braintrust.expected", test_case.expected) if test_case.expected
+          set_json_attr(eval_span, "braintrust.input_json", case_context.input)
+          set_json_attr(eval_span, "braintrust.output_json", case_context.output)
+          set_json_attr(eval_span, "braintrust.expected", case_context.expected) if case_context.expected
 
           # Set origin for cases from remote sources (already JSON-serialized)
-          eval_span.set_attribute("braintrust.origin", test_case.origin) if test_case.origin
+          eval_span.set_attribute("braintrust.origin", case_context.origin) if case_context.origin
 
-          if @on_progress
-            progress = {
-              "id" => eval_span.context.hex_span_id,
-              "data" => output,
-              "scores" => case_scores || {}
-            }
-            if test_case.origin
-              progress["origin"] = test_case.origin.is_a?(String) ? JSON.parse(test_case.origin) : test_case.origin
-            end
-            @on_progress.call(progress)
-          end
+          report_progress(eval_span, case_context, data: case_context.output, scores: case_scores || {})
         end
       end
 
       # Run task with OpenTelemetry tracing
       # Creates task span with input and output
-      # @param test_case [Case] The test case
+      # @param case_context [CaseContext] The per-case context
       # @return [Object] Task output
-      def run_task(test_case)
+      def run_task(case_context)
         tracer.in_span("task") do |task_span|
-          task_span.set_attribute("braintrust.parent", parent_attr) if parent_attr
+          task_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(task_span, "braintrust.span_attributes", build_span_attributes("task"))
-          set_json_attr(task_span, "braintrust.input_json", test_case.input)
+          set_json_attr(task_span, "braintrust.input_json", case_context.input)
 
           begin
-            output = task.call(test_case.input)
+            output = eval_context.task.call(build_task_args(case_context))
             set_json_attr(task_span, "braintrust.output_json", output)
             output
           rescue => e
@@ -175,18 +145,18 @@ module Braintrust
 
       # Run scorers with OpenTelemetry tracing
       # Creates single score span for all scorers
-      # @param test_case [Case] The test case
-      # @param output [Object] Task output
+      # @param case_context [CaseContext] The per-case context (output must be populated)
       # @return [Hash] Scores hash { scorer_name => score_value }
-      def run_scorers(test_case, output)
+      def run_scorers(case_context)
         tracer.in_span("score") do |score_span|
-          score_span.set_attribute("braintrust.parent", parent_attr) if parent_attr
+          score_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(score_span, "braintrust.span_attributes", build_span_attributes("score"))
 
+          scorer_args = build_scorer_args(case_context)
           scores = {}
           scorer_error = nil
-          scorers.each do |scorer|
-            score_value = scorer.call(test_case.input, test_case.expected, output, test_case.metadata || {})
+          eval_context.scorers.each do |scorer|
+            score_value = scorer.call(scorer_args)
             scores[scorer.name] = score_value
 
             # Collect raw score for summary (thread-safe)
@@ -207,36 +177,45 @@ module Braintrust
         end
       end
 
-      # Normalize cases input to Cases wrapper
-      # @param cases_input [Array, Enumerable, Cases] The cases input
-      # @return [Cases]
-      def normalize_cases(cases_input)
-        case cases_input
-        when Cases
-          cases_input
-        when Array, Enumerable
-          Cases.new(cases_input)
-        else
-          if cases_input.respond_to?(:each)
-            Cases.new(cases_input)
-          else
-            raise ArgumentError, "cases must be Array or Enumerable"
-          end
-        end
+      # Build a CaseContext from a Case struct
+      # @param eval_case [Case] The eval case
+      # @return [CaseContext]
+      def build_case_context(eval_case)
+        CaseContext.new(
+          input: eval_case.input, expected: eval_case.expected,
+          metadata: eval_case.metadata, tags: eval_case.tags, origin: eval_case.origin
+        )
       end
 
-      # Normalize scorers to Scorer objects
-      # @param scorers_input [Array] The scorers input (Scorer objects or callables)
-      # @return [Array<Scorer>]
-      def normalize_scorers(scorers_input)
-        scorers_input.map do |scorer|
-          case scorer
-          when Scorer
-            scorer
-          else
-            Scorer.new(scorer)
-          end
+      # Build Task::Args from a CaseContext
+      # @param case_context [CaseContext] The per-case context
+      # @return [Task::Args]
+      def build_task_args(case_context)
+        Task::Args.new(
+          input: case_context.input,
+          metadata: case_context.metadata || {},
+          tags: case_context.tags
+        )
+      end
+
+      # Build Scorer::Args from a CaseContext
+      # @param case_context [CaseContext] The per-case context
+      # @return [Scorer::Args]
+      def build_scorer_args(case_context)
+        Scorer::Args.new(
+          input: case_context.input, expected: case_context.expected, output: case_context.output,
+          metadata: case_context.metadata || {}, tags: case_context.tags
+        )
+      end
+
+      # Report progress for a case via on_progress callback
+      def report_progress(eval_span, case_context, **fields)
+        return unless eval_context.on_progress
+        progress = {"id" => eval_span.context.hex_span_id}.merge(fields.transform_keys(&:to_s))
+        if case_context.origin
+          progress["origin"] = case_context.origin.is_a?(String) ? JSON.parse(case_context.origin) : case_context.origin
         end
+        eval_context.on_progress.call(progress)
       end
 
       # Record error on span with exception event and error status
@@ -258,8 +237,8 @@ module Braintrust
       # @return [Hash]
       def build_span_attributes(type)
         attrs = {type: type}
-        attrs[:name] = experiment_name if experiment_name
-        attrs[:generation] = @generation if @generation
+        attrs[:name] = eval_context.experiment_name if eval_context.experiment_name
+        attrs[:generation] = eval_context.generation if eval_context.generation
         attrs
       end
 

@@ -32,19 +32,19 @@ def classify_food(input)
   "unknown"
 end
 
-# Example of a class-based scorer (reusable)
-class FuzzyMatchScorer
+# Example of a class-based scorer (reusable, subclasses Braintrust::Scorer)
+class FuzzyMatchScorer < Braintrust::Scorer
   def name
     "fuzzy_match"
   end
 
-  def call(input, expected, output, metadata = {})
-    threshold = metadata[:threshold] || 0.8
+  def call(args)
+    threshold = args.metadata[:threshold] || 0.8
 
     # Simple fuzzy matching (in real scenario, use Levenshtein distance)
-    similarity = if output == expected
+    similarity = if args.output == args.expected
       1.0
-    elsif output.downcase.include?(expected.downcase) || expected.downcase.include?(output.downcase)
+    elsif args.output.downcase.include?(args.expected.downcase) || args.expected.downcase.include?(args.output.downcase)
       0.7
     else
       0.0
@@ -54,11 +54,11 @@ class FuzzyMatchScorer
   end
 end
 
-# Example of a lambda scorer (can pass directly without wrapping)
-length_match = ->(input, expected, output) {
+# Example of an inline scorer
+length_match = Braintrust::Scorer.new("length_match") do |args|
   # Score based on whether output has correct length
-  (output.length == expected.length) ? 1.0 : 0.0
-}
+  (args.output.length == args.expected.length) ? 1.0 : 0.0
+end
 
 # Run the evaluation
 Braintrust::Eval.run(

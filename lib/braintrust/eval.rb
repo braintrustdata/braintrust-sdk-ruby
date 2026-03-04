@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "eval/scorer"
+require_relative "scorer"
+require_relative "task"
+require_relative "functions"
+require_relative "eval/context"
 require_relative "eval/evaluator"
 require_relative "eval/runner"
-require_relative "eval/functions"
 require_relative "api/internal/projects"
 require_relative "api/internal/experiments"
 require_relative "dataset"
@@ -178,13 +180,10 @@ module Braintrust
   #   )
   module Eval
     class << self
-      # Create a scorer with a name and callable
-      # @param name [String] The scorer name
-      # @param callable [#call, nil] Optional callable (if not using block)
-      # @param block [Proc] The scorer block
-      # @return [Scorer]
+      # @deprecated Use {Braintrust::Scorer.new} instead
       def scorer(name, callable = nil, &block)
-        Scorer.new(name, callable, &block)
+        block = callable.method(:call) if callable && !block
+        Scorer.new(name, &block)
       end
 
       # Run an evaluation
@@ -216,9 +215,6 @@ module Braintrust
         # Validate required parameters
         validate_params!(task: task, scorers: scorers, cases: cases, dataset: dataset)
 
-        # Resolve any ScorerId entries to real Scorer objects
-        scorers = resolve_scorers(scorers, state: state, tracer_provider: tracer_provider)
-
         experiment_id = nil
         project_name = project
 
@@ -246,20 +242,21 @@ module Braintrust
           end
         end
 
-        # Instantiate Runner and run evaluation
-        runner = Runner.new(
+        # Build normalized context and run
+        context = Context.build(
+          task: task,
+          scorers: scorers,
+          cases: cases,
           experiment_id: experiment_id,
           experiment_name: experiment,
           project_id: project_id,
           project_name: project_name,
-          task: task,
-          scorers: scorers,
           state: state,
           tracer_provider: tracer_provider,
           on_progress: on_progress,
           parent: parent
         )
-        result = runner.run(cases, parallelism: parallelism)
+        result = Runner.new(context).run(parallelism: parallelism)
 
         # Print result summary unless quiet
         print_result(result) unless quiet
@@ -273,26 +270,6 @@ module Braintrust
       # @param result [Result] The evaluation result
       def print_result(result)
         puts result.to_pretty
-      end
-
-      # Resolve scorers array: ScorerId entries become real Scorer objects, others pass through
-      # @param scorers [Array] Scorers (Scorer, callable, or ScorerId)
-      # @param state [State, nil] Braintrust state (required for ScorerId resolution)
-      # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
-      # @return [Array<Scorer, #call>] Resolved scorers
-      def resolve_scorers(scorers, state: nil, tracer_provider: nil)
-        scorers.map do |scorer|
-          if scorer.is_a?(ScorerId)
-            Functions.scorer_by_id(
-              id: scorer.function_id,
-              version: scorer.version,
-              state: state,
-              tracer_provider: tracer_provider
-            )
-          else
-            scorer
-          end
-        end
       end
 
       # Validate required parameters
