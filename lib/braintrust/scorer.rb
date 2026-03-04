@@ -1,99 +1,53 @@
 # frozen_string_literal: true
 
+require_relative "internal/callable"
+
 module Braintrust
   # Scorer wraps a scoring function that evaluates task output against expected values.
   #
-  # Use inline with a block:
-  #   scorer = Scorer.new("my_scorer") { |args| args.output == args.expected ? 1.0 : 0.0 }
+  # Use inline with a block (keyword args):
+  #   scorer = Scorer.new("my_scorer") { |output:, expected:| output == expected ? 1.0 : 0.0 }
   #
   # Or subclass and override #call:
   #   class FuzzyMatch < Braintrust::Scorer
-  #     def call(args)
-  #       # scoring logic using args.input, args.expected, args.output, args.metadata
-  #       1.0
+  #     def name
+  #       "fuzzy_match"
+  #     end
+  #
+  #     def call(output:, expected:, **)
+  #       output == expected ? 1.0 : 0.0
   #     end
   #   end
   #
   # Legacy callables with 3 or 4 positional params are auto-wrapped when passed
   # through Eval.run for backwards compatibility.
   class Scorer
-    # Read-only struct passed to scorers. Provides access to all case data.
-    class Args
-      attr_reader :input, :expected, :output, :metadata, :tags, :trace
-
-      def initialize(input:, expected:, output:, metadata: {}, tags: nil, trace: nil)
-        @input = input
-        @expected = expected
-        @output = output
-        @metadata = metadata
-        @tags = tags
-        @trace = trace
-      end
-    end
-
-    attr_reader :name
-
-    NOT_IMPLEMENTED = ->(_) { raise NotImplementedError, "Must provide a block or override #call" }
-    private_constant :NOT_IMPLEMENTED
-
-    # Create a new scorer
-    # @param name [String, Symbol, nil] Optional scorer name
-    # @param block [Proc, nil] The scorer implementation (optional if subclassing)
-    def initialize(name = nil, &block)
-      @name = name&.to_s || default_name
-      @block = block ? wrap_block(block) : NOT_IMPLEMENTED
-    end
-
-    # Call the scorer with a Scorer::Args object.
-    # Override this method in subclasses, or provide a block to the constructor.
-    # @param scorer_args [Scorer::Args] The scorer arguments
-    # @return [Float, Hash, Array] Score value(s)
-    def call(scorer_args)
-      @block.call(scorer_args)
-    end
+    include Internal::Callable
 
     private
 
-    # Derive a default name from the class name (e.g. FuzzyMatchScorer -> "fuzzy_match_scorer")
-    # @return [String]
-    def default_name
-      klass = self.class.name&.split("::")&.last
-      return "scorer" unless klass && klass != "Scorer"
-      klass.gsub(/([a-z])([A-Z])/, '\1_\2').downcase
+    def callable_kind
+      "scorer"
     end
 
-    # Wrap the callable to accept a single Scorer::Args object.
-    # Arity-1 callables receive Args directly; legacy arities are auto-wrapped.
-    # @param callable [#call] The callable to wrap
-    # @return [Proc] Wrapped callable that accepts a single Scorer::Args
-    def wrap_block(callable)
-      arity = callable_arity(callable)
-
-      case arity
-      when 1
-        callable
-      when 3
-        ->(args) { callable.call(args.input, args.expected, args.output) }
-      when 4, -4
-        ->(args) { callable.call(args.input, args.expected, args.output, args.metadata) }
-      when -1
-        ->(args) { callable.call(args.input, args.expected, args.output, args.metadata) }
+    # Legacy positional wrapping: arity 3/4/-4/-1 maps to (input, expected, output[, metadata]).
+    # Anything else falls through to Callable for keyword handling.
+    def wrap_block(block)
+      if has_keywords?(block)
+        super
       else
-        raise ArgumentError, "Scorer must accept 1, 3, or 4 parameters (got arity #{arity})"
-      end
-    end
-
-    # Get the arity of a callable
-    # @param callable [#call] The callable
-    # @return [Integer] The arity
-    def callable_arity(callable)
-      if callable.respond_to?(:arity)
-        callable.arity
-      elsif callable.respond_to?(:method)
-        callable.method(:call).arity
-      else
-        # Assume 3 params if we can't detect
-        3
+        case block.arity
+        when 3
+          ->(**kw) { block.call(kw[:input], kw[:expected], kw[:output]) }
+        when 4, -4
+          ->(**kw) { block.call(kw[:input], kw[:expected], kw[:output], kw[:metadata]) }
+        when -1
+          ->(**kw) { block.call(kw[:input], kw[:expected], kw[:output], kw[:metadata]) }
+        when 0
+          super
+        else
+          raise ArgumentError, "Scorer must accept keyword args or 3-4 positional params (got arity #{block.arity})"
+        end
       end
     end
   end

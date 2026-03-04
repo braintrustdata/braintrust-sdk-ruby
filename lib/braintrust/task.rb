@@ -1,60 +1,40 @@
 # frozen_string_literal: true
 
+require_relative "internal/callable"
+
 module Braintrust
   # Task wraps a callable that processes inputs.
-  # The block receives a Task::Args object with access to input, metadata, and tags.
+  #
+  # Use inline with a block (keyword args):
+  #   task = Task.new("my_task") { |input:| process(input) }
+  #
+  # Or subclass and override #call:
+  #   class MyTask < Braintrust::Task
+  #     def call(input:, **)
+  #       process(input)
+  #     end
+  #   end
+  #
+  # Legacy callables with 1 positional param are auto-wrapped when passed
+  # through Eval.run for backwards compatibility.
   class Task
-    # Read-only struct passed to tasks. Provides access to case data.
-    class Args
-      attr_reader :input, :metadata, :tags
-
-      def initialize(input:, metadata: {}, tags: nil)
-        @input = input
-        @metadata = metadata
-        @tags = tags
-      end
-    end
-
-    attr_reader :name
-
-    # Create a new task
-    # @param name [String, Symbol, nil] Optional task name
-    # @param block [Proc] The task implementation (receives Task::Args)
-    def initialize(name = nil, &block)
-      raise ArgumentError, "Must provide a block" unless block
-
-      @name = name&.to_s || "task"
-      @callable = block
-      @wrapped_callable = wrap_callable(block)
-    end
-
-    # Call the task with a Task::Args object
-    # @param task_args [Task::Args] The task arguments
-    # @return [Object] Task output
-    def call(task_args)
-      @wrapped_callable.call(task_args)
-    end
+    include Internal::Callable
 
     private
 
-    def wrap_callable(callable)
-      arity = callable_arity(callable)
-
-      case arity
-      when 1, -1
-        callable
-      else
-        raise ArgumentError, "Task must accept 1 parameter (got arity #{arity})"
-      end
+    def callable_kind
+      "task"
     end
 
-    def callable_arity(callable)
-      if callable.respond_to?(:arity)
-        callable.arity
-      elsif callable.respond_to?(:method)
-        callable.method(:call).arity
+    # Legacy positional wrapping: arity 1/-1 gets :input extracted.
+    # Anything else falls through to Callable for keyword handling.
+    def wrap_block(block)
+      if !has_keywords?(block) && (block.arity == 1 || block.arity == -1)
+        ->(**kw) { block.call(kw[:input]) }
+      elsif has_keywords?(block) || block.arity == 0
+        super
       else
-        1
+        raise ArgumentError, "Task must accept keyword args or 1 positional param (got arity #{block.arity})"
       end
     end
   end

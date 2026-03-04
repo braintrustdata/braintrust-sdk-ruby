@@ -31,16 +31,16 @@ module Braintrust
         tracer_provider ||= OpenTelemetry.tracer_provider
         tracer = tracer_provider.tracer("braintrust.functions")
 
-        Task.new(function_name) do |args|
+        Task.new(function_name) do |input:|
           tracer.in_span("function: #{slug}") do |span|
             span.set_attribute("braintrust.span_attributes", JSON.dump({type: "function"}))
-            span.set_attribute("braintrust.input_json", JSON.dump(args.input))
+            span.set_attribute("braintrust.input_json", JSON.dump(input))
             span.set_attribute("braintrust.function.name", function_name)
             span.set_attribute("braintrust.function.id", function_id)
             span.set_attribute("braintrust.function.slug", slug)
 
             begin
-              output = api.functions.invoke(id: function_id, input: args.input)
+              output = api.functions.invoke(id: function_id, input: input)
               span.set_attribute("braintrust.output_json", JSON.dump(output))
               output
             rescue => e
@@ -106,7 +106,7 @@ module Braintrust
       # @param tracer [OpenTelemetry::Trace::Tracer] Tracer instance
       # @return [Scorer]
       def build_scorer(function_id:, function_name:, api:, tracer:)
-        Scorer.new(function_name) do |input, expected, output, metadata|
+        Scorer.new(function_name) do |input:, expected:, output:, metadata:|
           tracer.in_span("function: #{function_name}") do |span|
             scorer_input = {
               input: input,

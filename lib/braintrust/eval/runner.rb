@@ -131,7 +131,11 @@ module Braintrust
           set_json_attr(task_span, "braintrust.input_json", case_context.input)
 
           begin
-            output = eval_context.task.call(build_task_args(case_context))
+            output = eval_context.task.call(
+              input: case_context.input,
+              metadata: case_context.metadata || {},
+              tags: case_context.tags
+            )
             set_json_attr(task_span, "braintrust.output_json", output)
             output
           rescue => e
@@ -152,11 +156,17 @@ module Braintrust
           score_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(score_span, "braintrust.span_attributes", build_span_attributes("score"))
 
-          scorer_args = build_scorer_args(case_context)
+          scorer_kwargs = {
+            input: case_context.input,
+            expected: case_context.expected,
+            output: case_context.output,
+            metadata: case_context.metadata || {},
+            tags: case_context.tags
+          }
           scores = {}
           scorer_error = nil
           eval_context.scorers.each do |scorer|
-            score_value = scorer.call(scorer_args)
+            score_value = scorer.call(**scorer_kwargs)
             scores[scorer.name] = score_value
 
             # Collect raw score for summary (thread-safe)
@@ -184,27 +194,6 @@ module Braintrust
         CaseContext.new(
           input: eval_case.input, expected: eval_case.expected,
           metadata: eval_case.metadata, tags: eval_case.tags, origin: eval_case.origin
-        )
-      end
-
-      # Build Task::Args from a CaseContext
-      # @param case_context [CaseContext] The per-case context
-      # @return [Task::Args]
-      def build_task_args(case_context)
-        Task::Args.new(
-          input: case_context.input,
-          metadata: case_context.metadata || {},
-          tags: case_context.tags
-        )
-      end
-
-      # Build Scorer::Args from a CaseContext
-      # @param case_context [CaseContext] The per-case context
-      # @return [Scorer::Args]
-      def build_scorer_args(case_context)
-        Scorer::Args.new(
-          input: case_context.input, expected: case_context.expected, output: case_context.output,
-          metadata: case_context.metadata || {}, tags: case_context.tags
         )
       end
 

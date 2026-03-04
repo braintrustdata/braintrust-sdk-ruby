@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "braintrust/eval/scorer"
+require "braintrust/scorer"
 
 class Braintrust::ScorerIdTest < Minitest::Test
   def test_stores_function_id

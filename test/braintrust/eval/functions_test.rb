@@ -2,9 +2,9 @@
 
 require "test_helper"
 require "braintrust/eval"
-require "braintrust/eval/functions"
+require "braintrust/functions"
 
-class Braintrust::Eval::FunctionsTest < Minitest::Test
+class Braintrust::FunctionsTest < Minitest::Test
   def setup
     @project_name = "ruby-sdk-test"
     @rig = setup_otel_test_rig
@@ -43,7 +43,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       )
 
       # Get a task wrapper
-      task = Braintrust::Eval::Functions.task(
+      task = Braintrust::Functions.task(
         project: @project_name,
         slug: function_slug,
         state: state
@@ -80,13 +80,13 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       )
 
       # Get task and invoke it
-      task = Braintrust::Eval::Functions.task(
+      task = Braintrust::Functions.task(
         project: @project_name,
         slug: function_slug,
         state: state
       )
 
-      result = task.call("world")
+      result = task.call(input: "world")
 
       # Should return output from remote function
       assert_instance_of String, result
@@ -121,14 +121,14 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       )
 
       # Get a scorer wrapper
-      scorer = Braintrust::Eval::Functions.scorer(
+      scorer = Braintrust::Functions.scorer(
         project: @project_name,
         slug: function_slug,
         state: state
       )
 
       # Should be a Scorer instance
-      assert_instance_of Braintrust::Eval::Scorer, scorer
+      assert_instance_of Braintrust::Scorer, scorer
       assert_equal function_slug, scorer.name
     end
   end
@@ -160,7 +160,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       )
 
       # Get remote task
-      task = Braintrust::Eval::Functions.task(
+      task = Braintrust::Functions.task(
         project: @project_name,
         slug: function_slug,
         state: state
@@ -228,7 +228,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       )
 
       # Get remote scorer
-      scorer = Braintrust::Eval::Functions.scorer(
+      scorer = Braintrust::Functions.scorer(
         project: @project_name,
         slug: function_slug,
         state: state
@@ -292,13 +292,13 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         }
       )
 
-      scorer = Braintrust::Eval::Functions.scorer(
+      scorer = Braintrust::Functions.scorer(
         project: @project_name,
         slug: function_slug,
         state: state
       )
 
-      result = scorer.call("hello", "HELLO", "HELLO", {})
+      result = scorer.call(input: "hello", expected: "HELLO", output: "HELLO", metadata: {})
 
       assert_kind_of Numeric, result
       assert_equal 1.0, result
@@ -323,13 +323,13 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         }
       )
 
-      scorer = Braintrust::Eval::Functions.scorer(
+      scorer = Braintrust::Functions.scorer(
         project: @project_name,
         slug: function_slug,
         state: state
       )
 
-      result = scorer.call("test", "test", "test", {})
+      result = scorer.call(input: "test", expected: "test", output: "test", metadata: {})
 
       assert_kind_of Numeric, result
       assert_equal 0.45, result
@@ -342,52 +342,52 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
 
   def test_scorer_by_id_handles_integer_response
     scorer = scorer_by_id_with_stubbed_invoke(1)
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 1.0, result
     assert_instance_of Float, result
   end
 
   def test_scorer_by_id_handles_float_response
     scorer = scorer_by_id_with_stubbed_invoke(0.75)
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.75, result
     assert_instance_of Float, result
   end
 
   def test_scorer_by_id_handles_boolean_true_response
     scorer = scorer_by_id_with_stubbed_invoke(true)
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 1.0, result
   end
 
   def test_scorer_by_id_handles_boolean_false_response
     scorer = scorer_by_id_with_stubbed_invoke(false)
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.0, result
   end
 
   def test_scorer_by_id_handles_nil_response
     scorer = scorer_by_id_with_stubbed_invoke(nil)
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_nil result
   end
 
   def test_scorer_by_id_handles_hash_with_score_key
     scorer = scorer_by_id_with_stubbed_invoke({"name" => "my_scorer", "score" => 0.9, "metadata" => {}})
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.9, result
   end
 
   def test_scorer_by_id_handles_string_numeric_response
     scorer = scorer_by_id_with_stubbed_invoke("0.85")
-    result = scorer.call("input", "expected", "output", {})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.85, result
   end
 
   def test_scorer_by_id_raises_for_hash_without_score_key
     scorer = scorer_by_id_with_stubbed_invoke({"name" => "my_scorer"})
     assert_raises(Braintrust::Error) do
-      scorer.call("input", "expected", "output", {})
+      scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     end
   end
 
@@ -417,12 +417,12 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         }
       )
 
-      scorer = Braintrust::Eval::Functions.scorer_by_id(
+      scorer = Braintrust::Functions.scorer_by_id(
         id: created["id"],
         state: api.state
       )
 
-      assert_instance_of Braintrust::Eval::Scorer, scorer
+      assert_instance_of Braintrust::Scorer, scorer
     end
   end
 
@@ -448,13 +448,13 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
       )
 
       # scorer_by_id with explicit version (nil just resolves latest)
-      scorer = Braintrust::Eval::Functions.scorer_by_id(
+      scorer = Braintrust::Functions.scorer_by_id(
         id: created["id"],
         version: nil,
         state: api.state
       )
 
-      assert_instance_of Braintrust::Eval::Scorer, scorer
+      assert_instance_of Braintrust::Scorer, scorer
     end
   end
 
@@ -484,7 +484,7 @@ class Braintrust::Eval::FunctionsTest < Minitest::Test
         body: JSON.dump(invoke_response)
       )
 
-    Braintrust::Eval::Functions.scorer_by_id(
+    Braintrust::Functions.scorer_by_id(
       id: FAKE_FUNCTION_ID,
       state: state,
       tracer_provider: @rig.tracer_provider

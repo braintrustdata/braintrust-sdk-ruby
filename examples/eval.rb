@@ -38,13 +38,13 @@ class FuzzyMatchScorer < Braintrust::Scorer
     "fuzzy_match"
   end
 
-  def call(args)
-    threshold = args.metadata[:threshold] || 0.8
+  def call(output:, expected:, metadata:, **)
+    threshold = metadata[:threshold] || 0.8
 
     # Simple fuzzy matching (in real scenario, use Levenshtein distance)
-    similarity = if args.output == args.expected
+    similarity = if output == expected
       1.0
-    elsif args.output.downcase.include?(args.expected.downcase) || args.expected.downcase.include?(args.output.downcase)
+    elsif output.downcase.include?(expected.downcase) || expected.downcase.include?(output.downcase)
       0.7
     else
       0.0
@@ -55,9 +55,9 @@ class FuzzyMatchScorer < Braintrust::Scorer
 end
 
 # Example of an inline scorer
-length_match = Braintrust::Scorer.new("length_match") do |args|
+length_match = Braintrust::Scorer.new("length_match") do |output:, expected:|
   # Score based on whether output has correct length
-  (args.output.length == args.expected.length) ? 1.0 : 0.0
+  (output.length == expected.length) ? 1.0 : 0.0
 end
 
 # Run the evaluation

@@ -252,9 +252,9 @@ Braintrust::Eval.run(
     {input: "apple", expected: "fruit"},
     {input: "carrot", expected: "vegetable"}
   ],
-  task: Braintrust::Task.new { |args| classify(args.input) },
+  task: Braintrust::Task.new { |input:| classify(input) },
   scorers: [
-    Braintrust::Scorer.new("exact_match") { |args| args.output == args.expected ? 1.0 : 0.0 }
+    Braintrust::Scorer.new("exact_match") { |output:, expected:| output == expected ? 1.0 : 0.0 }
   ]
 )
 ```
@@ -267,7 +267,7 @@ Use test cases from a Braintrust dataset:
 Braintrust::Eval.run(
   project: "my-project",
   dataset: "my-dataset",
-  task: Braintrust::Task.new { |args| classify(args.input) },
+  task: Braintrust::Task.new { |input:| classify(input) },
   scorers: [...]
 )
 ```
@@ -282,7 +282,7 @@ Braintrust::Eval.run(
     {input: "apple", expected: "fruit", tags: ["produce"], metadata: {difficulty: "easy"}},
     {input: "salmon", expected: "protein", tags: ["seafood"], metadata: {difficulty: "medium"}}
   ],
-  task: Braintrust::Task.new { |args| classify(args.input) },
+  task: Braintrust::Task.new { |input:| classify(input) },
   scorers: [...]
 )
 ```
@@ -295,7 +295,7 @@ Use scoring functions defined in Braintrust:
 Braintrust::Eval.run(
   project: "my-project",
   cases: [...],
-  task: Braintrust::Task.new { |args| ... },
+  task: Braintrust::Task.new { |input:| ... },
   scorers: [
     Braintrust::Functions.scorer(project: "my-project", slug: "accuracy-scorer")
   ]
@@ -308,10 +308,10 @@ Or define scorers inline with `Scorer.new`:
 Braintrust::Eval.run(
   project: "my-project",
   cases: [...],
-  task: Braintrust::Task.new { |args| ... },
+  task: Braintrust::Task.new { |input:| ... },
   scorers: [
-    Braintrust::Scorer.new("exact_match") do |args|
-      args.output == args.expected ? 1.0 : 0.0
+    Braintrust::Scorer.new("exact_match") do |output:, expected:|
+      output == expected ? 1.0 : 0.0
     end
   ]
 )
@@ -330,9 +330,9 @@ require "braintrust/server"
 
 # Define evaluators — these can reference your application code (models, services, etc.)
 food_classifier = Braintrust::Eval::Evaluator.new(
-  task: Braintrust::Task.new { |args| FoodClassifier.classify(args.input) },
+  task: Braintrust::Task.new { |input:| FoodClassifier.classify(input) },
   scorers: [
-    Braintrust::Scorer.new("exact_match") { |args| args.output == args.expected ? 1.0 : 0.0 }
+    Braintrust::Scorer.new("exact_match") { |output:, expected:| output == expected ? 1.0 : 0.0 }
   ]
 )
 
@@ -358,11 +358,11 @@ Evaluators can also be defined as subclasses:
 ```ruby
 class FoodClassifier < Braintrust::Eval::Evaluator
   def task
-    Braintrust::Task.new { |args| classify(args.input) }
+    Braintrust::Task.new { |input:| classify(input) }
   end
 
   def scorers
-    [Braintrust::Scorer.new("exact_match") { |args| args.output == args.expected ? 1.0 : 0.0 }]
+    [Braintrust::Scorer.new("exact_match") { |output:, expected:| output == expected ? 1.0 : 0.0 }]
   end
 end
 ```

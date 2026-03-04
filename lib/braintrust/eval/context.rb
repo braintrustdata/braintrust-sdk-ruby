@@ -81,18 +81,14 @@ module Braintrust
           case raw
           when Task
             raw
-          when Proc, Method
-            callable = raw
-            # Extract and only pass the input arg for backwards compatibility,
-            # as we can't detect the difference between blocks that accept args vs input.
-            # So always assume it's input. (This may be deprecated in the future.)
-            Task.new { |args| callable.call(args.input) }
+          when Proc
+            # Pass Proc/Lambda directly to preserve keyword arg info.
+            # Legacy positional lambdas (arity 1) are auto-wrapped by Task#wrap_block.
+            Task.new(&raw)
           else
-            # Extract and only pass the input arg for backwards compatibility,
-            # as we can't detect the difference between blocks that accept args vs input.
-            # So always assume it's input. (This may be deprecated in the future.)
+            # Callable class: wrap via method(:call)
             callable = raw
-            Task.new { |args| callable.call(args.input) }
+            Task.new { |input:| callable.call(input) }
           end
         end
 
@@ -108,6 +104,10 @@ module Braintrust
               )
             when Scorer
               scorer
+            when Proc
+              # Pass Proc/Lambda directly to preserve keyword arg info
+              # (method(:call) loses parameter metadata)
+              Scorer.new(&scorer)
             else
               name = scorer.respond_to?(:name) ? scorer.name : nil
               Scorer.new(name, &scorer.method(:call))

@@ -15,7 +15,7 @@ class Braintrust::EvalTest < Minitest::Test
     end
 
     assert_equal "test_scorer", scorer.name
-    assert_instance_of Braintrust::Eval::Scorer, scorer
+    assert_instance_of Braintrust::Scorer, scorer
   end
 
   def test_eval_run_basic

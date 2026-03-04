@@ -77,17 +77,18 @@ module Test
       # @param state [State] Braintrust state
       def run_test_eval(experiment_id:, experiment_name:, project_id:, project_name:,
         cases:, task:, scorers:, state:, parallelism: 1, tracer_provider: nil)
-        runner = Braintrust::Eval::Runner.new(
+        context = Braintrust::Eval::Context.build(
+          task: task,
+          scorers: scorers,
+          cases: cases,
           experiment_id: experiment_id,
           experiment_name: experiment_name,
           project_id: project_id,
           project_name: project_name,
-          task: task,
-          scorers: scorers,
           state: state,
           tracer_provider: tracer_provider
         )
-        runner.run(cases, parallelism: parallelism)
+        Braintrust::Eval::Runner.new(context).run(parallelism: parallelism)
       end
     end
   end

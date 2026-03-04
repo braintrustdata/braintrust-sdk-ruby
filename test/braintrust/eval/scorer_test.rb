@@ -8,18 +8,25 @@ class Braintrust::ScorerTest < Minitest::Test
   # Scorer.new with block (inline scorers)
   # ============================================
 
-  def test_scorer_with_arity_1_block
-    scorer = Braintrust::Scorer.new("exact_match") do |args|
-      (args.output == args.expected) ? 1.0 : 0.0
+  def test_scorer_with_kwargs_block
+    scorer = Braintrust::Scorer.new("exact_match") do |output:, expected:, **|
+      (output == expected) ? 1.0 : 0.0
     end
 
     assert_equal "exact_match", scorer.name
+    assert_equal 1.0, scorer.call(input: "apple", expected: "fruit", output: "fruit")
+    assert_equal 0.0, scorer.call(input: "apple", expected: "fruit", output: "wrong")
+  end
 
-    args = Braintrust::Scorer::Args.new(input: "apple", expected: "fruit", output: "fruit")
-    assert_equal 1.0, scorer.call(args)
+  def test_scorer_with_subset_kwargs_filters_extra_keys
+    # Block declares only output: and expected: — no **
+    scorer = Braintrust::Scorer.new("subset") do |output:, expected:|
+      (output == expected) ? 1.0 : 0.0
+    end
 
-    args = Braintrust::Scorer::Args.new(input: "apple", expected: "fruit", output: "wrong")
-    assert_equal 0.0, scorer.call(args)
+    # Calling with extra kwargs (input:, metadata:, tags:) should not raise
+    assert_equal 1.0, scorer.call(input: "apple", expected: "fruit", output: "fruit", metadata: {}, tags: ["t1"])
+    assert_equal 0.0, scorer.call(input: "apple", expected: "fruit", output: "wrong", metadata: {}, tags: nil)
   end
 
   def test_scorer_with_legacy_3_param_block
@@ -28,9 +35,7 @@ class Braintrust::ScorerTest < Minitest::Test
     end
 
     assert_equal "exact_match", scorer.name
-
-    args = Braintrust::Scorer::Args.new(input: "apple", expected: "fruit", output: "fruit", metadata: {threshold: 0.5})
-    assert_equal 1.0, scorer.call(args)
+    assert_equal 1.0, scorer.call(input: "apple", expected: "fruit", output: "fruit", metadata: {threshold: 0.5})
   end
 
   def test_scorer_with_legacy_4_param_block
@@ -41,38 +46,29 @@ class Braintrust::ScorerTest < Minitest::Test
     end
 
     assert_equal "threshold_match", scorer.name
-
-    args = Braintrust::Scorer::Args.new(input: "a", expected: "b", output: "c", metadata: {threshold: 0.95})
-    assert_equal 0.0, scorer.call(args)
-
-    args = Braintrust::Scorer::Args.new(input: "a", expected: "b", output: "c", metadata: {threshold: 0.85})
-    assert_equal 1.0, scorer.call(args)
+    assert_equal 0.0, scorer.call(input: "a", expected: "b", output: "c", metadata: {threshold: 0.95})
+    assert_equal 1.0, scorer.call(input: "a", expected: "b", output: "c", metadata: {threshold: 0.85})
   end
 
   def test_scorer_return_float
-    scorer = Braintrust::Scorer.new("float_scorer") { |args| 0.75 }
-
-    args = Braintrust::Scorer::Args.new(input: "a", expected: "b", output: "c")
-    assert_equal 0.75, scorer.call(args)
+    scorer = Braintrust::Scorer.new("float_scorer") { |**| 0.75 }
+    assert_equal 0.75, scorer.call(input: "a", expected: "b", output: "c")
   end
 
   def test_scorer_return_hash
-    scorer = Braintrust::Scorer.new("hash_scorer") { |args| {name: "custom_name", score: 0.85} }
-
-    args = Braintrust::Scorer::Args.new(input: "a", expected: "b", output: "c")
-    assert_equal({name: "custom_name", score: 0.85}, scorer.call(args))
+    scorer = Braintrust::Scorer.new("hash_scorer") { |**| {name: "custom_name", score: 0.85} }
+    assert_equal({name: "custom_name", score: 0.85}, scorer.call(input: "a", expected: "b", output: "c"))
   end
 
   def test_scorer_return_array
-    scorer = Braintrust::Scorer.new("multi_scorer") do |args|
+    scorer = Braintrust::Scorer.new("multi_scorer") do |**|
       [
         {name: "metric1", score: 0.9},
         {name: "metric2", score: 0.8}
       ]
     end
 
-    args = Braintrust::Scorer::Args.new(input: "a", expected: "b", output: "c")
-    result = scorer.call(args)
+    result = scorer.call(input: "a", expected: "b", output: "c")
     assert_equal 2, result.length
     assert_equal({name: "metric1", score: 0.9}, result[0])
     assert_equal({name: "metric2", score: 0.8}, result[1])
@@ -82,25 +78,24 @@ class Braintrust::ScorerTest < Minitest::Test
   # Validation
   # ============================================
 
-  def test_scorer_missing_block_raises
-    error = assert_raises(ArgumentError) do
-      Braintrust::Scorer.new("no_block")
-    end
-
-    assert_match(/must provide a block/i, error.message)
-  end
-
   def test_scorer_without_block_or_subclass_raises_on_call
     # Anonymous subclass that doesn't override call and has no block
     klass = Class.new(Braintrust::Scorer)
     scorer = klass.new
 
     error = assert_raises(NotImplementedError) do
-      args = Braintrust::Scorer::Args.new(input: "a", expected: "b", output: "c")
-      scorer.call(args)
+      scorer.call(input: "a", expected: "b", output: "c")
     end
 
     assert_match(/must provide a block or override #call/i, error.message)
+  end
+
+  def test_scorer_invalid_arity_raises
+    error = assert_raises(ArgumentError) do
+      Braintrust::Scorer.new("bad") { |a, b| a }
+    end
+
+    assert_match(/scorer must accept keyword args or 3-4 positional params/i, error.message)
   end
 
   # ============================================
@@ -108,13 +103,12 @@ class Braintrust::ScorerTest < Minitest::Test
   # ============================================
 
   def test_scorer_name_defaults_to_scorer_for_base_class
-    # Base Scorer with block still needs a name fallback
-    scorer = Braintrust::Scorer.new { |args| 1.0 }
+    scorer = Braintrust::Scorer.new { |**| 1.0 }
     assert_equal "scorer", scorer.name
   end
 
   def test_scorer_explicit_name_takes_precedence
-    scorer = Braintrust::Scorer.new("my_name") { |args| 1.0 }
+    scorer = Braintrust::Scorer.new("my_name") { |**| 1.0 }
     assert_equal "my_name", scorer.name
   end
 
@@ -124,19 +118,16 @@ class Braintrust::ScorerTest < Minitest::Test
 
   def test_subclass_with_call_override
     klass = Class.new(Braintrust::Scorer) do
-      def call(args)
-        (args.output == args.expected) ? 1.0 : 0.0
+      def call(output:, expected:, **)
+        (output == expected) ? 1.0 : 0.0
       end
     end
 
     scorer = klass.new
     assert_kind_of Braintrust::Scorer, scorer
 
-    args = Braintrust::Scorer::Args.new(input: "apple", expected: "fruit", output: "fruit")
-    assert_equal 1.0, scorer.call(args)
-
-    args = Braintrust::Scorer::Args.new(input: "apple", expected: "fruit", output: "wrong")
-    assert_equal 0.0, scorer.call(args)
+    assert_equal 1.0, scorer.call(input: "apple", expected: "fruit", output: "fruit")
+    assert_equal 0.0, scorer.call(input: "apple", expected: "fruit", output: "wrong")
   end
 
   def test_subclass_with_name_override
@@ -145,7 +136,7 @@ class Braintrust::ScorerTest < Minitest::Test
         "custom_name"
       end
 
-      def call(args)
+      def call(**)
         1.0
       end
     end
@@ -156,7 +147,7 @@ class Braintrust::ScorerTest < Minitest::Test
 
   def test_subclass_name_derived_from_class_name
     klass = Class.new(Braintrust::Scorer) do
-      def call(args)
+      def call(**)
         1.0
       end
     end
@@ -173,25 +164,27 @@ class Braintrust::ScorerTest < Minitest::Test
         "threshold_scorer"
       end
 
-      def call(args)
-        threshold = args.metadata[:threshold] || 0.8
-        (args.output == args.expected) ? 1.0 : ((threshold < 0.5) ? 0.5 : 0.0)
+      def call(output:, expected:, metadata:, **)
+        threshold = metadata[:threshold] || 0.8
+        if output == expected
+          1.0
+        else
+          ((threshold < 0.5) ? 0.5 : 0.0)
+        end
       end
     end
 
     scorer = klass.new
 
-    args = Braintrust::Scorer::Args.new(
+    assert_equal 1.0, scorer.call(
       input: "a", expected: "b", output: "b",
       metadata: {threshold: 0.9}
     )
-    assert_equal 1.0, scorer.call(args)
 
-    args = Braintrust::Scorer::Args.new(
+    assert_equal 0.5, scorer.call(
       input: "a", expected: "b", output: "c",
       metadata: {threshold: 0.3}
     )
-    assert_equal 0.5, scorer.call(args)
   end
 
   # ============================================
@@ -216,8 +209,8 @@ class Braintrust::ScorerTest < Minitest::Test
 
     assert_equal "legacy_scorer", scorer.name
 
-    args = Braintrust::Scorer::Args.new(input: "test", expected: "HELLO", output: "hello")
-    assert_equal 1.0, scorer.call(args)
+    # Arity 3 block gets auto-wrapped to kwargs
+    assert_equal 1.0, scorer.call(input: "test", expected: "HELLO", output: "hello")
   end
 
   def test_legacy_callable_class_with_metadata_normalized_via_factory
@@ -228,7 +221,11 @@ class Braintrust::ScorerTest < Minitest::Test
 
       def call(input, expected, output, metadata = {})
         threshold = metadata[:threshold] || 0.5
-        (output == expected) ? 1.0 : ((threshold < 0.5) ? 0.5 : 0.0)
+        if output == expected
+          1.0
+        else
+          ((threshold < 0.5) ? 0.5 : 0.0)
+        end
       end
     end.new
 
@@ -237,10 +234,10 @@ class Braintrust::ScorerTest < Minitest::Test
 
     assert_equal "legacy_with_meta", scorer.name
 
-    args = Braintrust::Scorer::Args.new(
+    # Arity 4 block gets auto-wrapped to kwargs
+    assert_equal 1.0, scorer.call(
       input: "a", expected: "b", output: "b",
       metadata: {threshold: 0.9}
     )
-    assert_equal 1.0, scorer.call(args)
   end
 end
