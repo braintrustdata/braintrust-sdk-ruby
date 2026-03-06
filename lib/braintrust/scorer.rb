@@ -31,8 +31,9 @@ module Braintrust
     #
     # @param name [String, nil] optional name (defaults to "scorer")
     # @param block [Proc] the scoring implementation; declare only the keyword
-    #   args you need (e.g. +|expected:, output:|+). Extra kwargs passed by the
-    #   caller are filtered out automatically.
+    #   args you need. Extra kwargs are filtered out automatically.
+    #
+    #   Supported kwargs: +input:+, +expected:+, +output:+, +metadata:+, +trace:+
     # @return [Scorer::Block]
     # @raise [ArgumentError] if the block has unsupported arity
     def self.new(name = nil, &block)

@@ -905,6 +905,176 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_nil eval_span.attributes["braintrust.parent"]
   end
 
+  # ============================================
+  # Runner#run tests - trace in scorer
+  # ============================================
+
+  def test_scorer_declaring_trace_receives_eval_trace
+    rig = setup_otel_test_rig
+    received_trace = nil
+
+    scorer = Braintrust::Scorer.new("trace_reader") { |output:, trace:|
+      received_trace = trace
+      1.0
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    runner = Braintrust::Eval::Runner.new(context)
+    result = runner.run
+
+    assert result.success?
+    assert_instance_of Braintrust::Eval::Trace, received_trace
+  end
+
+  def test_scorer_without_trace_still_works
+    rig = setup_otel_test_rig
+
+    # Scorer declares only output: and expected: — no trace:
+    scorer = Braintrust::Scorer.new("simple") { |output:, expected:|
+      (output == expected) ? 1.0 : 0.0
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    runner = Braintrust::Eval::Runner.new(context)
+    result = runner.run
+
+    assert result.success?
+    assert_equal({"simple" => [1.0]}, result.scores)
+  end
+
+  def test_trace_is_nil_when_state_missing
+    # Use bare tracer provider without Braintrust state
+    exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+    tracer_provider.add_span_processor(
+      OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
+    )
+
+    received_trace = :not_called
+
+    scorer = Braintrust::Scorer.new("trace_check") { |output:, trace: nil|
+      received_trace = trace
+      1.0
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      tracer_provider: tracer_provider
+    )
+    runner = Braintrust::Eval::Runner.new(context)
+    result = runner.run
+
+    assert result.success?
+    assert_nil received_trace
+  end
+
+  def test_trace_is_nil_when_experiment_id_missing
+    rig = setup_otel_test_rig
+
+    received_trace = :not_called
+
+    scorer = Braintrust::Scorer.new("trace_check") { |output:, trace: nil|
+      received_trace = trace
+      1.0
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+      # No experiment_id
+    )
+    runner = Braintrust::Eval::Runner.new(context)
+    result = runner.run
+
+    assert result.success?
+    assert_nil received_trace
+  end
+
+  def test_trace_is_nil_when_task_fails
+    rig = setup_otel_test_rig
+
+    received_trace = :not_called
+
+    scorer = Braintrust::Scorer.new("trace_check") { |output:, trace: nil|
+      received_trace = trace
+      1.0
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: -> { raise "task boom" },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    runner = Braintrust::Eval::Runner.new(context)
+    result = runner.run
+
+    # Task failed, so scorer never ran — trace never assigned
+    assert_equal :not_called, received_trace
+    refute result.success?
+  end
+
+  def test_trace_works_with_parallelism
+    rig = setup_otel_test_rig
+    received_traces = []
+    mutex = Mutex.new
+
+    scorer = Braintrust::Scorer.new("trace_reader") { |output:, trace:|
+      mutex.synchronize { received_traces << trace }
+      1.0
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "a"}, {input: "b"}, {input: "c"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    runner = Braintrust::Eval::Runner.new(context)
+    result = runner.run(parallelism: 3)
+
+    assert result.success?
+    assert_equal 3, received_traces.length
+    received_traces.each do |trace|
+      assert_instance_of Braintrust::Eval::Trace, trace
+    end
+  end
+
   private
 
   def build_simple_runner(task:, cases:, scorers: [], on_progress: nil)
