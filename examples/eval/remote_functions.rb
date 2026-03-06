@@ -18,7 +18,7 @@
 require "bundler/setup"
 require "braintrust"
 require "braintrust/eval"
-require "braintrust/eval/functions"
+require "braintrust/functions"
 
 # Initialize Braintrust with tracing enabled (default)
 Braintrust.init
@@ -99,12 +99,12 @@ puts "Created scorer function: #{scorer_slug}"
 puts "\nRunning evaluation with remote functions..."
 
 # Get references to the remote functions
-task = Braintrust::Eval::Functions.task(
+task = Braintrust::Functions.task(
   project: project_name,
   slug: function_slug
 )
 
-remote_scorer = Braintrust::Eval::Functions.scorer(
+remote_scorer = Braintrust::Functions.scorer(
   project: project_name,
   slug: scorer_slug
 )

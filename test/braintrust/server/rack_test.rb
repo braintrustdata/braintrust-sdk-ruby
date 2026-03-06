@@ -53,7 +53,7 @@ module Braintrust
       end
 
       def test_app_registers_evaluators_on_router
-        evaluator = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+        evaluator = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
 
         app = Rack.app(
           evaluators: {"my-eval" => evaluator},

@@ -33,8 +33,8 @@ module Braintrust
 
         def test_returns_evaluators_keyed_by_name
           evaluators = {
-            "eval-a" => Braintrust::Eval::Evaluator.new(task: ->(input) { input }),
-            "eval-b" => Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+            "eval-a" => Braintrust::Eval::Evaluator.new(task: ->(input:) { input }),
+            "eval-b" => Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
           }
           handler = List.new(evaluators)
 
@@ -48,7 +48,7 @@ module Braintrust
         def test_serializes_parameters_as_static_container
           evaluators = {
             "param-eval" => Braintrust::Eval::Evaluator.new(
-              task: ->(input) { input },
+              task: ->(input:) { input },
               parameters: {"temp" => {type: "number", default: 0.5, description: "Temperature"}}
             )
           }
@@ -70,7 +70,7 @@ module Braintrust
 
         def test_omits_parameters_key_when_none_defined
           evaluators = {
-            "no-params" => Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+            "no-params" => Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
           }
           handler = List.new(evaluators)
 
@@ -83,10 +83,10 @@ module Braintrust
         def test_includes_scorer_names
           evaluators = {
             "scored" => Braintrust::Eval::Evaluator.new(
-              task: ->(input) { input },
+              task: ->(input:) { input },
               scorers: [
-                Braintrust::Eval.scorer("accuracy") { |i, e, o| 1.0 },
-                Braintrust::Eval.scorer("relevance") { |i, e, o| 0.5 }
+                Braintrust::Scorer.new("accuracy") { 1.0 },
+                Braintrust::Scorer.new("relevance") { 0.5 }
               ]
             )
           }
@@ -101,7 +101,7 @@ module Braintrust
 
         def test_empty_scores_when_no_scorers
           evaluators = {
-            "no-scores" => Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+            "no-scores" => Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
           }
           handler = List.new(evaluators)
 

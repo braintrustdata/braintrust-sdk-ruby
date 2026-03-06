@@ -40,20 +40,20 @@ def risky_task(input)
 end
 
 # Scorer that always succeeds
-exact_match_scorer = Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+exact_match_scorer = Braintrust::Scorer.new("exact_match") do |expected:, output:|
   next 0.0 if output.nil?
   (output == expected) ? 1.0 : 0.0
 end
 
 # Scorer that fails for certain cases
-failing_scorer = Braintrust::Eval.scorer("failing_scorer") do |input, expected, output, metadata|
+failing_scorer = Braintrust::Scorer.new("failing_scorer") do |output:, metadata:|
   # This scorer intentionally fails on certain conditions
   if metadata && metadata[:fail_scorer]
     raise "Scorer failed: metadata indicated failure!"
   end
 
   # Check for nil output (might happen if task failed)
-  return 0.0 if output.nil?
+  next 0.0 if output.nil?
 
   # For demonstration, fail on specific output patterns
   if output.include?("trigger")
@@ -65,14 +65,12 @@ failing_scorer = Braintrust::Eval.scorer("failing_scorer") do |input, expected, 
 end
 
 # Scorer that handles errors gracefully
-robust_scorer = Braintrust::Eval.scorer("robust_scorer") do |input, expected, output, metadata|
+robust_scorer = Braintrust::Scorer.new("robust_scorer") do |output:|
   # Handle nil output gracefully
-  return 0.0 if output.nil?
+  next 0.0 if output.nil?
 
   begin
-    # Try to score
-    score = output.downcase.include?("success") ? 1.0 : 0.0
-    score
+    output.downcase.include?("success") ? 1.0 : 0.0
   rescue => e
     # Log the error but don't fail
     puts "Robust scorer caught error: #{e.message}"
@@ -146,7 +144,7 @@ result = Braintrust::Eval.run(
   cases: test_cases,
 
   # Task that may fail
-  task: ->(input) { risky_task(input) },
+  task: ->(input:) { risky_task(input) },
 
   # Multiple scorers - some may fail
   scorers: [

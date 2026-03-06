@@ -21,7 +21,7 @@ Braintrust.instrument!(:openai)
 client = OpenAI::Client.new(api_key: ENV.fetch("OPENAI_API_KEY"))
 
 food_classifier = Braintrust::Eval::Evaluator.new(
-  task: ->(input) {
+  task: ->(input:) {
     response = client.chat.completions.create(
       model: "gpt-4o-mini",
       temperature: 0,
@@ -34,7 +34,7 @@ food_classifier = Braintrust::Eval::Evaluator.new(
     response.choices.first.message.content.strip.downcase
   },
   scorers: [
-    Braintrust::Eval.scorer("exact_match") { |input, expected, output|
+    Braintrust::Scorer.new("exact_match") { |expected:, output:|
       (output == expected) ? 1.0 : 0.0
     }
   ]
@@ -42,7 +42,7 @@ food_classifier = Braintrust::Eval::Evaluator.new(
 
 class FoodCaseClassifier < Braintrust::Eval::Evaluator
   def task
-    ->(input) {
+    ->(input:) {
       case input.to_s.downcase
       when /apple|banana|orange|grape/ then "fruit"
       when /carrot|broccoli|spinach/ then "vegetable"
@@ -53,15 +53,15 @@ class FoodCaseClassifier < Braintrust::Eval::Evaluator
 
   def scorers
     [
-      Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+      Braintrust::Scorer.new("exact_match") { |expected:, output:|
         (output == expected) ? 1.0 : 0.0
-      end
+      }
     ]
   end
 end
 
 text_summarizer = Braintrust::Eval::Evaluator.new(
-  task: ->(input) {
+  task: ->(input:) {
     response = client.chat.completions.create(
       model: "gpt-4o-mini",
       temperature: 0,
@@ -74,7 +74,7 @@ text_summarizer = Braintrust::Eval::Evaluator.new(
     response.choices.first.message.content.strip
   },
   scorers: [
-    Braintrust::Eval.scorer("length_check") { |input, expected, output|
+    Braintrust::Scorer.new("length_check") { |input:, output:|
       (output.to_s.length < input.to_s.length) ? 1.0 : 0.0
     }
   ],

@@ -9,14 +9,14 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   end
 
   def test_stores_task
-    task = ->(input) { input.upcase }
+    task = ->(input:) { input.upcase }
     evaluator = Braintrust::Eval::Evaluator.new(task: task)
 
     assert_equal task, evaluator.task
   end
 
   def test_stores_scorers
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
     evaluator = Braintrust::Eval::Evaluator.new(scorers: [scorer])
 
     assert_equal 1, evaluator.scorers.length
@@ -49,7 +49,7 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   end
 
   def test_validate_passes_with_task
-    evaluator = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+    evaluator = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
 
     evaluator.validate! # should not raise
   end
@@ -63,9 +63,9 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
 
   def test_run_delegates_to_eval_run
     evaluator = Braintrust::Eval::Evaluator.new(
-      task: ->(input) { input.upcase },
+      task: ->(input:) { input.upcase },
       scorers: [
-        Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+        Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
       ]
     )
 
@@ -77,7 +77,7 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   end
 
   def test_run_passes_on_progress
-    evaluator = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+    evaluator = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
 
     progress_events = []
     cases = [{input: "a"}, {input: "b"}]
@@ -91,18 +91,18 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   def test_subclass_overrides_task
     klass = Class.new(Braintrust::Eval::Evaluator) do
       def task
-        ->(input) { input.upcase }
+        ->(input:) { input.upcase }
       end
     end
 
     evaluator = klass.new
-    assert_equal "HELLO", evaluator.task.call("hello")
+    assert_equal "HELLO", evaluator.task.call(input: "hello")
   end
 
   def test_subclass_overrides_scorers
     klass = Class.new(Braintrust::Eval::Evaluator) do
       def scorers
-        [Braintrust::Eval.scorer("always_one") { |i, e, o| 1.0 }]
+        [Braintrust::Scorer.new("always_one") { 1.0 }]
       end
     end
 
@@ -114,11 +114,11 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   def test_subclass_run
     klass = Class.new(Braintrust::Eval::Evaluator) do
       def task
-        ->(input) { input.upcase }
+        ->(input:) { input.upcase }
       end
 
       def scorers
-        [Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }]
+        [Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }]
       end
     end
 
@@ -138,22 +138,22 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
 
       def task
         model = @model
-        ->(input) { "#{model}: #{input}" }
+        ->(input:) { "#{model}: #{input}" }
       end
     end
 
     evaluator = klass.new(model: "gpt-4")
-    assert_equal "gpt-4: hello", evaluator.task.call("hello")
+    assert_equal "gpt-4: hello", evaluator.task.call(input: "hello")
   end
 
   # --- Extended run with additional scorers ---
 
   def test_run_merges_additional_scorers
-    local_scorer = Braintrust::Eval.scorer("local") { |i, e, o| 1.0 }
-    extra_scorer = Braintrust::Eval.scorer("extra") { |i, e, o| 0.5 }
+    local_scorer = Braintrust::Scorer.new("local") { 1.0 }
+    extra_scorer = Braintrust::Scorer.new("extra") { 0.5 }
 
     evaluator = Braintrust::Eval::Evaluator.new(
-      task: ->(input) { input.upcase },
+      task: ->(input:) { input.upcase },
       scorers: [local_scorer]
     )
 
@@ -170,10 +170,10 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   end
 
   def test_run_without_additional_scorers_uses_own
-    local_scorer = Braintrust::Eval.scorer("local") { |i, e, o| 1.0 }
+    local_scorer = Braintrust::Scorer.new("local") { 1.0 }
 
     evaluator = Braintrust::Eval::Evaluator.new(
-      task: ->(input) { input.upcase },
+      task: ->(input:) { input.upcase },
       scorers: [local_scorer]
     )
 
@@ -189,8 +189,8 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
 
   def test_run_forwards_state_parameter
     evaluator = Braintrust::Eval::Evaluator.new(
-      task: ->(input) { input.upcase },
-      scorers: [Braintrust::Eval.scorer("s") { |i, e, o| 1.0 }]
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("s") { 1.0 }]
     )
 
     # Spy on Eval.run to verify state is forwarded
@@ -216,8 +216,8 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
 
   def test_run_forwards_update_parameter
     evaluator = Braintrust::Eval::Evaluator.new(
-      task: ->(input) { input.upcase },
-      scorers: [Braintrust::Eval.scorer("s") { |i, e, o| 1.0 }]
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("s") { 1.0 }]
     )
 
     # Should not raise when update: true is passed (no project, so no API call)

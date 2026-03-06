@@ -40,14 +40,14 @@ module Braintrust
         end
 
         def test_returns_400_for_missing_data
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           status, _, _ = handler.call(rack_json_env({name: "test-eval"}, path: "/eval"))
           assert_equal 400, status
         end
 
         def test_returns_400_for_multiple_data_sources
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           status, _, _ = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}], dataset_name: "ds"}},
@@ -59,7 +59,7 @@ module Braintrust
         # --- SSE streaming ---
 
         def test_returns_200_with_sse_content_type
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           status, headers, _ = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "hello"}]}, experiment_name: "exp"},
@@ -73,7 +73,7 @@ module Braintrust
         end
 
         def test_streams_progress_event_per_case
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
 
           _, _, body = handler.call(rack_json_env(
             {name: "upcase-eval", data: {data: [{input: "a"}, {input: "b"}, {input: "c"}]}, experiment_name: "exp"},
@@ -88,7 +88,7 @@ module Braintrust
         end
 
         def test_progress_event_contains_protocol_fields
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
 
           _, _, body = handler.call(rack_json_env(
             {name: "upcase-eval", data: {data: [{input: "hello"}]}, experiment_name: "exp"},
@@ -108,7 +108,7 @@ module Braintrust
         end
 
         def test_progress_event_contains_task_output_as_json_string
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
 
           _, _, body = handler.call(rack_json_env(
             {name: "upcase-eval", data: {data: [{input: "hello"}]}, experiment_name: "exp"},
@@ -125,9 +125,9 @@ module Braintrust
         end
 
         def test_progress_event_excludes_scores
-          scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+          scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
           @evaluators["scored-eval"] = test_evaluator(
-            task: ->(input) { input.to_s.upcase },
+            task: ->(input:) { input.to_s.upcase },
             scorers: [scorer]
           )
 
@@ -145,9 +145,9 @@ module Braintrust
         end
 
         def test_summary_event_contains_scores_and_experiment_name
-          scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+          scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
           @evaluators["scored-eval"] = test_evaluator(
-            task: ->(input) { input.to_s.upcase },
+            task: ->(input:) { input.to_s.upcase },
             scorers: [scorer]
           )
 
@@ -165,7 +165,7 @@ module Braintrust
         end
 
         def test_stream_ends_with_done
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           _, _, body = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -177,7 +177,7 @@ module Braintrust
         end
 
         def test_task_error_still_emits_progress_and_done
-          @evaluators["failing-eval"] = test_evaluator(task: ->(_) { raise "boom" })
+          @evaluators["failing-eval"] = test_evaluator(task: -> { raise "boom" })
 
           _, _, body = handler.call(rack_json_env(
             {name: "failing-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -191,7 +191,7 @@ module Braintrust
         end
 
         def test_task_error_progress_contains_error_event
-          @evaluators["failing-eval"] = test_evaluator(task: ->(_) { raise "task exploded" })
+          @evaluators["failing-eval"] = test_evaluator(task: -> { raise "task exploded" })
 
           _, _, body = handler.call(rack_json_env(
             {name: "failing-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -209,7 +209,7 @@ module Braintrust
         # --- Data source validation ---
 
         def test_returns_400_for_dataset_id_plus_inline_data
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           status, _, _ = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}], dataset_id: "ds-123"}},
@@ -222,8 +222,8 @@ module Braintrust
           # This should return 200 (SSE stream) but will fail inside evaluator.run
           # because no API client is available. We just check it passes validation.
           @evaluators["test-eval"] = test_evaluator(
-            task: ->(input) { input },
-            scorers: [Braintrust::Eval.scorer("s") { |i, e, o| 1.0 }]
+            task: ->(input:) { input },
+            scorers: [Braintrust::Scorer.new("s") { 1.0 }]
           )
 
           status, headers, _ = handler.call(rack_json_env(
@@ -239,7 +239,7 @@ module Braintrust
         # --- Auth passthrough ---
 
         def test_build_state_returns_nil_without_auth
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           env = rack_json_env(
             {name: "test-eval", data: {data: [{input: "hello"}]}},
@@ -252,7 +252,7 @@ module Braintrust
         end
 
         def test_build_state_returns_nil_for_non_hash_auth
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           env = rack_json_env(
             {name: "test-eval", data: {data: [{input: "hello"}]}},
@@ -268,8 +268,8 @@ module Braintrust
         def test_handler_passes_state_when_auth_present
           received_opts = nil
           spy_evaluator = test_evaluator(
-            task: ->(input) { input },
-            scorers: [Braintrust::Eval.scorer("s") { |i, e, o| 1.0 }]
+            task: ->(input:) { input },
+            scorers: [Braintrust::Scorer.new("s") { 1.0 }]
           )
 
           # Replace evaluator.run with a spy that captures kwargs and returns a fake result
@@ -315,8 +315,8 @@ module Braintrust
         def test_handler_does_not_pass_state_without_auth
           received_opts = nil
           spy_evaluator = test_evaluator(
-            task: ->(input) { input },
-            scorers: [Braintrust::Eval.scorer("s") { |i, e, o| 1.0 }]
+            task: ->(input:) { input },
+            scorers: [Braintrust::Scorer.new("s") { 1.0 }]
           )
 
           spy_evaluator.define_singleton_method(:run) do |cases, **opts|
@@ -420,12 +420,12 @@ module Braintrust
           # Since no API is available, remote scorers will fail at resolution time,
           # but we verify the request doesn't fail at validation.
           @evaluators["test-eval"] = test_evaluator(
-            task: ->(input) { input },
-            scorers: [Braintrust::Eval.scorer("local") { |i, e, o| 1.0 }]
+            task: ->(input:) { input },
+            scorers: [Braintrust::Scorer.new("local") { 1.0 }]
           )
 
           # With inline data + scores — should return 200 (SSE stream)
-          # The actual ScorerId resolution will fail inside the stream since no API,
+          # The actual Scorer::ID resolution will fail inside the stream since no API,
           # but it should not fail at handler validation level
           status, _, _ = handler.call(rack_json_env(
             {
@@ -442,7 +442,7 @@ module Braintrust
         # --- Server-specific body selection ---
 
         def test_returns_sse_body_without_protocol_http_request
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           _, _, body = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -453,7 +453,7 @@ module Braintrust
         end
 
         def test_returns_sse_stream_body_with_protocol_http_request
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           env = rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -470,7 +470,7 @@ module Braintrust
         # --- Parent passthrough ---
 
         def test_handler_passes_parent_through
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           _, _, body = handler.call(rack_json_env(
             {

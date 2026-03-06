@@ -252,9 +252,9 @@ Braintrust::Eval.run(
     {input: "apple", expected: "fruit"},
     {input: "carrot", expected: "vegetable"}
   ],
-  task: ->(input) { classify(input) },
+  task: ->(input:) { classify(input) },
   scorers: [
-    ->(input, expected, output) { output == expected ? 1.0 : 0.0 }
+    ->(expected:, output:) { output == expected ? 1.0 : 0.0 }
   ]
 )
 ```
@@ -267,7 +267,7 @@ Use test cases from a Braintrust dataset:
 Braintrust::Eval.run(
   project: "my-project",
   dataset: "my-dataset",
-  task: ->(input) { classify(input) },
+  task: ->(input:) { classify(input) },
   scorers: [...]
 )
 ```
@@ -282,7 +282,7 @@ Braintrust::Eval.run(
     {input: "apple", expected: "fruit", tags: ["produce"], metadata: {difficulty: "easy"}},
     {input: "salmon", expected: "protein", tags: ["seafood"], metadata: {difficulty: "medium"}}
   ],
-  task: ->(input) { classify(input) },
+  task: ->(input:) { classify(input) },
   scorers: [...]
 )
 ```
@@ -295,22 +295,22 @@ Use scoring functions defined in Braintrust:
 Braintrust::Eval.run(
   project: "my-project",
   cases: [...],
-  task: ->(input) { ... },
+  task: ->(input:) { ... },
   scorers: [
-    Braintrust::Eval::Functions.scorer(project: "my-project", slug: "accuracy-scorer")
+    Braintrust::Functions.scorer(project: "my-project", slug: "accuracy-scorer")
   ]
 )
 ```
 
-Or define scorers inline with `Eval.scorer`:
+Or define scorers inline with `Scorer.new`:
 
 ```ruby
 Braintrust::Eval.run(
   project: "my-project",
   cases: [...],
-  task: ->(input) { ... },
+  task: ->(input:) { ... },
   scorers: [
-    Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+    Braintrust::Scorer.new("exact_match") do |expected:, output:|
       output == expected ? 1.0 : 0.0
     end
   ]
@@ -330,9 +330,9 @@ require "braintrust/server"
 
 # Define evaluators — these can reference your application code (models, services, etc.)
 food_classifier = Braintrust::Eval::Evaluator.new(
-  task: ->(input) { FoodClassifier.classify(input) },
+  task: ->(input:) { FoodClassifier.classify(input) },
   scorers: [
-    Braintrust::Eval.scorer("exact_match") { |input, expected, output| output == expected ? 1.0 : 0.0 }
+    Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }
   ]
 )
 
@@ -358,11 +358,11 @@ Evaluators can also be defined as subclasses:
 ```ruby
 class FoodClassifier < Braintrust::Eval::Evaluator
   def task
-    ->(input) { classify(input) }
+    ->(input:) { classify(input) }
   end
 
   def scorers
-    [Braintrust::Eval.scorer("exact_match") { |i, e, o| o == e ? 1.0 : 0.0 }]
+    [Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }]
   end
 end
 ```

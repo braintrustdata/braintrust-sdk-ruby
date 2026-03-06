@@ -32,13 +32,12 @@ def classify_food(input)
   "unknown"
 end
 
-# Example of a class-based scorer (reusable)
+# Example of a class-based scorer (reusable, includes Braintrust::Scorer)
+# Declare only the keyword args you need — no ** required.
 class FuzzyMatchScorer
-  def name
-    "fuzzy_match"
-  end
+  include Braintrust::Scorer
 
-  def call(input, expected, output, metadata = {})
+  def call(expected:, output:, metadata:)
     threshold = metadata[:threshold] || 0.8
 
     # Simple fuzzy matching (in real scenario, use Levenshtein distance)
@@ -54,8 +53,8 @@ class FuzzyMatchScorer
   end
 end
 
-# Example of a lambda scorer (can pass directly without wrapping)
-length_match = ->(input, expected, output) {
+# Example of an anonymous lambda scorer
+length_match = ->(expected:, output:) {
   # Score based on whether output has correct length
   (output.length == expected.length) ? 1.0 : 0.0
 }
@@ -79,30 +78,26 @@ Braintrust::Eval.run(
     {input: "spinach", expected: "vegetable", tags: ["leafy"]}
   ],
 
-  # Required: Task (callable)
-  # Can be a proc, lambda, method reference, or object with .call
-  task: ->(input) { classify_food(input) },
+  # Required: Task (lambda with keyword args)
+  task: ->(input:) { classify_food(input) },
 
   # Required: Scorers (array)
-  # Scorers evaluate the quality of the output
+  # Declare only the keyword args you need: input:, expected:, output:, metadata:, tags:
   scorers: [
-    # Simple inline scorer - exact match
-    # Takes 3 params: input, expected, output
-    Braintrust::Eval.scorer("exact_match") { |input, expected, output|
+    # Named scorer with Scorer.new
+    Braintrust::Scorer.new("exact_match") { |expected:, output:|
       (output == expected) ? 1.0 : 0.0
     },
 
-    # Advanced inline scorer - with metadata
-    # Takes 4 params: input, expected, output, metadata
-    Braintrust::Eval.scorer("case_insensitive_match") { |input, expected, output, metadata|
+    # Named scorer using metadata
+    Braintrust::Scorer.new("case_insensitive_match") { |expected:, output:|
       (output.downcase == expected.downcase) ? 1.0 : 0.0
     },
 
     # Class-based scorer (reusable)
     FuzzyMatchScorer.new,
 
-    # Lambda scorer (auto-named as "scorer")
-    # Just pass the lambda directly - no wrapper needed!
+    # Anonymous lambda scorer — fine when there's only one unnamed scorer
     length_match
   ],
 

@@ -25,7 +25,7 @@ require "braintrust/server"
 # Subclass pattern: override #task and #scorers methods.
 class FoodClassifier < Braintrust::Eval::Evaluator
   def task
-    ->(input) {
+    ->(input:) {
       case input.to_s.downcase
       when /apple|banana|orange|grape/ then "fruit"
       when /carrot|broccoli|spinach/ then "vegetable"
@@ -36,23 +36,23 @@ class FoodClassifier < Braintrust::Eval::Evaluator
 
   def scorers
     [
-      Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+      Braintrust::Scorer.new("exact_match") { |expected:, output:|
         (output == expected) ? 1.0 : 0.0
-      end
+      }
     ]
   end
 end
 
 # Inline pattern: pass task and scorers as constructor arguments.
 text_summarizer = Braintrust::Eval::Evaluator.new(
-  task: ->(input) {
+  task: ->(input:) {
     words = input.to_s.split
     words.first(10).join(" ") + ((words.length > 10) ? "..." : "")
   },
   scorers: [
-    Braintrust::Eval.scorer("length_check") do |input, expected, output|
+    Braintrust::Scorer.new("length_check") { |input:, output:|
       (output.to_s.length < input.to_s.length) ? 1.0 : 0.0
-    end
+    }
   ],
   parameters: {
     "max_length" => {type: "number", default: 100, description: "Maximum summary length"}

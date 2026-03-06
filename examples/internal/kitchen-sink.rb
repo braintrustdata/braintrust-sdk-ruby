@@ -139,14 +139,14 @@ end
 # Scorers
 
 # 1. Exact match scorer
-exact_match_scorer = Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+exact_match_scorer = Braintrust::Scorer.new("exact_match") do |expected:, output:|
   next 1.0 if expected.nil?
   next 0.0 if output.nil?
   (output == expected) ? 1.0 : 0.0
 end
 
 # 2. Contains keyword scorer
-contains_keyword_scorer = Braintrust::Eval.scorer("contains_keyword") do |input, expected, output, metadata|
+contains_keyword_scorer = Braintrust::Scorer.new("contains_keyword") do |output:, metadata:|
   keyword = metadata[:keyword]
   next 1.0 unless keyword
   next 0.0 if output.nil?
@@ -154,7 +154,7 @@ contains_keyword_scorer = Braintrust::Eval.scorer("contains_keyword") do |input,
   output.downcase.include?(keyword.downcase) ? 1.0 : 0.0
 end
 
-# 3. LLM-as-judge scorer using OpenAI
+# 3. LLM-as-judge scorer using OpenAI (callable class pattern)
 class LLMJudgeScorer
   def initialize(openai_client, name, criterion)
     @openai_client = openai_client
@@ -164,7 +164,7 @@ class LLMJudgeScorer
 
   attr_reader :name
 
-  def call(input, expected, output, metadata = {})
+  def call(input:, expected:, output:)
     return 0.0 if output.nil?
 
     prompt = <<~PROMPT
@@ -194,7 +194,7 @@ class LLMJudgeScorer
 end
 
 # 4. Response length scorer
-length_scorer = Braintrust::Eval.scorer("appropriate_length") do |input, expected, output|
+length_scorer = Braintrust::Scorer.new("appropriate_length") do |output:|
   next 0.0 if output.nil?
 
   length = output.length
@@ -209,7 +209,7 @@ length_scorer = Braintrust::Eval.scorer("appropriate_length") do |input, expecte
 end
 
 # 5. Failing scorer (demonstrates error handling)
-failing_scorer = Braintrust::Eval.scorer("error_demo") do |input, expected, output, metadata|
+failing_scorer = Braintrust::Scorer.new("error_demo") do |metadata:|
   # This scorer intentionally fails on a specific scenario
   if metadata[:scenario] == "ambiguous"
     raise "Intentional error: Cannot score ambiguous queries"
@@ -301,7 +301,7 @@ result = Braintrust::Eval.run(
   cases: test_cases,
 
   # Task wraps the OpenAI call
-  task: ->(input) { weather_assistant_task(input, openai_client) },
+  task: ->(input:) { weather_assistant_task(input, openai_client) },
 
   # Multiple scorers of different types
   scorers: [
