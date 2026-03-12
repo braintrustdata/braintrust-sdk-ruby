@@ -186,4 +186,7 @@ module Braintrust
     # Used by Eval.run to distinguish dataset-by-ID from dataset-by-name.
     ID = Struct.new(:id, keyword_init: true)
   end
+
+  # @deprecated Use {Braintrust::Dataset::ID} instead.
+  DatasetId = Dataset::ID
 end

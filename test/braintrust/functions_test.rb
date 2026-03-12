@@ -133,6 +133,18 @@ class Braintrust::FunctionsTest < Minitest::Test
     end
   end
 
+  def test_scorer_raises_without_id_or_project_slug
+    assert_raises(ArgumentError) { Braintrust::Functions.scorer }
+  end
+
+  def test_scorer_raises_with_project_but_no_slug
+    assert_raises(ArgumentError) { Braintrust::Functions.scorer(project: "proj") }
+  end
+
+  def test_scorer_raises_with_slug_but_no_project
+    assert_raises(ArgumentError) { Braintrust::Functions.scorer(slug: "fn") }
+  end
+
   def test_use_remote_task_in_eval_run
     VCR.use_cassette("eval_functions/eval_run") do
       state, api = get_test_state_and_api
@@ -336,65 +348,65 @@ class Braintrust::FunctionsTest < Minitest::Test
     end
   end
 
-  # --- scorer_by_id response type tests (WebMock) ---
-  # These test that scorer_by_id correctly handles all response types
+  # --- scorer by ID response type tests (WebMock) ---
+  # These test that scorer(id:) correctly handles all response types
   # the Braintrust API can return: Numeric, Boolean, nil, Hash, String.
 
-  def test_scorer_by_id_handles_integer_response
-    scorer = scorer_by_id_with_stubbed_invoke(1)
+  def test_remote_scorer_handles_integer_response
+    scorer = scorer_with_stubbed_invoke(1)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 1.0, result
     assert_instance_of Float, result
   end
 
-  def test_scorer_by_id_handles_float_response
-    scorer = scorer_by_id_with_stubbed_invoke(0.75)
+  def test_remote_scorer_handles_float_response
+    scorer = scorer_with_stubbed_invoke(0.75)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.75, result
     assert_instance_of Float, result
   end
 
-  def test_scorer_by_id_handles_boolean_true_response
-    scorer = scorer_by_id_with_stubbed_invoke(true)
+  def test_remote_scorer_handles_boolean_true_response
+    scorer = scorer_with_stubbed_invoke(true)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 1.0, result
   end
 
-  def test_scorer_by_id_handles_boolean_false_response
-    scorer = scorer_by_id_with_stubbed_invoke(false)
+  def test_remote_scorer_handles_boolean_false_response
+    scorer = scorer_with_stubbed_invoke(false)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.0, result
   end
 
-  def test_scorer_by_id_handles_nil_response
-    scorer = scorer_by_id_with_stubbed_invoke(nil)
+  def test_remote_scorer_handles_nil_response
+    scorer = scorer_with_stubbed_invoke(nil)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_nil result
   end
 
-  def test_scorer_by_id_handles_hash_with_score_key
-    scorer = scorer_by_id_with_stubbed_invoke({"name" => "my_scorer", "score" => 0.9, "metadata" => {}})
+  def test_remote_scorer_handles_hash_with_score_key
+    scorer = scorer_with_stubbed_invoke({"name" => "my_scorer", "score" => 0.9, "metadata" => {}})
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.9, result
   end
 
-  def test_scorer_by_id_handles_string_numeric_response
-    scorer = scorer_by_id_with_stubbed_invoke("0.85")
+  def test_remote_scorer_handles_string_numeric_response
+    scorer = scorer_with_stubbed_invoke("0.85")
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     assert_equal 0.85, result
   end
 
-  def test_scorer_by_id_raises_for_hash_without_score_key
-    scorer = scorer_by_id_with_stubbed_invoke({"name" => "my_scorer"})
+  def test_remote_scorer_raises_for_hash_without_score_key
+    scorer = scorer_with_stubbed_invoke({"name" => "my_scorer"})
     assert_raises(Braintrust::Error) do
       scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
     end
   end
 
-  # --- scorer_by_id tests ---
+  # --- scorer with id: tests ---
 
-  def test_scorer_by_id_returns_scorer
-    VCR.use_cassette("eval_functions/scorer_by_id") do
+  def test_scorer_with_id_returns_scorer
+    VCR.use_cassette("eval_functions/scorer_with_id") do
       _, api = get_test_state_and_api
       function_slug = "test-ruby-sdk-scorer-by-id"
 
@@ -417,7 +429,7 @@ class Braintrust::FunctionsTest < Minitest::Test
         }
       )
 
-      scorer = Braintrust::Functions.scorer_by_id(
+      scorer = Braintrust::Functions.scorer(
         id: created["id"],
         state: api.state
       )
@@ -426,8 +438,8 @@ class Braintrust::FunctionsTest < Minitest::Test
     end
   end
 
-  def test_scorer_by_id_with_version
-    VCR.use_cassette("eval_functions/scorer_by_id_version") do
+  def test_scorer_with_id_and_version
+    VCR.use_cassette("eval_functions/scorer_with_id_version") do
       _, api = get_test_state_and_api
       function_slug = "test-ruby-sdk-scorer-by-id-ver"
 
@@ -447,8 +459,7 @@ class Braintrust::FunctionsTest < Minitest::Test
         }
       )
 
-      # scorer_by_id with explicit version (nil just resolves latest)
-      scorer = Braintrust::Functions.scorer_by_id(
+      scorer = Braintrust::Functions.scorer(
         id: created["id"],
         version: nil,
         state: api.state
@@ -462,9 +473,9 @@ class Braintrust::FunctionsTest < Minitest::Test
 
   FAKE_FUNCTION_ID = "00000000-0000-0000-0000-000000000001"
 
-  # Build a scorer via the public scorer_by_id API with WebMock stubs.
+  # Build a scorer via Functions.scorer(id:) with WebMock stubs.
   # Stubs GET /v1/function/{id} (metadata) and POST /v1/function/{id}/invoke (invoke_response).
-  def scorer_by_id_with_stubbed_invoke(invoke_response)
+  def scorer_with_stubbed_invoke(invoke_response)
     state = @rig.state
     base = state.api_url
 
@@ -484,7 +495,7 @@ class Braintrust::FunctionsTest < Minitest::Test
         body: JSON.dump(invoke_response)
       )
 
-    Braintrust::Functions.scorer_by_id(
+    Braintrust::Functions.scorer(
       id: FAKE_FUNCTION_ID,
       state: state,
       tracer_provider: @rig.tracer_provider

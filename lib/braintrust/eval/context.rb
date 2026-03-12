@@ -97,22 +97,22 @@ module Braintrust
         def normalize_scorers(raw)
           raw.map do |scorer|
             case scorer
-            when Scorer::ID
-              Functions.scorer_by_id(
+            when Braintrust::Scorer::ID
+              Braintrust::Functions.scorer(
                 id: scorer.function_id,
                 version: scorer.version,
                 state: @state,
                 tracer_provider: @tracer_provider
               )
-            when Scorer
+            when Braintrust::Scorer
               scorer
             when Proc
               # Pass Proc/Lambda directly to preserve keyword arg info
               # (method(:call) loses parameter metadata)
-              Scorer.new(&scorer)
+              Braintrust::Scorer.new(&scorer)
             else
               name = scorer.respond_to?(:name) ? scorer.name : nil
-              Scorer.new(name, &scorer.method(:call))
+              Braintrust::Scorer.new(name, &scorer.method(:call))
             end
           end
         end

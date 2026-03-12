@@ -52,44 +52,38 @@ module Braintrust
         end
       end
 
-      # Create a scorer that invokes a remote function by ID
-      # @param id [String] Function UUID
-      # @param version [String, nil] Optional version to pin to
+      # Create a scorer that invokes a remote function.
+      # Resolve by project + slug, or by function UUID (id).
+      # @param project [String, nil] Project name (used with slug)
+      # @param slug [String, nil] Function slug (used with project)
+      # @param id [String, nil] Function UUID (alternative to project + slug)
+      # @param version [String, nil] Optional version to pin to (used with id)
       # @param state [State, nil] Braintrust state (defaults to global)
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
       # @return [Scorer] Scorer object that invokes remote function
-      def scorer_by_id(id:, state: nil, version: nil, tracer_provider: nil)
-        state ||= Braintrust.current_state
-        api = API.new(state: state)
-        api.login
+      def scorer(project: nil, slug: nil, id: nil, version: nil, state: nil, tracer_provider: nil)
+        has_id = !id.nil?
+        has_project_slug = !project.nil? && !slug.nil?
 
-        function_metadata = api.functions.get(id: id, version: version)
-        function_id = function_metadata["id"]
-        function_name = function_metadata["name"] || id
+        unless has_id || has_project_slug
+          raise ArgumentError, "scorer requires either id: or both project: and slug:"
+        end
 
-        tracer_provider ||= OpenTelemetry.tracer_provider
-        tracer = tracer_provider.tracer("braintrust.functions")
-
-        build_scorer(function_id: function_id, function_name: function_name, api: api, tracer: tracer)
-      end
-
-      # Create a scorer that invokes a remote function
-      # @param project [String] Project name
-      # @param slug [String] Function slug
-      # @param state [State, nil] Braintrust state (defaults to global)
-      # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
-      # @return [Scorer] Scorer object that invokes remote function
-      def scorer(project:, slug:, state: nil, tracer_provider: nil)
         state ||= Braintrust.current_state
         raise Error, "No state available" unless state
 
-        # Resolve function ID from project + slug
         api = API.new(state: state)
-        function_metadata = resolve_function(api, project, slug)
-        function_id = function_metadata["id"]
-        function_name = function_metadata["name"] || slug
 
-        # Get tracer for creating spans
+        function_metadata = if id
+          api.login
+          api.functions.get(id: id, version: version)
+        else
+          resolve_function(api, project, slug)
+        end
+
+        function_id = function_metadata["id"]
+        function_name = function_metadata["name"] || id || slug
+
         tracer_provider ||= OpenTelemetry.tracer_provider
         tracer = tracer_provider.tracer("braintrust.functions")
 
@@ -99,7 +93,6 @@ module Braintrust
       private
 
       # Build a Scorer that invokes a remote function
-      # Shared implementation used by both scorer and scorer_by_id
       # @param function_id [String] Function UUID
       # @param function_name [String] Function display name
       # @param api [API] Braintrust API client

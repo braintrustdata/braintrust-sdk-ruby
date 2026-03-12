@@ -115,4 +115,7 @@ module Braintrust
     # Used by Eval.run to distinguish remote scorers from local callables.
     ID = Struct.new(:function_id, :version, keyword_init: true)
   end
+
+  # @deprecated Use {Braintrust::Scorer::ID} instead.
+  ScorerId = Scorer::ID
 end
