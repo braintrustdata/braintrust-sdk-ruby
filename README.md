@@ -296,9 +296,7 @@ Braintrust::Eval.run(
   project: "my-project",
   cases: [...],
   task: ->(input:) { ... },
-  scorers: [
-    Braintrust::Functions.scorer(project: "my-project", slug: "accuracy-scorer")
-  ]
+  scorers: ["accuracy-scorer"]
 )
 ```
 

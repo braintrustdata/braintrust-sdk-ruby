@@ -104,11 +104,6 @@ task = Braintrust::Functions.task(
   slug: function_slug
 )
 
-remote_scorer = Braintrust::Functions.scorer(
-  project: project_name,
-  slug: scorer_slug
-)
-
 # Define test cases
 cases = [
   {input: "apple", expected: "fruit"},
@@ -119,12 +114,13 @@ cases = [
 
 # Run the evaluation
 # Both the task AND scorer will execute on the Braintrust server, not locally
+# Scorers can be referenced by name — they're resolved from the project automatically
 Braintrust::Eval.run(
   project: project_name,
   experiment: "remote-function-demo",
   cases: cases,
   task: task,
-  scorers: [remote_scorer]
+  scorers: [scorer_slug]
 )
 
 # Flush all spans to ensure they're exported

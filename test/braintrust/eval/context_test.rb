@@ -219,6 +219,87 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     assert_equal 1.0, result.first.call(input: "x", expected: "a", output: "a")
   end
 
+  # ============================================
+  # normalize_scorers — String slug resolution
+  # ============================================
+
+  def test_normalize_scorers_resolves_string_slug
+    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
+    resolved_kwargs = nil
+
+    Braintrust::Functions.stub(:scorer, ->(**kw) {
+      resolved_kwargs = kw
+      fake_scorer
+    }) do
+      factory = Braintrust::Eval::Context::Factory.new(
+        project_name: "my-project",
+        state: :fake_state,
+        tracer_provider: :fake_tp
+      )
+      result = factory.normalize_scorers(["my-scorer-slug"])
+
+      assert_equal 1, result.length
+      assert_same fake_scorer, result.first
+      assert_equal "my-project", resolved_kwargs[:project]
+      assert_equal "my-scorer-slug", resolved_kwargs[:slug]
+      assert_equal :fake_state, resolved_kwargs[:state]
+      assert_equal :fake_tp, resolved_kwargs[:tracer_provider]
+    end
+  end
+
+  def test_normalize_scorers_string_slug_raises_without_project
+    factory = Braintrust::Eval::Context::Factory.new
+
+    error = assert_raises(ArgumentError) do
+      factory.normalize_scorers(["some-slug"])
+    end
+    assert_match(/project is required/, error.message)
+  end
+
+  # ============================================
+  # normalize_scorers — Scorer::ID resolution
+  # ============================================
+
+  def test_normalize_scorers_resolves_scorer_id
+    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
+    resolved_kwargs = nil
+
+    Braintrust::Functions.stub(:scorer, ->(**kw) {
+      resolved_kwargs = kw
+      fake_scorer
+    }) do
+      factory = Braintrust::Eval::Context::Factory.new(state: :fake_state, tracer_provider: :fake_tp)
+      scorer_id = Braintrust::Scorer::ID.new(function_id: "func-abc", version: "v3")
+      result = factory.normalize_scorers([scorer_id])
+
+      assert_equal 1, result.length
+      assert_same fake_scorer, result.first
+      assert_equal "func-abc", resolved_kwargs[:id]
+      assert_equal "v3", resolved_kwargs[:version]
+      assert_equal :fake_state, resolved_kwargs[:state]
+      assert_equal :fake_tp, resolved_kwargs[:tracer_provider]
+    end
+  end
+
+  def test_normalize_scorers_resolves_deprecated_scorer_id_alias
+    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
+    resolved_kwargs = nil
+
+    Braintrust::Functions.stub(:scorer, ->(**kw) {
+      resolved_kwargs = kw
+      fake_scorer
+    }) do
+      factory = Braintrust::Eval::Context::Factory.new(state: :fake_state)
+      scorer_id = Braintrust::ScorerId.new(function_id: "func-legacy", version: "v1")
+      result = factory.normalize_scorers([scorer_id])
+
+      assert_equal 1, result.length
+      assert_same fake_scorer, result.first
+      assert_equal "func-legacy", resolved_kwargs[:id]
+      assert_equal "v1", resolved_kwargs[:version]
+    end
+  end
+
   def test_normalize_cases_rejects_non_enumerable
     factory = Braintrust::Eval::Context::Factory.new
 
