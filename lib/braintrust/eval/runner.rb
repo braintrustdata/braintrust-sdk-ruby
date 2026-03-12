@@ -3,7 +3,9 @@
 require_relative "case"
 require_relative "result"
 require_relative "summary"
+require_relative "trace"
 require_relative "../internal/thread_pool"
+require_relative "../api/internal/btql"
 
 require "opentelemetry/sdk"
 require "json"
@@ -97,6 +99,10 @@ module Braintrust
             next
           end
 
+          # Flush spans so they're queryable via BTQL, then build trace
+          eval_context.tracer_provider&.force_flush
+          case_context.trace = build_trace(eval_span)
+
           # Run scorers
           case_scores = nil
           begin
@@ -158,7 +164,8 @@ module Braintrust
             input: case_context.input,
             expected: case_context.expected,
             output: case_context.output,
-            metadata: case_context.metadata || {}
+            metadata: case_context.metadata || {},
+            trace: case_context.trace
           }
           scores = {}
           scorer_error = nil
@@ -182,6 +189,23 @@ module Braintrust
 
           scores
         end
+      end
+
+      # Build a lazy Trace for a case, backed by BTQL.
+      # Returns nil when state or experiment_id are unavailable (local-only mode).
+      # @param eval_span [OpenTelemetry::Trace::Span] The eval span for this case
+      # @return [Eval::Trace, nil]
+      def build_trace(eval_span)
+        return nil unless eval_context.state && eval_context.experiment_id
+
+        root_span_id = eval_span.context.hex_trace_id
+        object_type = "experiment"
+        object_id = eval_context.experiment_id
+        btql = API::Internal::BTQL.new(eval_context.state)
+
+        Eval::Trace.new(
+          spans: -> { btql.trace_spans(object_type: object_type, object_id: object_id, root_span_id: root_span_id) }
+        )
       end
 
       # Build a CaseContext from a Case struct

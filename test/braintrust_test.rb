@@ -13,6 +13,10 @@ class BraintrustTest < Minitest::Test
 
     # Reset global tracer provider to default proxy
     OpenTelemetry.tracer_provider = OpenTelemetry::Internal::ProxyTracerProvider.new
+
+    # In-memory exporter avoids BatchSpanProcessor background threads that
+    # leak after teardown resets the global provider.
+    @memory_exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
   end
 
   def teardown
@@ -40,7 +44,7 @@ class BraintrustTest < Minitest::Test
   # This avoids real HTTP requests while still testing the full init flow
 
   def test_init_sets_global_state_by_default
-    state = Braintrust.init(api_key: "test-api-key")
+    state = Braintrust.init(api_key: "test-api-key", exporter: @memory_exporter)
 
     assert_same state, Braintrust.current_state
     assert_equal "test-api-key", state.api_key
@@ -50,7 +54,7 @@ class BraintrustTest < Minitest::Test
     # Ensure global state is clean before test
     Braintrust::State.instance_variable_set(:@global_state, nil)
 
-    state = Braintrust.init(api_key: "test-api-key", set_global: false)
+    state = Braintrust.init(api_key: "test-api-key", set_global: false, exporter: @memory_exporter)
 
     assert_equal "test-api-key", state.api_key
     assert_nil Braintrust.current_state
@@ -60,7 +64,7 @@ class BraintrustTest < Minitest::Test
     ENV["BRAINTRUST_API_KEY"] = "env-key"
 
     # Note: Can't test api_key override with test-api-key since we need the fake auth
-    state = Braintrust.init(api_key: "test-api-key", set_global: false, default_project: "my-project")
+    state = Braintrust.init(api_key: "test-api-key", set_global: false, default_project: "my-project", exporter: @memory_exporter)
 
     assert_equal "test-api-key", state.api_key
     assert_equal "my-project", state.default_project
@@ -70,7 +74,7 @@ class BraintrustTest < Minitest::Test
     # Verify we start with the default proxy provider
     assert_instance_of OpenTelemetry::Internal::ProxyTracerProvider, OpenTelemetry.tracer_provider
 
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, exporter: @memory_exporter)
 
     # Should have created and set a real TracerProvider
     assert_instance_of OpenTelemetry::SDK::Trace::TracerProvider, OpenTelemetry.tracer_provider
@@ -81,7 +85,7 @@ class BraintrustTest < Minitest::Test
     existing_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
     OpenTelemetry.tracer_provider = existing_provider
 
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, exporter: @memory_exporter)
 
     # Should reuse the existing provider (same object)
     assert_same existing_provider, OpenTelemetry.tracer_provider
@@ -102,14 +106,14 @@ class BraintrustTest < Minitest::Test
     assert_instance_of OpenTelemetry::Internal::ProxyTracerProvider, OpenTelemetry.tracer_provider
 
     # Call init without tracing parameter
-    Braintrust.init(api_key: "test-api-key", set_global: false)
+    Braintrust.init(api_key: "test-api-key", set_global: false, exporter: @memory_exporter)
 
     # Should have enabled tracing by default
     assert_instance_of OpenTelemetry::SDK::Trace::TracerProvider, OpenTelemetry.tracer_provider
   end
 
   def test_init_with_tracing_adds_span_processor
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, exporter: @memory_exporter)
 
     provider = OpenTelemetry.tracer_provider
     processors = provider.instance_variable_get(:@span_processors)
@@ -122,7 +126,7 @@ class BraintrustTest < Minitest::Test
     # Create a custom tracer provider
     custom_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
-    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, tracer_provider: custom_provider)
+    Braintrust.init(api_key: "test-api-key", set_global: false, enable_tracing: true, tracer_provider: custom_provider, exporter: @memory_exporter)
 
     # Should NOT set the custom provider as global (user is managing it themselves)
     refute_same custom_provider, OpenTelemetry.tracer_provider
@@ -184,7 +188,7 @@ class BraintrustTest < Minitest::Test
     called_with = :not_called
 
     Braintrust.stub(:auto_instrument!, ->(config) { called_with = config }) do
-      Braintrust.init(api_key: "test-api-key", auto_instrument: {only: [:openai]})
+      Braintrust.init(api_key: "test-api-key", auto_instrument: {only: [:openai]}, exporter: @memory_exporter)
     end
 
     assert_equal({only: [:openai]}, called_with)
@@ -194,7 +198,7 @@ class BraintrustTest < Minitest::Test
     called_with = :not_called
 
     Braintrust.stub(:auto_instrument!, ->(config) { called_with = config }) do
-      Braintrust.init(api_key: "test-api-key")
+      Braintrust.init(api_key: "test-api-key", exporter: @memory_exporter)
     end
 
     assert_nil called_with
