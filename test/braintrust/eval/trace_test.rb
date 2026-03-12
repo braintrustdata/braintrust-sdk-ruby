@@ -79,6 +79,21 @@ class Braintrust::Eval::TraceTest < Minitest::Test
     assert_equal 1, result.length
   end
 
+  def test_spans_filters_by_array_of_span_types
+    spans = [
+      btql_span(type: "llm", span_id: "s1"),
+      btql_span(type: "tool", span_id: "s2"),
+      btql_span(type: "task", span_id: "s3"),
+      btql_span(type: "eval", span_id: "s4")
+    ]
+    trace = Braintrust::Eval::Trace.new(spans: spans)
+
+    result = trace.spans(span_type: ["llm", "tool"])
+
+    assert_equal 2, result.length
+    assert_equal %w[s1 s2], result.map { |s| s["span_id"] }
+  end
+
   def test_nil_span_type_returns_all
     spans = [
       btql_span(type: "llm"),

@@ -32,13 +32,15 @@ module Braintrust
       #
       # The type lives at span_attributes.type in BTQL rows (e.g. "llm", "eval", "task").
       #
-      # @param span_type [String, nil] Filter to spans matching this type.
+      # @param span_type [String, Array<String>, nil] Filter to spans matching this type.
+      #   Accepts a single type string or an array of types (returns the union).
       #   Returns all spans when nil.
       # @return [Array<Hash>] Matching spans.
       def spans(span_type: nil)
         resolved = resolve_spans
         if span_type
-          resolved.select { |s| span_type_for(s) == span_type }
+          types = Array(span_type)
+          resolved.select { |s| types.include?(span_type_for(s)) }
         else
           resolved
         end
