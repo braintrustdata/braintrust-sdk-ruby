@@ -236,14 +236,14 @@ module Braintrust
             unless project
               raise ArgumentError, "project is required to resolve scorer slug '#{scorer}'"
             end
-            Functions.scorer(
+            Braintrust::Functions.scorer(
               project: project,
               slug: scorer,
               state: state,
               tracer_provider: tracer_provider
             )
-          when Scorer::ID
-            Functions.scorer(
+          when Braintrust::Scorer::ID
+            Braintrust::Functions.scorer(
               id: scorer.function_id,
               version: scorer.version,
               state: state,

@@ -1240,4 +1240,93 @@ class Braintrust::EvalTest < Minitest::Test
       end
     end
   end
+
+  # ============================================
+  # Scorer resolution (Eval.run flow-through tests)
+  # ============================================
+
+  def test_eval_run_resolves_scorer_id
+    resolved_kwargs = nil
+    fake_scorer = Braintrust::Scorer.new("remote") { 1.0 }
+
+    VCR.use_cassette("eval/run_basic") do
+      Braintrust::Functions.stub(:scorer, ->(**kw) {
+        resolved_kwargs = kw
+        fake_scorer
+      }) do
+        api = get_integration_test_api
+
+        result = Braintrust::Eval.run(
+          project: "ruby-sdk-test",
+          experiment: "test-ruby-sdk-basic",
+          cases: [{input: "hello", expected: "HELLO"}],
+          task: ->(input:) { input.upcase },
+          scorers: [Braintrust::Scorer::ID.new(function_id: "func-abc", version: "v2")],
+          state: api.state,
+          tracer_provider: @rig.tracer_provider,
+          quiet: true
+        )
+
+        assert result.success?
+        assert_equal "func-abc", resolved_kwargs[:id]
+        assert_equal "v2", resolved_kwargs[:version]
+      end
+    end
+  end
+
+  def test_eval_run_resolves_deprecated_scorer_id_alias
+    resolved_kwargs = nil
+    fake_scorer = Braintrust::Scorer.new("remote") { 1.0 }
+
+    VCR.use_cassette("eval/run_basic") do
+      Braintrust::Functions.stub(:scorer, ->(**kw) {
+        resolved_kwargs = kw
+        fake_scorer
+      }) do
+        api = get_integration_test_api
+
+        result = Braintrust::Eval.run(
+          project: "ruby-sdk-test",
+          experiment: "test-ruby-sdk-basic",
+          cases: [{input: "hello", expected: "HELLO"}],
+          task: ->(input:) { input.upcase },
+          scorers: [Braintrust::ScorerId.new(function_id: "func-xyz")],
+          state: api.state,
+          tracer_provider: @rig.tracer_provider,
+          quiet: true
+        )
+
+        assert result.success?
+        assert_equal "func-xyz", resolved_kwargs[:id]
+      end
+    end
+  end
+
+  def test_eval_run_resolves_string_scorer_slug
+    resolved_kwargs = nil
+    fake_scorer = Braintrust::Scorer.new("remote") { 1.0 }
+
+    VCR.use_cassette("eval/run_basic") do
+      Braintrust::Functions.stub(:scorer, ->(**kw) {
+        resolved_kwargs = kw
+        fake_scorer
+      }) do
+        api = get_integration_test_api
+
+        Braintrust::Eval.run(
+          project: "ruby-sdk-test",
+          experiment: "test-ruby-sdk-basic",
+          cases: [{input: "hello", expected: "HELLO"}],
+          task: ->(input:) { input.upcase },
+          scorers: ["my-scorer"],
+          state: api.state,
+          tracer_provider: @rig.tracer_provider,
+          quiet: true
+        )
+
+        assert_equal "my-scorer", resolved_kwargs[:slug]
+        assert_equal "ruby-sdk-test", resolved_kwargs[:project]
+      end
+    end
+  end
 end
