@@ -9,21 +9,23 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   def test_eval_scorer_helper
-    # Test Eval.scorer helper method
-    scorer = Braintrust::Eval.scorer("test_scorer") do |input, expected, output|
-      (output == expected) ? 1.0 : 0.0
-    end
+    suppress_logs do
+      # Test Eval.scorer helper method
+      scorer = Braintrust::Eval.scorer("test_scorer") do |input, expected, output|
+        (output == expected) ? 1.0 : 0.0
+      end
 
-    assert_equal "test_scorer", scorer.name
-    assert_instance_of Braintrust::Eval::Scorer, scorer
+      assert_equal "test_scorer", scorer.name
+      assert_kind_of Braintrust::Scorer, scorer
+    end
   end
 
   def test_eval_run_basic
     VCR.use_cassette("eval/run_basic") do
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") do |expected:, output:|
         (output == expected) ? 1.0 : 0.0
       end
 
@@ -52,12 +54,12 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/run_task_error") do
       api = get_integration_test_api
 
-      task = ->(input) {
+      task = ->(input:) {
         raise "Task failed!" if input == "bad"
         input.upcase
       }
 
-      scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
+      scorer = Braintrust::Scorer.new("exact") do |expected:, output:|
         (output == expected) ? 1.0 : 0.0
       end
 
@@ -85,9 +87,9 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/run_scorer_error") do
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
+      task = ->(input:) { input.upcase }
 
-      scorer = Braintrust::Eval.scorer("failing_scorer") do |input, expected, output|
+      scorer = Braintrust::Scorer.new("failing_scorer") do |input:, expected:, output:|
         raise "Scorer failed!" if input == "bad"
         1.0
       end
@@ -116,10 +118,10 @@ class Braintrust::EvalTest < Minitest::Test
     # Test that scorer errors are recorded as exception events on spans
     rig = setup_otel_test_rig
 
-    task = ->(input) { input.upcase }
-    good_scorer = Braintrust::Eval.scorer("good") { |i, e, o| 1.0 }
-    failing_scorer = Braintrust::Eval.scorer("failing") do |i, e, o|
-      raise "Intentional error" if i == "bad"
+    task = ->(input:) { input.upcase }
+    good_scorer = Braintrust::Scorer.new("good") { |**| 1.0 }
+    failing_scorer = Braintrust::Scorer.new("failing") do |input:, **|
+      raise "Intentional error" if input == "bad"
       1.0
     end
 
@@ -158,13 +160,13 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/run_multiple_scorers") do
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
+      task = ->(input:) { input.upcase }
 
-      scorer1 = Braintrust::Eval.scorer("exact") do |input, expected, output|
+      scorer1 = Braintrust::Scorer.new("exact") do |expected:, output:|
         (output == expected) ? 1.0 : 0.0
       end
 
-      scorer2 = Braintrust::Eval.scorer("length") do |input, expected, output|
+      scorer2 = Braintrust::Scorer.new("length") do |expected:, output:|
         (output.length == expected.length) ? 1.0 : 0.0
       end
 
@@ -190,12 +192,12 @@ class Braintrust::EvalTest < Minitest::Test
       api = get_integration_test_api
 
       callable_task = Class.new do
-        def call(input)
+        def call(input:)
           input.reverse
         end
       end.new
 
-      scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
+      scorer = Braintrust::Scorer.new("exact") do |expected:, output:|
         (output == expected) ? 1.0 : 0.0
       end
 
@@ -247,9 +249,9 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/run_method_scorer") do
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
+      task = ->(input:) { input.upcase }
       # Use a lambda instead of nested method
-      test_method_scorer = ->(input, expected, output) { (output == expected) ? 1.0 : 0.0 }
+      test_method_scorer = ->(expected:, output:) { (output == expected) ? 1.0 : 0.0 }
 
       result = Braintrust::Eval.run(
         project: "ruby-sdk-test",
@@ -272,11 +274,11 @@ class Braintrust::EvalTest < Minitest::Test
     # Test that task errors are recorded as exception events on the TASK span (not eval span)
     rig = setup_otel_test_rig
 
-    task = ->(input) {
+    task = ->(input:) {
       raise "Task intentionally failed" if input == "bad"
       input.upcase
     }
-    scorer = Braintrust::Eval.scorer("good") { |i, e, o| 1.0 }
+    scorer = Braintrust::Scorer.new("good") { |**| 1.0 }
 
     # Use run_test_eval helper to avoid API calls in tests
     run_test_eval(
@@ -318,8 +320,8 @@ class Braintrust::EvalTest < Minitest::Test
       # Initialize and login
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       result = Braintrust::Eval.run(
         project: "ruby-sdk-test",
@@ -399,8 +401,8 @@ class Braintrust::EvalTest < Minitest::Test
       )
 
       # Run eval with dataset as string (should use same project)
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") do |input, expected, output|
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") do |expected:, output:|
         (output == expected) ? 1.0 : 0.0
       end
 
@@ -444,8 +446,8 @@ class Braintrust::EvalTest < Minitest::Test
       )
 
       # Run eval with dataset as hash with explicit name + project
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       eval_result = Braintrust::Eval.run(
         project: project_name,
@@ -484,8 +486,8 @@ class Braintrust::EvalTest < Minitest::Test
       )
 
       # Run eval with dataset as hash with id
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       eval_result = Braintrust::Eval.run(
         project: project_name,
@@ -531,11 +533,11 @@ class Braintrust::EvalTest < Minitest::Test
 
       # Track how many cases were executed
       executed_count = 0
-      task = ->(input) {
+      task = ->(input:) {
         executed_count += 1
         input.upcase
       }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       # Run eval with limit of 2
       eval_result = Braintrust::Eval.run(
@@ -559,8 +561,8 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/run_both_dataset_and_cases_error") do
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       # Try to provide both dataset and cases - should raise error
       error = assert_raises(ArgumentError) do
@@ -588,11 +590,11 @@ class Braintrust::EvalTest < Minitest::Test
     rig = setup_otel_test_rig
 
     executed = Queue.new
-    task = ->(input) {
+    task = ->(input:) {
       executed << input
       input.upcase
     }
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
     result = run_test_eval(
       experiment_id: "test-exp-123",
@@ -625,11 +627,11 @@ class Braintrust::EvalTest < Minitest::Test
 
     order = []
     mutex = Mutex.new
-    task = ->(input) {
+    task = ->(input:) {
       mutex.synchronize { order << input }
       input.upcase
     }
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
     result = run_test_eval(
       experiment_id: "test-exp-123",
@@ -656,11 +658,11 @@ class Braintrust::EvalTest < Minitest::Test
   def test_eval_run_parallel_collects_errors_from_threads
     rig = setup_otel_test_rig
 
-    task = ->(input) {
+    task = ->(input:) {
       raise "intentional failure" if input == "bad"
       input.upcase
     }
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
     result = run_test_eval(
       experiment_id: "test-exp-123",
@@ -687,8 +689,8 @@ class Braintrust::EvalTest < Minitest::Test
   def test_eval_run_parallelism_exceeds_max_raises
     rig = setup_otel_test_rig
 
-    task = ->(input) { input.upcase }
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    task = ->(input:) { input.upcase }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
     max_parallelism = Braintrust::Eval::Runner::MAX_PARALLELISM
     error = assert_raises(ArgumentError) do
@@ -713,11 +715,11 @@ class Braintrust::EvalTest < Minitest::Test
 
     order = []
     mutex = Mutex.new
-    task = ->(input) {
+    task = ->(input:) {
       mutex.synchronize { order << input }
       input.upcase
     }
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
     # Test parallelism: 0 falls back to sequential
     order.clear
@@ -770,8 +772,8 @@ class Braintrust::EvalTest < Minitest::Test
     # Inline cases (not from remote datasets) have no origin
     rig = setup_otel_test_rig
 
-    task = ->(input) { input.upcase }
-    scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+    task = ->(input:) { input.upcase }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
     run_test_eval(
       experiment_id: "test-exp-123",
@@ -819,8 +821,8 @@ class Braintrust::EvalTest < Minitest::Test
       )
 
       # Run eval with remote dataset
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       eval_result = Braintrust::Eval.run(
         project: project_name,
@@ -869,8 +871,8 @@ class Braintrust::EvalTest < Minitest::Test
     VCR.use_cassette("eval/run_basic") do
       api = get_integration_test_api
 
-      task = ->(input) { input.upcase }
-      scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+      task = ->(input:) { input.upcase }
+      scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
       Braintrust::Eval.run(
         project: "ruby-sdk-test",
@@ -895,10 +897,10 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   # ============================================
-  # DatasetId integration tests
+  # Dataset::ID integration tests
   # ============================================
 
-  # Test DatasetId: resolve dataset by UUID through Eval.run
+  # Test Dataset::ID: resolve dataset by UUID through Eval.run
   def test_eval_run_with_dataset_id_struct
     VCR.use_cassette("eval/dataset_id_struct") do
       api = get_integration_test_api
@@ -922,13 +924,13 @@ class Braintrust::EvalTest < Minitest::Test
           ]
         )
 
-        task = ->(input) { input.upcase }
-        scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+        task = ->(input:) { input.upcase }
+        scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
         eval_result = Braintrust::Eval.run(
           project: project_name,
           experiment: "test-ruby-sdk-exp-dataset-id-struct-#{uid}",
-          dataset: Braintrust::DatasetId.new(id: dataset_id),
+          dataset: Braintrust::Dataset::ID.new(id: dataset_id),
           task: task,
           scorers: [scorer],
           state: api.state,
@@ -945,7 +947,7 @@ class Braintrust::EvalTest < Minitest::Test
     end
   end
 
-  # Test DatasetId: experiment is linked to the dataset
+  # Test Dataset::ID: experiment is linked to the dataset
   def test_eval_run_with_dataset_id_struct_links_experiment
     VCR.use_cassette("eval/dataset_id_struct_links") do
       api = get_integration_test_api
@@ -966,13 +968,13 @@ class Braintrust::EvalTest < Minitest::Test
           events: [{input: "hello", expected: "HELLO"}]
         )
 
-        task = ->(input) { input.upcase }
-        scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+        task = ->(input:) { input.upcase }
+        scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
         Braintrust::Eval.run(
           project: project_name,
           experiment: "test-ruby-sdk-exp-dataset-id-struct-links-#{uid}",
-          dataset: Braintrust::DatasetId.new(id: dataset_id),
+          dataset: Braintrust::Dataset::ID.new(id: dataset_id),
           task: task,
           scorers: [scorer],
           state: api.state,
@@ -995,10 +997,10 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   # ============================================
-  # ScorerId integration tests
+  # Scorer::ID integration tests
   # ============================================
 
-  # Test ScorerId: resolve remote scorer by function UUID through Eval.run
+  # Test Scorer::ID: resolve remote scorer by function UUID through Eval.run
   def test_eval_run_with_scorer_id
     VCR.use_cassette("eval/scorer_id") do
       api = get_integration_test_api
@@ -1023,7 +1025,7 @@ class Braintrust::EvalTest < Minitest::Test
         )
         function_id = created["id"]
 
-        task = ->(input) { input.upcase }
+        task = ->(input:) { input.upcase }
 
         eval_result = Braintrust::Eval.run(
           project: project_name,
@@ -1033,7 +1035,7 @@ class Braintrust::EvalTest < Minitest::Test
             {input: "world", expected: "WORLD"}
           ],
           task: task,
-          scorers: [Braintrust::ScorerId.new(function_id: function_id)],
+          scorers: [Braintrust::Scorer::ID.new(function_id: function_id)],
           state: api.state,
           tracer_provider: @rig.tracer_provider,
           quiet: true
@@ -1048,7 +1050,7 @@ class Braintrust::EvalTest < Minitest::Test
     end
   end
 
-  # Test ScorerId: mixed local + remote scorers
+  # Test Scorer::ID: mixed local + remote scorers
   def test_eval_run_with_scorer_id_and_local_scorers
     VCR.use_cassette("eval/scorer_id_mixed") do
       api = get_integration_test_api
@@ -1073,8 +1075,8 @@ class Braintrust::EvalTest < Minitest::Test
         )
         function_id = created["id"]
 
-        task = ->(input) { input.upcase }
-        local_scorer = Braintrust::Eval.scorer("local_exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+        task = ->(input:) { input.upcase }
+        local_scorer = Braintrust::Scorer.new("local_exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
 
         eval_result = Braintrust::Eval.run(
           project: project_name,
@@ -1083,7 +1085,7 @@ class Braintrust::EvalTest < Minitest::Test
           task: task,
           scorers: [
             local_scorer,
-            Braintrust::ScorerId.new(function_id: function_id)
+            Braintrust::Scorer::ID.new(function_id: function_id)
           ],
           state: api.state,
           tracer_provider: @rig.tracer_provider,
@@ -1100,10 +1102,10 @@ class Braintrust::EvalTest < Minitest::Test
   end
 
   # ============================================
-  # Combined DatasetId + ScorerId integration
+  # Combined Dataset::ID + Scorer::ID integration
   # ============================================
 
-  # Test DatasetId + ScorerId together: full remote eval path
+  # Test Dataset::ID + Scorer::ID together: full remote eval path
   def test_eval_run_with_dataset_id_and_scorer_id
     VCR.use_cassette("eval/dataset_id_and_scorer_id") do
       api = get_integration_test_api
@@ -1144,14 +1146,14 @@ class Braintrust::EvalTest < Minitest::Test
         )
         function_id = fn_result["id"]
 
-        task = ->(input) { input.upcase }
+        task = ->(input:) { input.upcase }
 
         eval_result = Braintrust::Eval.run(
           project: project_name,
           experiment: "test-ruby-sdk-exp-combined-#{uid}",
-          dataset: Braintrust::DatasetId.new(id: dataset_id),
+          dataset: Braintrust::Dataset::ID.new(id: dataset_id),
           task: task,
-          scorers: [Braintrust::ScorerId.new(function_id: function_id)],
+          scorers: [Braintrust::Scorer::ID.new(function_id: function_id)],
           state: api.state,
           tracer_provider: @rig.tracer_provider,
           quiet: true

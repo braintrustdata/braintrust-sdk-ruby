@@ -43,14 +43,12 @@ test_cases = [
 api.datasets.insert(id: dataset_id, events: test_cases)
 
 # Define task: simple string upcase
-task = ->(input) do
-  input.upcase
-end
+task = ->(input:) { input.upcase }
 
-# Define scorer: exact match
-scorer = Braintrust::Eval.scorer("exact_match") do |input, expected, output|
+# Define scorer: exact match (named for clarity in results)
+scorer = Braintrust::Scorer.new("exact_match") { |expected:, output:|
   (output == expected) ? 1.0 : 0.0
-end
+}
 
 # Example 1: Run eval with dataset as string (uses same project)
 puts "\n" + "=" * 60

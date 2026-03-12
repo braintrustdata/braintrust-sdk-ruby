@@ -21,7 +21,7 @@ module Braintrust
         end
 
         def test_streams_sse_events_for_inline_data
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
 
           post_json "/eval", {
             name: "upcase-eval",
@@ -52,7 +52,7 @@ module Braintrust
         end
 
         def test_progress_events_contain_output
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
 
           post_json "/eval", {
             name: "upcase-eval",
@@ -70,9 +70,9 @@ module Braintrust
         end
 
         def test_summary_event_contains_scores
-          scorer = Braintrust::Eval.scorer("exact") { |i, e, o| (o == e) ? 1.0 : 0.0 }
+          scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
           @evaluators["scored-eval"] = test_evaluator(
-            task: ->(input) { input.to_s.upcase },
+            task: ->(input:) { input.to_s.upcase },
             scorers: [scorer]
           )
 
@@ -94,7 +94,7 @@ module Braintrust
 
         def test_error_still_emits_progress_and_done
           @evaluators["failing-eval"] = test_evaluator(
-            task: ->(_input) { raise "task exploded" }
+            task: -> { raise "task exploded" }
           )
 
           post_json "/eval", {
@@ -125,7 +125,7 @@ module Braintrust
         end
 
         def test_400_for_missing_data
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           post_json "/eval", {
             name: "test-eval",
@@ -137,7 +137,7 @@ module Braintrust
         end
 
         def test_400_for_multiple_data_specs
-          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
 
           post_json "/eval", {
             name: "test-eval",

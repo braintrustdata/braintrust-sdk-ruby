@@ -5,21 +5,27 @@ module Braintrust
     # Base class for evaluators. Subclass and override #task and #scorers,
     # or instantiate directly with keyword arguments.
     #
+    # Evaluators are used with the dev server, which reports scorer names
+    # to the Braintrust UI. Always use named scorers (via Scorer.new or
+    # subclass) so they display meaningfully.
+    #
     # @example Subclass pattern
     #   class FoodClassifier < Braintrust::Eval::Evaluator
     #     def task
-    #       ->(input) { classify(input) }
+    #       ->(input:) { classify(input) }
     #     end
     #
     #     def scorers
-    #       [Braintrust::Eval.scorer("exact_match") { |i, e, o| o == e ? 1.0 : 0.0 }]
+    #       [Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }]
     #     end
     #   end
     #
     # @example Inline pattern
     #   Braintrust::Eval::Evaluator.new(
-    #     task: ->(input) { input.upcase },
-    #     scorers: [my_scorer]
+    #     task: ->(input:) { input.upcase },
+    #     scorers: [
+    #       Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }
+    #     ]
     #   )
     class Evaluator
       attr_accessor :task, :scorers, :parameters
@@ -48,7 +54,7 @@ module Braintrust
       # @param project [String, nil] Project name
       # @param experiment [String, nil] Experiment name
       # @param project_id [String, nil] Project UUID (skips project creation)
-      # @param dataset [String, Hash, Dataset, DatasetId, nil] Dataset to fetch
+      # @param dataset [String, Hash, Dataset, Dataset::ID, nil] Dataset to fetch
       # @param scorers [Array, nil] Additional scorers (merged with evaluator's own)
       # @param parent [Hash, nil] Parent span context
       # @param state [State, nil] Braintrust state

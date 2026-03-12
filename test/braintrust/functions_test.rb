@@ -1,0 +1,504 @@
+# frozen_string_literal: true
+
+require "test_helper"
+require "braintrust/eval"
+require "braintrust/functions"
+
+class Braintrust::FunctionsTest < Minitest::Test
+  def setup
+    @project_name = "ruby-sdk-test"
+    @rig = setup_otel_test_rig
+  end
+
+  def get_test_state_and_api
+    state = get_integration_test_state
+    api = Braintrust::API.new(state: state)
+    [state, api]
+  end
+
+  def test_functions_task_returns_callable
+    VCR.use_cassette("eval_functions/task_callable") do
+      state, api = get_test_state_and_api
+      # This test verifies that Functions.task returns a callable object
+      # The callable should accept an input and invoke the remote function
+      function_slug = "test-ruby-sdk-task-callable"
+
+      # Create a simple remote function
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Say hello to {{input}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      # Get a task wrapper
+      task = Braintrust::Functions.task(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      # Should be callable
+      assert_respond_to task, :call
+    end
+  end
+
+  def test_functions_task_invokes_remote
+    VCR.use_cassette("eval_functions/task_invoke") do
+      state, api = get_test_state_and_api
+      # This test verifies that calling the task actually invokes the remote function
+      function_slug = "test-ruby-sdk-task-invoke"
+
+      # Create a simple remote function
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Say hello to {{input}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      # Get task and invoke it
+      task = Braintrust::Functions.task(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = task.call(input: "world")
+
+      # Should return output from remote function
+      assert_instance_of String, result
+      assert result.length > 0
+    end
+  end
+
+  def test_functions_scorer_returns_scorer
+    VCR.use_cassette("eval_functions/scorer") do
+      state, api = get_test_state_and_api
+      # This test verifies that Functions.scorer returns a Scorer object
+      function_slug = "test-ruby-sdk-scorer"
+
+      # Create a simple remote scorer
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this: {{output}}. Return just a number."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      # Get a scorer wrapper
+      scorer = Braintrust::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      # Should be a Scorer instance
+      assert_kind_of Braintrust::Scorer, scorer
+      assert_equal function_slug, scorer.name
+    end
+  end
+
+  def test_scorer_raises_without_id_or_project_slug
+    assert_raises(ArgumentError) { Braintrust::Functions.scorer }
+  end
+
+  def test_scorer_raises_with_project_but_no_slug
+    assert_raises(ArgumentError) { Braintrust::Functions.scorer(project: "proj") }
+  end
+
+  def test_scorer_raises_with_slug_but_no_project
+    assert_raises(ArgumentError) { Braintrust::Functions.scorer(slug: "fn") }
+  end
+
+  def test_use_remote_task_in_eval_run
+    VCR.use_cassette("eval_functions/eval_run") do
+      state, api = get_test_state_and_api
+      # This test verifies that remote tasks can be used in Eval.run
+      # This is the main use case: calling server-side prompts in evals
+      function_slug = "test-ruby-sdk-eval-task"
+
+      # Create a remote function that uppercases input
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Uppercase this: {{input}}. Return ONLY the uppercase version, nothing else."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      # Get remote task
+      task = Braintrust::Functions.task(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      # Use in Eval.run with a simple exact match scorer
+      result = Braintrust::Eval.run(
+        project: @project_name,
+        experiment: "test-ruby-sdk-remote-task-eval",
+        cases: [
+          {input: "hello", expected: "HELLO"},
+          {input: "world", expected: "WORLD"}
+        ],
+        task: task,
+        scorers: [
+          Braintrust::Scorer.new("contains_uppercase") do |expected:, output:|
+            # Check if output contains expected (LLM might add extra text)
+            output.to_s.include?(expected) ? 1.0 : 0.0
+          end
+        ],
+        state: api.state,
+        tracer_provider: @rig.tracer_provider,
+        quiet: true
+      )
+
+      # Should complete successfully
+      assert_instance_of Braintrust::Eval::Result, result
+      assert result.duration > 0
+    end
+  end
+
+  def test_use_remote_scorer_in_eval_run
+    VCR.use_cassette("eval_functions/remote_scorer") do
+      state, api = get_test_state_and_api
+      # This test verifies that remote scorers can be used in Eval.run
+      # This tests the "online scorer" functionality
+      function_slug = "test-ruby-sdk-eval-scorer"
+
+      # Create a remote scorer function with LLM classifier
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Evaluate if the output matches the expected value."},
+              {role: "user", content: "Does '{{output}}' match '{{expected}}'? Answer 'correct' or 'incorrect'."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0},
+            parser: {
+              type: "llm_classifier",
+              use_cot: true,
+              choice_scores: {
+                "correct" => 1.0,
+                "incorrect" => 0.0
+              }
+            }
+          }
+        }
+      )
+
+      # Get remote scorer
+      scorer = Braintrust::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      # Simple task that uppercases
+      task = ->(input:) { input.upcase }
+
+      # Use remote scorer in Eval.run
+      result = Braintrust::Eval.run(
+        project: @project_name,
+        experiment: "test-ruby-sdk-remote-scorer-eval",
+        cases: [
+          {input: "hello", expected: "HELLO"},
+          {input: "world", expected: "WORLD"}
+        ],
+        task: task,
+        scorers: [scorer],
+        state: api.state,
+        tracer_provider: @rig.tracer_provider,
+        quiet: true
+      )
+
+      # Should complete successfully
+      assert_instance_of Braintrust::Eval::Result, result
+      assert result.duration > 0
+
+      # Verify no errors occurred
+      assert_equal 0, result.errors.length, "Remote scorer should not error"
+    end
+  end
+
+  def test_scorer_parses_structured_response
+    VCR.use_cassette("eval_functions/scorer_parses_structured_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-structured"
+
+      api.functions.create_scorer(
+        project_name: @project_name,
+        slug: function_slug,
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Evaluate if the output matches the expected value."},
+              {role: "user", content: "Does '{{output}}' match '{{expected}}'? Answer 'correct' or 'incorrect'."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          },
+          parser: {
+            type: "llm_classifier",
+            use_cot: true,
+            choice_scores: {
+              "correct" => 1.0,
+              "incorrect" => 0.0
+            }
+          }
+        }
+      )
+
+      scorer = Braintrust::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call(input: "hello", expected: "HELLO", output: "HELLO", metadata: {})
+
+      assert_kind_of Numeric, result
+      assert_equal 1.0, result
+    end
+  end
+
+  def test_scorer_parses_code_string_response
+    VCR.use_cassette("eval_functions/scorer_parses_code_string_response") do
+      state, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-code-scorer"
+
+      api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {
+          type: "code",
+          data: {
+            type: "inline",
+            runtime_context: {runtime: "node", version: "18"},
+            code: "function handler({ input, output, expected }) { return '0.45'; }"
+          }
+        }
+      )
+
+      scorer = Braintrust::Functions.scorer(
+        project: @project_name,
+        slug: function_slug,
+        state: state
+      )
+
+      result = scorer.call(input: "test", expected: "test", output: "test", metadata: {})
+
+      assert_kind_of Numeric, result
+      assert_equal 0.45, result
+    end
+  end
+
+  # --- scorer by ID response type tests (WebMock) ---
+  # These test that scorer(id:) correctly handles all response types
+  # the Braintrust API can return: Numeric, Boolean, nil, Hash, String.
+
+  def test_remote_scorer_handles_integer_response
+    scorer = scorer_with_stubbed_invoke(1)
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_equal 1.0, result
+    assert_instance_of Float, result
+  end
+
+  def test_remote_scorer_handles_float_response
+    scorer = scorer_with_stubbed_invoke(0.75)
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_equal 0.75, result
+    assert_instance_of Float, result
+  end
+
+  def test_remote_scorer_handles_boolean_true_response
+    scorer = scorer_with_stubbed_invoke(true)
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_equal 1.0, result
+  end
+
+  def test_remote_scorer_handles_boolean_false_response
+    scorer = scorer_with_stubbed_invoke(false)
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_equal 0.0, result
+  end
+
+  def test_remote_scorer_handles_nil_response
+    scorer = scorer_with_stubbed_invoke(nil)
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_nil result
+  end
+
+  def test_remote_scorer_handles_hash_with_score_key
+    scorer = scorer_with_stubbed_invoke({"name" => "my_scorer", "score" => 0.9, "metadata" => {}})
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_equal 0.9, result
+  end
+
+  def test_remote_scorer_handles_string_numeric_response
+    scorer = scorer_with_stubbed_invoke("0.85")
+    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    assert_equal 0.85, result
+  end
+
+  def test_remote_scorer_raises_for_hash_without_score_key
+    scorer = scorer_with_stubbed_invoke({"name" => "my_scorer"})
+    assert_raises(Braintrust::Error) do
+      scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    end
+  end
+
+  # --- scorer with id: tests ---
+
+  def test_scorer_with_id_returns_scorer
+    VCR.use_cassette("eval_functions/scorer_with_id") do
+      _, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-by-id"
+
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer. Return a score between 0 and 1."},
+              {role: "user", content: "Score this: {{output}}. Return just a number."}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini",
+            params: {temperature: 0}
+          }
+        }
+      )
+
+      scorer = Braintrust::Functions.scorer(
+        id: created["id"],
+        state: api.state
+      )
+
+      assert_kind_of Braintrust::Scorer, scorer
+    end
+  end
+
+  def test_scorer_with_id_and_version
+    VCR.use_cassette("eval_functions/scorer_with_id_version") do
+      _, api = get_test_state_and_api
+      function_slug = "test-ruby-sdk-scorer-by-id-ver"
+
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "system", content: "You are a scorer."},
+              {role: "user", content: "Score: {{output}}. Return a number."}
+            ]
+          },
+          options: {model: "gpt-4o-mini", params: {temperature: 0}}
+        }
+      )
+
+      scorer = Braintrust::Functions.scorer(
+        id: created["id"],
+        version: nil,
+        state: api.state
+      )
+
+      assert_kind_of Braintrust::Scorer, scorer
+    end
+  end
+
+  private
+
+  FAKE_FUNCTION_ID = "00000000-0000-0000-0000-000000000001"
+
+  # Build a scorer via Functions.scorer(id:) with WebMock stubs.
+  # Stubs GET /v1/function/{id} (metadata) and POST /v1/function/{id}/invoke (invoke_response).
+  def scorer_with_stubbed_invoke(invoke_response)
+    state = @rig.state
+    base = state.api_url
+
+    # Stub function metadata lookup
+    stub_request(:get, "#{base}/v1/function/#{FAKE_FUNCTION_ID}")
+      .to_return(
+        status: 200,
+        headers: {"content-type" => "application/json"},
+        body: JSON.dump({"id" => FAKE_FUNCTION_ID, "name" => "test-scorer"})
+      )
+
+    # Stub invoke with the response type under test
+    stub_request(:post, "#{base}/v1/function/#{FAKE_FUNCTION_ID}/invoke")
+      .to_return(
+        status: 200,
+        headers: {"content-type" => "application/json"},
+        body: JSON.dump(invoke_response)
+      )
+
+    Braintrust::Functions.scorer(
+      id: FAKE_FUNCTION_ID,
+      state: state,
+      tracer_provider: @rig.tracer_provider
+    )
+  end
+end

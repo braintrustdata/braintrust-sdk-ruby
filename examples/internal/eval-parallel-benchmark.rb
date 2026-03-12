@@ -110,7 +110,7 @@ client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
 Braintrust.instrument!(:openai)
 
 # Task: Call OpenAI to classify fruit/vegetable
-task = ->(input) {
+task = ->(input:) {
   response = client.chat.completions.create(
     model: MODEL,
     messages: [{role: "user", content: input}],
@@ -121,9 +121,9 @@ task = ->(input) {
 }
 
 # Scorer: Exact match
-exact_match = Braintrust::Eval.scorer("exact_match") do |_input, expected, output|
+exact_match = Braintrust::Scorer.new("exact_match") { |expected:, output:|
   (output == expected) ? 1.0 : 0.0
-end
+}
 
 puts "Running evaluation..."
 puts

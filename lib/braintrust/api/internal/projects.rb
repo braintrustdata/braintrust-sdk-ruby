@@ -35,6 +35,25 @@ module Braintrust
 
           JSON.parse(response.body)
         end
+
+        # Delete a project
+        # DELETE /v1/project/:id
+        # @param id [String] Project UUID
+        # @return [Hash] Deleted project data
+        def delete(id:)
+          uri = URI("#{@state.api_url}/v1/project/#{id}")
+
+          request = Net::HTTP::Delete.new(uri)
+          request["Authorization"] = "Bearer #{@state.api_key}"
+
+          response = Braintrust::Internal::Http.with_redirects(uri, request)
+
+          unless response.is_a?(Net::HTTPSuccess)
+            raise Error, "HTTP #{response.code} for DELETE #{uri}: #{response.body}"
+          end
+
+          JSON.parse(response.body)
+        end
       end
     end
   end

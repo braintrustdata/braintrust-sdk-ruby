@@ -28,8 +28,8 @@ module Braintrust
         end
 
         def test_returns_evaluators_keyed_by_name
-          @evaluators["food-classifier"] = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
-          @evaluators["text-summarizer"] = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+          @evaluators["food-classifier"] = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
+          @evaluators["text-summarizer"] = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
 
           post "/list", nil, {"CONTENT_TYPE" => "application/json"}
 
@@ -41,7 +41,7 @@ module Braintrust
 
         def test_includes_parameters_in_static_container
           @evaluators["param-eval"] = Braintrust::Eval::Evaluator.new(
-            task: ->(input) { input },
+            task: ->(input:) { input },
             parameters: {"temperature" => {type: "number", default: 0.7, description: "LLM temperature"}}
           )
 
@@ -55,10 +55,10 @@ module Braintrust
 
         def test_includes_scorer_names
           @evaluators["scored-eval"] = Braintrust::Eval::Evaluator.new(
-            task: ->(input) { input },
+            task: ->(input:) { input },
             scorers: [
-              Braintrust::Eval.scorer("exact_match") { |i, e, o| (o == e) ? 1.0 : 0.0 },
-              Braintrust::Eval.scorer("length_check") { |i, e, o| 1.0 }
+              Braintrust::Scorer.new("exact_match") { |expected:, output:| (output == expected) ? 1.0 : 0.0 },
+              Braintrust::Scorer.new("length_check") { 1.0 }
             ]
           )
 
@@ -70,7 +70,7 @@ module Braintrust
         end
 
         def test_omits_parameters_when_none_defined
-          @evaluators["no-params"] = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+          @evaluators["no-params"] = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
 
           post "/list", nil, {"CONTENT_TYPE" => "application/json"}
 

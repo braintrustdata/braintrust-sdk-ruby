@@ -124,7 +124,7 @@ module Braintrust
             end
             [cases, nil]
           elsif data.key?("dataset_id")
-            [nil, Braintrust::DatasetId.new(id: data["dataset_id"])]
+            [nil, Braintrust::Dataset::ID.new(id: data["dataset_id"])]
           elsif data.key?("dataset_name")
             dataset_opts = {name: data["dataset_name"]}
             dataset_opts[:project] = data["project_name"] if data["project_name"]
@@ -134,14 +134,14 @@ module Braintrust
           end
         end
 
-        # Map request scores array to ScorerId structs.
+        # Map request scores array to Scorer::ID structs.
         # The UI sends function_id as a nested object: {"function_id": "uuid"}.
         def resolve_remote_scorers(scores)
           return nil if scores.nil? || scores.empty?
           scores.map do |s|
             func_id = s["function_id"]
             func_id = func_id["function_id"] if func_id.is_a?(Hash)
-            Braintrust::ScorerId.new(
+            Braintrust::Scorer::ID.new(
               function_id: func_id,
               version: s["version"]
             )

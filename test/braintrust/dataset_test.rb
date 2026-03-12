@@ -215,6 +215,21 @@ class Braintrust::DatasetTest < Minitest::Test
     end
   end
 
+  # ============================================
+  # Dataset::ID
+  # ============================================
+
+  def test_id_stores_id
+    dataset_id = Braintrust::Dataset::ID.new(id: "ds-456")
+    assert_equal "ds-456", dataset_id.id
+  end
+
+  def test_id_equality
+    a = Braintrust::Dataset::ID.new(id: "ds-456")
+    b = Braintrust::Dataset::ID.new(id: "ds-456")
+    assert_equal a, b
+  end
+
   private
 
   def mock_state

@@ -181,9 +181,12 @@ module Braintrust
         created: raw["created"]
       )
     end
+
+    # Value object wrapping a dataset UUID for resolution by ID.
+    # Used by Eval.run to distinguish dataset-by-ID from dataset-by-name.
+    ID = Struct.new(:id, keyword_init: true)
   end
 
-  # Value object wrapping a dataset UUID for resolution by ID.
-  # Used by Eval.run to distinguish dataset-by-ID from dataset-by-name.
-  DatasetId = Struct.new(:id, keyword_init: true)
+  # @deprecated Use {Braintrust::Dataset::ID} instead.
+  DatasetId = Dataset::ID
 end
