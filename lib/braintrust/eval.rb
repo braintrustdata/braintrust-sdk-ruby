@@ -22,7 +22,7 @@ module Braintrust
   # evaluation consists of:
   # - **Cases**: Test inputs with optional expected outputs
   # - **Task**: The code/model being evaluated (a {Braintrust::Task} or callable)
-  # - **Scorers**: Functions that judge the quality of outputs ({Braintrust::Scorer} or callable)
+  # - **Scorers**: Functions that judge the quality of outputs (String name, {Braintrust::Scorer}, or callable)
   #
   # Tasks and scorers use keyword arguments. Only declare the keywords you need —
   # extra kwargs are automatically filtered out.
@@ -51,6 +51,9 @@ module Braintrust
   #   )
   #
   # @example Different ways to define scorers
+  #   # String — references a scorer defined in your Braintrust project
+  #   scorers: ["accuracy-scorer", "relevance-scorer"]
+  #
   #   # Lambda — declare only the kwargs you need (input:, expected:, output:, metadata:, tags:)
   #   exact = ->(expected:, output:) { output == expected ? 1.0 : 0.0 }
   #
@@ -142,7 +145,7 @@ module Braintrust
       #   - String: dataset name (fetches from same project)
       #   - Hash: {name:, id:, project:, version:, limit:}
       # @param task [#call] The task to evaluate (must be callable)
-      # @param scorers [Array<Scorer, #call>] The scorers to use (Scorer objects or callables)
+      # @param scorers [Array<String, Scorer, #call>] The scorers to use (String names, Scorer objects, or callables)
       # @param on_progress [#call, nil] Optional callback fired after each test case.
       #   Receives a Hash: {"data" => output, "scores" => {name => value}} on success,
       #   or {"error" => message} on failure.
