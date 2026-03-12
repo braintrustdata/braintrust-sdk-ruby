@@ -59,7 +59,7 @@ module Braintrust
             sleep(delay)
           end
         rescue => e
-          Braintrust::Log.debug("[BTQL] Query failed: #{e.message}")
+          Braintrust::Log.warn("[BTQL] Query failed: #{e.message}")
           []
         end
 

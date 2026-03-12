@@ -197,7 +197,7 @@ class Braintrust::API::Internal::BTQLTest < Minitest::Test
     stub_request(:post, "#{@state.api_url}/btql")
       .to_return(status: 500, body: "Internal Server Error")
 
-    result = @btql.trace_spans(object_type: "experiment", object_id: "exp-1", root_span_id: "trace-1")
+    result = suppress_logs { @btql.trace_spans(object_type: "experiment", object_id: "exp-1", root_span_id: "trace-1") }
 
     assert_equal [], result
   end
@@ -206,7 +206,7 @@ class Braintrust::API::Internal::BTQLTest < Minitest::Test
     stub_request(:post, "#{@state.api_url}/btql")
       .to_raise(Errno::ECONNREFUSED)
 
-    result = @btql.trace_spans(object_type: "experiment", object_id: "exp-1", root_span_id: "trace-1")
+    result = suppress_logs { @btql.trace_spans(object_type: "experiment", object_id: "exp-1", root_span_id: "trace-1") }
 
     assert_equal [], result
   end
