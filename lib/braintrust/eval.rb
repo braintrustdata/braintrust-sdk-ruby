@@ -163,9 +163,6 @@ module Braintrust
         # Validate required parameters
         validate_params!(task: task, scorers: scorers, cases: cases, dataset: dataset)
 
-        # Resolve any Scorer::ID or String entries to real Scorer objects
-        scorers = resolve_scorers(scorers, project: project, state: state, tracer_provider: tracer_provider)
-
         experiment_id = nil
         project_name = project
 
@@ -221,38 +218,6 @@ module Braintrust
       # @param result [Result] The evaluation result
       def print_result(result)
         puts result.to_pretty
-      end
-
-      # Resolve scorers array: Scorer::ID and String entries become real Scorer objects, others pass through
-      # @param scorers [Array] Scorers (Scorer, callable, Scorer::ID, or String slug)
-      # @param project [String, nil] Project name (required for String slug resolution)
-      # @param state [State, nil] Braintrust state (required for Scorer::ID/String resolution)
-      # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider
-      # @return [Array<Scorer, #call>] Resolved scorers
-      def resolve_scorers(scorers, project: nil, state: nil, tracer_provider: nil)
-        scorers.map do |scorer|
-          case scorer
-          when String
-            unless project
-              raise ArgumentError, "project is required to resolve scorer slug '#{scorer}'"
-            end
-            Braintrust::Functions.scorer(
-              project: project,
-              slug: scorer,
-              state: state,
-              tracer_provider: tracer_provider
-            )
-          when Braintrust::Scorer::ID
-            Braintrust::Functions.scorer(
-              id: scorer.function_id,
-              version: scorer.version,
-              state: state,
-              tracer_provider: tracer_provider
-            )
-          else
-            scorer
-          end
-        end
       end
 
       # Validate required parameters

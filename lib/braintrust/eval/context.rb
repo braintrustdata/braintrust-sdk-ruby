@@ -34,7 +34,7 @@ module Braintrust
       def self.build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
         project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
         on_progress: nil, parent: nil)
-        factory = Factory.new(state: state, tracer_provider: tracer_provider)
+        factory = Factory.new(state: state, tracer_provider: tracer_provider, project_name: project_name)
 
         Context.new(
           task: factory.normalize_task(task),
@@ -54,9 +54,10 @@ module Braintrust
 
       # Encapsulates normalization of raw user inputs into typed wrappers.
       class Factory
-        def initialize(state: nil, tracer_provider: nil)
+        def initialize(state: nil, tracer_provider: nil, project_name: nil)
           @state = state
           @tracer_provider = tracer_provider
+          @project_name = project_name
         end
 
         def normalize_cases(raw)
@@ -97,6 +98,14 @@ module Braintrust
         def normalize_scorers(raw)
           raw.map do |scorer|
             case scorer
+            when String
+              raise ArgumentError, "project is required to resolve scorer slug '#{scorer}'" unless @project_name
+              Braintrust::Functions.scorer(
+                project: @project_name,
+                slug: scorer,
+                state: @state,
+                tracer_provider: @tracer_provider
+              )
             when Braintrust::Scorer::ID
               Braintrust::Functions.scorer(
                 id: scorer.function_id,
