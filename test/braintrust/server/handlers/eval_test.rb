@@ -406,7 +406,7 @@ module Braintrust
           end
 
           # First entry (key-0) should have been evicted
-          cache = h.instance_variable_get(:@state_cache)
+          cache = h.instance_variable_get(:@service).instance_variable_get(:@state_cache)
 
           assert_equal 64, cache.size, "Cache should not exceed 64 entries"
           refute cache.key?(["key-0", "https://app.example.com", "org-0"]),
