@@ -139,7 +139,7 @@ class Braintrust::EvalTest < Minitest::Test
     )
 
     spans = rig.drain
-    score_spans = spans.select { |s| s.name == "score" }
+    score_spans = spans.select { |s| ["good", "failing"].include?(s.name) }
 
     # Each scorer gets its own span
     assert_equal 2, score_spans.length
@@ -348,7 +348,7 @@ class Braintrust::EvalTest < Minitest::Test
 
       eval_span = spans.find { |s| s.name == "eval" }
       task_span = spans.find { |s| s.name == "task" }
-      score_span = spans.find { |s| s.name == "score" }
+      score_span = spans.find { |s| s.name == "exact" }
 
       assert eval_span, "Expected eval span"
       assert task_span, "Expected task span"
