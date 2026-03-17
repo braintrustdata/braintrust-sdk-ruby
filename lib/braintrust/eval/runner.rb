@@ -192,7 +192,7 @@ module Braintrust
       # @param scorer_input [Hash] Input to log on the span
       # @param scores [Hash] Accumulator for score results
       def run_scorer(scorer, scorer_kwargs, scorer_input, scores)
-        tracer.in_span("score") do |score_span|
+        tracer.in_span(scorer.name) do |score_span|
           score_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(score_span, "braintrust.span_attributes", build_scorer_span_attributes(scorer.name))
           set_json_attr(score_span, "braintrust.input_json", scorer_input)

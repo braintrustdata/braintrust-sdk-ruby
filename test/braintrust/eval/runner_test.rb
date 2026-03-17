@@ -720,7 +720,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     runner.run
 
     spans = rig.exporter.finished_spans
-    score_spans = spans.select { |s| s.name == "score" }
+    score_spans = spans.select { |s| ["accuracy", "relevance"].include?(s.name) }
 
     # One span per scorer, not one shared span
     assert_equal 2, score_spans.length
@@ -751,7 +751,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     result = runner.run
 
     spans = rig.exporter.finished_spans
-    score_spans = spans.select { |s| s.name == "score" }
+    score_spans = spans.select { |s| ["accuracy", "relevance"].include?(s.name) }
 
     scores_by_name = score_spans.each_with_object({}) do |span, h|
       parsed = JSON.parse(span.attributes["braintrust.scores"])
@@ -780,7 +780,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     Braintrust::Eval::Runner.new(context).run
 
     spans = rig.exporter.finished_spans
-    scorer_span = spans.find { |s| s.name == "score" }
+    scorer_span = spans.find { |s| s.name == "exact" }
     span_attrs = JSON.parse(scorer_span.attributes["braintrust.span_attributes"])
 
     assert_equal "score", span_attrs["type"]
@@ -805,7 +805,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     Braintrust::Eval::Runner.new(context).run
 
     spans = rig.exporter.finished_spans
-    scorer_span = spans.find { |s| s.name == "score" }
+    scorer_span = spans.find { |s| s.name == "exact" }
 
     input = JSON.parse(scorer_span.attributes["braintrust.input_json"])
     assert_equal "hello", input["input"]
@@ -1373,7 +1373,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     )
     Braintrust::Eval::Runner.new(context).run
 
-    score_span = rig.exporter.finished_spans.find { |s| s.name == "score" }
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "meta_scorer" }
     metadata = JSON.parse(score_span.attributes["braintrust.metadata"])
     assert_equal({"failure_type" => "none", "confidence" => 0.99}, metadata)
   end
@@ -1427,7 +1427,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal({}, result.scores)
 
     # Metadata should still be logged even with nil score
-    score_span = rig.exporter.finished_spans.find { |s| s.name == "score" }
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "nil_score" }
     metadata = JSON.parse(score_span.attributes["braintrust.metadata"])
     assert_equal({"reason" => "could not score"}, metadata)
   end
@@ -1455,9 +1455,9 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal({"numeric" => [0.8], "structured" => [0.6]}, result.scores)
 
     # Only structured scorer's span has metadata
-    score_spans = rig.exporter.finished_spans.select { |s| s.name == "score" }
-    structured_span = score_spans.find { |s| s.attributes["braintrust.scores"]&.include?("structured") }
-    numeric_span = score_spans.find { |s| s.attributes["braintrust.scores"]&.include?("numeric") }
+    score_spans = rig.exporter.finished_spans.select { |s| ["numeric", "structured"].include?(s.name) }
+    structured_span = score_spans.find { |s| s.name == "structured" }
+    numeric_span = score_spans.find { |s| s.name == "numeric" }
 
     metadata = JSON.parse(structured_span.attributes["braintrust.metadata"])
     assert_equal({"detail" => "partial"}, metadata)
@@ -1482,7 +1482,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     )
     Braintrust::Eval::Runner.new(context).run
 
-    score_span = rig.exporter.finished_spans.find { |s| s.name == "score" }
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "structured" }
     scores = JSON.parse(score_span.attributes["braintrust.scores"])
     # Should be the numeric value, not the hash
     assert_equal 0.75, scores["structured"]
@@ -1522,7 +1522,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     )
     Braintrust::Eval::Runner.new(context).run
 
-    score_span = rig.exporter.finished_spans.find { |s| s.name == "score" }
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "a" }
     # No metadata attribute should be set when no scorers return metadata
     assert_nil score_span.attributes["braintrust.metadata"]
   end
@@ -1551,7 +1551,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal({"str_meta" => [0.5]}, result.scores)
 
     # Non-hash metadata should not be logged
-    score_span = rig.exporter.finished_spans.find { |s| s.name == "score" }
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "str_meta" }
     assert_nil score_span.attributes["braintrust.metadata"]
   end
 
