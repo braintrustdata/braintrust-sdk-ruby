@@ -508,6 +508,169 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal "experiment_id:exp-123", eval_spans[0].attributes["braintrust.parent"]
   end
 
+  def test_runner_eval_span_has_case_metadata
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO", metadata: {difficulty: "easy", category: "greeting"}}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
+    metadata = JSON.parse(eval_span.attributes["braintrust.metadata"])
+
+    assert_equal "easy", metadata["difficulty"]
+    assert_equal "greeting", metadata["category"]
+  end
+
+  def test_runner_eval_span_input_json_wrapped
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
+    input_json = JSON.parse(eval_span.attributes["braintrust.input_json"])
+
+    assert_equal({"input" => "hello"}, input_json)
+  end
+
+  def test_runner_eval_span_tags_as_array
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", tags: ["fast", "regression"]}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
+    tags = eval_span.attributes["braintrust.tags"]
+
+    assert_instance_of Array, tags
+    assert_equal ["fast", "regression"], tags
+  end
+
+  def test_runner_eval_span_output_json_null_on_task_error
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: -> { raise "boom" },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
+    output_json = JSON.parse(eval_span.attributes["braintrust.output_json"])
+
+    assert_equal({"output" => nil}, output_json)
+  end
+
+  def test_runner_eval_span_output_json_wrapped
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
+    output_json = JSON.parse(eval_span.attributes["braintrust.output_json"])
+
+    assert_equal({"output" => "HELLO"}, output_json)
+  end
+
+  def test_runner_eval_spans_are_independent_roots
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "a"}, {input: "b"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_spans = rig.exporter.finished_spans.select { |s| s.name == "eval" }
+    assert_equal 2, eval_spans.length
+
+    # Each eval span should have a unique trace ID (independent roots)
+    trace_ids = eval_spans.map { |s| s.hex_trace_id }.uniq
+    assert_equal 2, trace_ids.length, "Each eval case should be its own trace"
+
+    # Eval spans should not have a parent span
+    invalid_hex = OpenTelemetry::Trace::INVALID_SPAN_ID.unpack1("H*")
+    eval_spans.each do |span|
+      assert_equal invalid_hex, span.hex_parent_span_id,
+        "Eval span should be a root span with no parent"
+    end
+  end
+
+  def test_runner_eval_span_no_metadata_when_nil
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
+    assert_nil eval_span.attributes["braintrust.metadata"]
+  end
+
   def test_runner_run_creates_task_spans
     rig = setup_otel_test_rig
 
@@ -534,12 +697,15 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal "experiment_id:exp-123", task_spans[0].attributes["braintrust.parent"]
   end
 
-  def test_runner_run_creates_score_spans
+  def test_runner_run_creates_per_scorer_spans
     rig = setup_otel_test_rig
 
     context = Braintrust::Eval::Context.build(
       task: ->(input:) { input.upcase },
-      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      scorers: [
+        Braintrust::Scorer.new("accuracy") { 0.95 },
+        Braintrust::Scorer.new("relevance") { 0.87 }
+      ],
       cases: [{input: "hello", expected: "HELLO"}],
       experiment_id: "exp-123",
       experiment_name: "test-experiment",
@@ -556,11 +722,14 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     spans = rig.exporter.finished_spans
     score_spans = spans.select { |s| s.name == "score" }
 
-    assert_equal 1, score_spans.length
-    assert_equal "experiment_id:exp-123", score_spans[0].attributes["braintrust.parent"]
+    # One span per scorer, not one shared span
+    assert_equal 2, score_spans.length
+    score_spans.each do |span|
+      assert_equal "experiment_id:exp-123", span.attributes["braintrust.parent"]
+    end
   end
 
-  def test_runner_run_records_scores_on_span
+  def test_runner_run_records_scores_on_per_scorer_spans
     rig = setup_otel_test_rig
 
     context = Braintrust::Eval::Context.build(
@@ -582,14 +751,70 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     result = runner.run
 
     spans = rig.exporter.finished_spans
-    score_span = spans.find { |s| s.name == "score" }
+    score_spans = spans.select { |s| s.name == "score" }
 
-    scores = JSON.parse(score_span.attributes["braintrust.scores"])
-    assert_equal 0.95, scores["accuracy"]
-    assert_equal 0.87, scores["relevance"]
+    scores_by_name = score_spans.each_with_object({}) do |span, h|
+      parsed = JSON.parse(span.attributes["braintrust.scores"])
+      h.merge!(parsed)
+    end
+    assert_equal({"accuracy" => 0.95, "relevance" => 0.87}, scores_by_name)
 
-    # Check scores contains scores from multiple scorers
+    # Result still aggregates all scores
     assert_equal({"accuracy" => [0.95], "relevance" => [0.87]}, result.scores)
+  end
+
+  def test_runner_scorer_span_attributes
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    spans = rig.exporter.finished_spans
+    scorer_span = spans.find { |s| s.name == "score" }
+    span_attrs = JSON.parse(scorer_span.attributes["braintrust.span_attributes"])
+
+    assert_equal "score", span_attrs["type"]
+    assert_equal "exact", span_attrs["name"]
+    assert_equal "scorer", span_attrs["purpose"]
+  end
+
+  def test_runner_scorer_span_has_input_and_output
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 0.5 }],
+      cases: [{input: "hello", expected: "HELLO", metadata: {key: "val"}}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    spans = rig.exporter.finished_spans
+    scorer_span = spans.find { |s| s.name == "score" }
+
+    input = JSON.parse(scorer_span.attributes["braintrust.input_json"])
+    assert_equal "hello", input["input"]
+    assert_equal "HELLO", input["expected"]
+    assert_equal "HELLO", input["output"]
+    assert_equal({"key" => "val"}, input["metadata"])
+
+    output = JSON.parse(scorer_span.attributes["braintrust.output_json"])
+    assert_equal({"exact" => 0.5}, output)
   end
 
   # ============================================

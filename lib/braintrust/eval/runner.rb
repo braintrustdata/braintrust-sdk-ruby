@@ -82,11 +82,17 @@ module Braintrust
       # @param case_context [CaseContext] The per-case accumulator
       # @param errors [Queue] Thread-safe error collection queue
       def run_eval_case(case_context, errors)
-        tracer.in_span("eval") do |eval_span|
+        # Each eval case starts its own trace — detach from any ambient span context
+        eval_span = tracer.start_root_span("eval")
+        OpenTelemetry::Trace.with_span(eval_span) do
+          # Set attributes known before task execution
           eval_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
-
-          # Set tags early so they're present even if task fails
+          set_json_attr(eval_span, "braintrust.span_attributes", build_span_attributes("eval"))
+          set_json_attr(eval_span, "braintrust.input_json", {input: case_context.input})
+          set_json_attr(eval_span, "braintrust.expected", case_context.expected) if case_context.expected
+          set_json_attr(eval_span, "braintrust.metadata", case_context.metadata) if case_context.metadata
           eval_span.set_attribute("braintrust.tags", case_context.tags) if case_context.tags
+          eval_span.set_attribute("braintrust.origin", case_context.origin) if case_context.origin
 
           # Run task
           begin
@@ -94,6 +100,7 @@ module Braintrust
           rescue => e
             # Error already recorded on task span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
+            set_json_attr(eval_span, "braintrust.output_json", {output: nil})
             errors << "Task failed for input '#{case_context.input}': #{e.message}"
             report_progress(eval_span, case_context, error: e.message)
             next
@@ -113,17 +120,13 @@ module Braintrust
             errors << "Scorers failed for input '#{case_context.input}': #{e.message}"
           end
 
-          # Set eval span attributes (after task and scorers complete)
-          set_json_attr(eval_span, "braintrust.span_attributes", build_span_attributes("eval"))
-          set_json_attr(eval_span, "braintrust.input_json", case_context.input)
-          set_json_attr(eval_span, "braintrust.output_json", case_context.output)
-          set_json_attr(eval_span, "braintrust.expected", case_context.expected) if case_context.expected
-
-          # Set origin for cases from remote sources (already JSON-serialized)
-          eval_span.set_attribute("braintrust.origin", case_context.origin) if case_context.origin
+          # Set output after task completes
+          set_json_attr(eval_span, "braintrust.output_json", {output: case_context.output})
 
           report_progress(eval_span, case_context, data: case_context.output, scores: case_scores || {})
         end
+      ensure
+        eval_span&.finish
       end
 
       # Run task with OpenTelemetry tracing
@@ -151,43 +154,61 @@ module Braintrust
         end
       end
 
-      # Run scorers with OpenTelemetry tracing
-      # Creates single score span for all scorers
+      # Run scorers with OpenTelemetry tracing.
+      # Creates one span per scorer, each a direct child of the current (eval) span.
       # @param case_context [CaseContext] The per-case context (output must be populated)
       # @return [Hash] Scores hash { scorer_name => score_value }
       def run_scorers(case_context)
+        scorer_kwargs = {
+          input: case_context.input,
+          expected: case_context.expected,
+          output: case_context.output,
+          metadata: case_context.metadata || {},
+          trace: case_context.trace
+        }
+        scorer_input = {
+          input: case_context.input,
+          expected: case_context.expected,
+          output: case_context.output,
+          metadata: case_context.metadata || {}
+        }
+
+        scores = {}
+        scorer_error = nil
+        eval_context.scorers.each do |scorer|
+          run_scorer(scorer, scorer_kwargs, scorer_input, scores)
+        rescue => e
+          scorer_error ||= e
+        end
+
+        raise scorer_error if scorer_error
+
+        scores
+      end
+
+      # Run a single scorer inside its own span.
+      # @param scorer [Scorer] The scorer to run
+      # @param scorer_kwargs [Hash] Keyword arguments for the scorer
+      # @param scorer_input [Hash] Input to log on the span
+      # @param scores [Hash] Accumulator for score results
+      def run_scorer(scorer, scorer_kwargs, scorer_input, scores)
         tracer.in_span("score") do |score_span|
           score_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
-          set_json_attr(score_span, "braintrust.span_attributes", build_span_attributes("score"))
+          set_json_attr(score_span, "braintrust.span_attributes", build_scorer_span_attributes(scorer.name))
+          set_json_attr(score_span, "braintrust.input_json", scorer_input)
 
-          scorer_kwargs = {
-            input: case_context.input,
-            expected: case_context.expected,
-            output: case_context.output,
-            metadata: case_context.metadata || {},
-            trace: case_context.trace
-          }
-          scores = {}
-          scorer_error = nil
-          eval_context.scorers.each do |scorer|
-            score_value = scorer.call(**scorer_kwargs)
-            scores[scorer.name] = score_value
+          score_value = scorer.call(**scorer_kwargs)
+          scores[scorer.name] = score_value
 
-            # Collect raw score for summary (thread-safe)
-            collect_score(scorer.name, score_value)
-          rescue => e
-            # Record first error but continue processing other scorers
-            scorer_error ||= e
-            record_span_error(score_span, e, "ScorerError")
-          end
+          scorer_scores = {scorer.name => score_value}
+          set_json_attr(score_span, "braintrust.output_json", scorer_scores)
+          set_json_attr(score_span, "braintrust.scores", scorer_scores)
 
-          # Always set scores attribute, even if some scorers failed
-          set_json_attr(score_span, "braintrust.scores", scores)
-
-          # Raise after setting scores so we can see which scorers succeeded
-          raise scorer_error if scorer_error
-
-          scores
+          # Collect raw score for summary (thread-safe)
+          collect_score(scorer.name, score_value)
+        rescue => e
+          record_span_error(score_span, e, "ScorerError")
+          raise
         end
       end
 
@@ -251,6 +272,16 @@ module Braintrust
       def build_span_attributes(type)
         attrs = {type: type}
         attrs[:name] = eval_context.experiment_name if eval_context.experiment_name
+        attrs[:generation] = eval_context.generation if eval_context.generation
+        attrs
+      end
+
+      # Build span_attributes for a scorer span.
+      # Each scorer gets its own span with type "score", purpose "scorer", and the scorer's name.
+      # @param scorer_name [String] The scorer name
+      # @return [Hash]
+      def build_scorer_span_attributes(scorer_name)
+        attrs = {type: "score", name: scorer_name, purpose: "scorer"}
         attrs[:generation] = eval_context.generation if eval_context.generation
         attrs
       end
