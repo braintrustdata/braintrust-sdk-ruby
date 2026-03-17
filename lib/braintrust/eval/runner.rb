@@ -197,15 +197,23 @@ module Braintrust
           set_json_attr(score_span, "braintrust.span_attributes", build_scorer_span_attributes(scorer.name))
           set_json_attr(score_span, "braintrust.input_json", scorer_input)
 
-          score_value = scorer.call(**scorer_kwargs)
-          scores[scorer.name] = score_value
+          raw_result = scorer.call(**scorer_kwargs)
+          normalized = normalize_score_result(raw_result, scorer.name)
 
-          scorer_scores = {scorer.name => score_value}
+          score_name = normalized[:name]
+          scores[score_name] = normalized[:score]
+
+          scorer_scores = {score_name => normalized[:score]}
           set_json_attr(score_span, "braintrust.output_json", scorer_scores)
           set_json_attr(score_span, "braintrust.scores", scorer_scores)
 
+          # Set scorer metadata on its span
+          if normalized[:metadata].is_a?(Hash)
+            set_json_attr(score_span, "braintrust.metadata", normalized[:metadata])
+          end
+
           # Collect raw score for summary (thread-safe)
-          collect_score(scorer.name, score_value)
+          collect_score(score_name, normalized[:score])
         rescue => e
           record_span_error(score_span, e, "ScorerError")
           raise
@@ -302,6 +310,20 @@ module Braintrust
 
         @score_mutex.synchronize do
           (@scores[name] ||= []) << value
+        end
+      end
+
+      # Normalize a scorer return value into its component parts.
+      # Scorers may return a raw Numeric or a Hash with :score, :metadata, and :name keys.
+      # @param result [Object] Raw scorer return value
+      # @param default_name [String] Scorer name to use if not overridden
+      # @return [Hash] Normalized hash with :score, :metadata, :name keys
+      def normalize_score_result(result, default_name)
+        if result.is_a?(Hash)
+          result[:name] ||= default_name
+          result
+        else
+          {score: result, metadata: nil, name: default_name}
         end
       end
     end
