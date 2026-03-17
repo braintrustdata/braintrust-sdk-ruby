@@ -139,21 +139,25 @@ class Braintrust::EvalTest < Minitest::Test
     )
 
     spans = rig.drain
-    score_span = spans.find { |s| s.name == "score" }
+    score_spans = spans.select { |s| s.name == "score" }
 
-    assert score_span, "Expected score span"
-    assert score_span.events, "Expected span to have events"
+    # Each scorer gets its own span
+    assert_equal 2, score_spans.length
 
-    exception_event = score_span.events.find { |e| e.name == "exception" }
-    assert exception_event, "Expected exception event"
+    # Find the failing scorer's span (has exception event)
+    failing_span = score_spans.find { |s| s.events&.any? { |e| e.name == "exception" } }
+    assert failing_span, "Expected failing scorer span with exception event"
+
+    exception_event = failing_span.events.find { |e| e.name == "exception" }
     assert_equal "ScorerError", exception_event.attributes["exception.type"]
     assert_match(/Intentional error/, exception_event.attributes["exception.message"])
     assert exception_event.attributes["exception.stacktrace"], "Expected stacktrace in exception event"
 
-    # Verify scores still recorded for successful scorers
-    scores = JSON.parse(score_span.attributes["braintrust.scores"])
-    assert_equal 1.0, scores["good"], "Good scorer should have succeeded"
-    assert_nil scores["failing"], "Failing scorer should not have a score"
+    # Verify good scorer span has its score
+    good_span = score_spans.find { |s| s.attributes["braintrust.scores"]&.include?("good") }
+    assert good_span, "Expected good scorer span"
+    scores = JSON.parse(good_span.attributes["braintrust.scores"])
+    assert_equal 1.0, scores["good"]
   end
 
   def test_eval_run_with_multiple_scorers
@@ -339,7 +343,7 @@ class Braintrust::EvalTest < Minitest::Test
       # Verify spans were created
       spans = rig.drain
 
-      # Should have: 1 eval span, 1 task span, 1 score span
+      # Should have: 1 eval span, 1 task span, 1 score span (one per scorer)
       assert_equal 3, spans.length
 
       eval_span = spans.find { |s| s.name == "eval" }
@@ -353,16 +357,22 @@ class Braintrust::EvalTest < Minitest::Test
       # Verify eval span attributes
       assert eval_span.attributes["braintrust.parent"]
       assert_match(/experiment_id:[0-9a-f-]{36}/, eval_span.attributes["braintrust.parent"])
-      assert_includes eval_span.attributes["braintrust.input_json"], "hello"
-      assert_includes eval_span.attributes["braintrust.output_json"], "HELLO"
+      input_json = JSON.parse(eval_span.attributes["braintrust.input_json"])
+      assert_equal({"input" => "hello"}, input_json)
+      output_json = JSON.parse(eval_span.attributes["braintrust.output_json"])
+      assert_equal({"output" => "HELLO"}, output_json)
 
       # Verify task span
       assert task_span.attributes["braintrust.span_attributes"]
       assert_includes task_span.attributes["braintrust.span_attributes"], "task"
 
-      # Verify score span
+      # Verify score span has scorer-specific attributes
       assert score_span.attributes["braintrust.scores"]
       assert_includes score_span.attributes["braintrust.scores"], "exact"
+      span_attrs = JSON.parse(score_span.attributes["braintrust.span_attributes"])
+      assert_equal "score", span_attrs["type"]
+      assert_equal "exact", span_attrs["name"]
+      assert_equal "scorer", span_attrs["purpose"]
 
       # Verify experiment result has permalink in correct format
       assert result.permalink.include?("object_type=experiment"), "Result permalink should be experiment URL"
