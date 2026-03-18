@@ -38,7 +38,7 @@ module Braintrust
         # Support the explicit `|config|` style used by this integration while
         # still delegating zero-arity DSL blocks to Rails' native implementation.
         def self.configure(&block)
-          return super(&block) if block&.arity == 0
+          return super if block&.arity == 0
           yield config if block
         end
 
