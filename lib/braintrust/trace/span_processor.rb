@@ -80,11 +80,6 @@ module Braintrust
       # Determine if a span should be forwarded to the wrapped processor
       # based on configured filters
       def should_forward_span?(span)
-        # Always keep root spans (spans with no parent)
-        # Check if parent_span_id is the invalid/zero span ID
-        is_root = span.parent_span_id == OpenTelemetry::Trace::INVALID_SPAN_ID
-        return true if is_root
-
         # If no filters, keep everything
         return true if @filters.empty?
 

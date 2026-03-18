@@ -106,13 +106,23 @@ class SpanFilterTest < Minitest::Test
     assert_equal "gen_ai.root", spans[0].name
   end
 
-  def test_init_with_filter_ai_spans_always_keeps_root_spans
+  def test_init_with_filter_ai_spans_filters_root_spans
     exporter, tracer = setup_with_filter(filter_ai_spans: true)
 
     tracer.in_span("database.query") {}
 
     spans = exporter.finished_spans
-    assert_equal 1, spans.length, "Root spans should always be kept"
+    assert_equal 0, spans.length, "Non-AI root spans should be filtered"
+  end
+
+  def test_init_with_filter_ai_spans_keeps_ai_root_spans
+    exporter, tracer = setup_with_filter(filter_ai_spans: true)
+
+    tracer.in_span("gen_ai.completion") {}
+
+    spans = exporter.finished_spans
+    assert_equal 1, spans.length, "AI root spans should be kept"
+    assert_equal "gen_ai.completion", spans[0].name
   end
 
   def test_init_with_filter_ai_spans_drops_non_root_non_ai_spans
