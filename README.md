@@ -392,7 +392,11 @@ See [trace_scoring.rb](./examples/eval/trace_scoring.rb) for a full example.
 
 ### Dev Server
 
-Run evaluations from the Braintrust web UI against code in your own application. Define evaluators, pass them to the dev server, and start serving:
+Run evaluations from the Braintrust web UI against code in your own application.
+
+**Run as a Rack app**
+
+Define evaluators, pass them to the dev server, and start serving:
 
 ```ruby
 # eval_server.ru
@@ -421,6 +425,44 @@ run Braintrust::Server::Rack.app(
 ```bash
 bundle exec rackup eval_server.ru -p 8300 -o 0.0.0.0
 ```
+
+**Run as a Rails engine**
+
+Use the Rails engine when your evaluators live inside an existing Rails app and you want to mount the Braintrust endpoints into that application.
+
+```ruby
+# config/initializers/braintrust_server.rb
+require "braintrust/server/rails"
+
+Braintrust::Contrib::Rails::Engine.configure do |config|
+  config.evaluators = {
+    "food-classifier" => Braintrust::Eval::Evaluator.new(
+      task: ->(input:) { FoodClassifier.classify(input) },
+      scorers: [
+        Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }
+      ]
+    )
+  }
+
+  # Default is :clerk_token. Use :none for local development.
+  config.auth = :none
+end
+```
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  mount Braintrust::Contrib::Rails::Engine, at: "/braintrust"
+end
+```
+
+Mounted at `/braintrust`, the engine exposes:
+
+- `GET /braintrust/` for the health check
+- `GET /braintrust/list` and `POST /braintrust/list` to enumerate evaluators
+- `POST /braintrust/eval` to run an evaluation and stream SSE results
+
+See example: [contrib/rails/eval.rb](./examples/contrib/rails/eval.rb)
 
 **Custom evaluators**
 
@@ -456,7 +498,7 @@ gem "rack"
 gem "puma" # recommended
 ```
 
-See example: [server/eval.ru](./examples/server/eval.ru)
+See examples: [server/eval.ru](./examples/server/eval.ru), [contrib/rails/eval.rb](./examples/contrib/rails/eval.rb)
 
 ## Documentation
 

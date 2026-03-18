@@ -18,6 +18,14 @@ module Braintrust
           request.env["braintrust.auth"] = auth_result
           @braintrust_auth = auth_result
         end
+
+        def parse_json_body
+          body = request.body.read
+          return nil if body.nil? || body.empty?
+          JSON.parse(body)
+        rescue JSON::ParserError
+          nil
+        end
       end
     end
   end

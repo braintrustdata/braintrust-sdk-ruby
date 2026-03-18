@@ -21,7 +21,7 @@ module Braintrust
           name = body["name"]
           return {error: "Missing required field: name", status: 400} unless name
 
-          evaluator = @evaluators[name]
+          evaluator = current_evaluators[name]
           return {error: "Evaluator '#{name}' not found", status: 404} unless evaluator
 
           data = body["data"]
@@ -155,6 +155,11 @@ module Braintrust
         end
 
         private
+
+        def current_evaluators
+          return @evaluators.call if @evaluators.respond_to?(:call)
+          @evaluators
+        end
 
         # Resolve data source from the data field.
         # Returns [cases, dataset] where exactly one is non-nil.

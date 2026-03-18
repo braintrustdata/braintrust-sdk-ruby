@@ -7,7 +7,7 @@ module Braintrust
         include ActionController::Live
 
         def create
-          body = parse_body
+          body = parse_json_body
           unless body
             render json: {"error" => "Invalid JSON body"}, status: :bad_request
             return
@@ -27,16 +27,6 @@ module Braintrust
           Engine.eval_service.stream(result, auth: @braintrust_auth, sse: sse)
         ensure
           response.stream.close
-        end
-
-        private
-
-        def parse_body
-          body = request.body.read
-          return nil if body.nil? || body.empty?
-          JSON.parse(body)
-        rescue JSON::ParserError
-          nil
         end
       end
     end

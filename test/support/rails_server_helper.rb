@@ -52,9 +52,11 @@ module Test
       end
 
       def reset_engine!(evaluators: {}, auth: :none)
-        Braintrust::Contrib::Rails::Engine.config.evaluators = evaluators
-        Braintrust::Contrib::Rails::Engine.config.auth = auth
-        Braintrust::Contrib::Rails::Engine.reset_services!
+        engine = Braintrust::Contrib::Rails::Engine
+        engine.config.evaluators = evaluators
+        engine.config.auth = auth
+        # Clear the long-lived eval service so cached state does not leak across tests.
+        engine.instance_variable_set(:@eval_service, nil)
       end
     end
   end

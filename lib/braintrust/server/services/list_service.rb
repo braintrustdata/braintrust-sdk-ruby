@@ -14,7 +14,7 @@ module Braintrust
 
         def call
           result = {}
-          @evaluators.each do |name, evaluator|
+          current_evaluators.each do |name, evaluator|
             scores = (evaluator.scorers || []).each_with_index.map do |scorer, i|
               scorer_name = scorer.respond_to?(:name) ? scorer.name : "score_#{i}"
               {"name" => scorer_name}
@@ -28,6 +28,11 @@ module Braintrust
         end
 
         private
+
+        def current_evaluators
+          return @evaluators.call if @evaluators.respond_to?(:call)
+          @evaluators
+        end
 
         # Convert user-defined parameters to the dev server protocol format.
         # Wraps in a staticParameters container with "data" typed entries.

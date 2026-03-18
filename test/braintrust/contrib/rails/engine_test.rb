@@ -19,27 +19,60 @@ module Braintrust
 
         def test_auth_strategy_returns_no_auth_for_none
           Engine.config.auth = :none
-          Engine.reset_services!
           assert_instance_of Braintrust::Server::Auth::NoAuth, Engine.auth_strategy
         end
 
         def test_auth_strategy_returns_clerk_token_by_default
           Engine.config.auth = :clerk_token
-          Engine.reset_services!
           assert_instance_of Braintrust::Server::Auth::ClerkToken, Engine.auth_strategy
         end
 
         def test_auth_strategy_accepts_custom_object
           custom = Braintrust::Server::Auth::NoAuth.new
           Engine.config.auth = custom
-          Engine.reset_services!
           assert_same custom, Engine.auth_strategy
         end
 
         def test_auth_strategy_raises_for_unknown_symbol
           Engine.config.auth = :jwt
-          Engine.reset_services!
           assert_raises(ArgumentError) { Engine.auth_strategy }
+        end
+
+        def test_auth_strategy_raises_for_unknown_string
+          Engine.config.auth = "jwt"
+          assert_raises(ArgumentError) { Engine.auth_strategy }
+        end
+
+        def test_auth_strategy_reflects_config_changes_without_manual_reset
+          Engine.config.auth = :none
+          assert_instance_of Braintrust::Server::Auth::NoAuth, Engine.auth_strategy
+
+          Engine.config.auth = :clerk_token
+          assert_instance_of Braintrust::Server::Auth::ClerkToken, Engine.auth_strategy
+        end
+
+        def test_list_service_uses_latest_evaluators_without_manual_reset
+          first = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+          second = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+
+          Engine.config.evaluators = {"first" => first}
+          assert_equal ["first"], Engine.list_service.call.keys
+
+          Engine.config.evaluators = {"second" => second}
+          assert_equal ["second"], Engine.list_service.call.keys
+        end
+
+        def test_eval_service_uses_latest_evaluators_without_manual_reset
+          first = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+          second = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+          payload = {"data" => {"data" => [{"input" => "hello"}]}}
+
+          Engine.config.evaluators = {"first" => first}
+          service = Engine.eval_service
+          assert_same first, service.validate(payload.merge("name" => "first"))[:evaluator]
+
+          Engine.config.evaluators = {"second" => second}
+          assert_same second, service.validate(payload.merge("name" => "second"))[:evaluator]
         end
 
         def test_eval_service_returns_eval_instance
@@ -56,16 +89,10 @@ module Braintrust
           assert_same svc1, svc2
         end
 
-        def test_reset_services_clears_memoized_instances
-          svc1 = Engine.eval_service
-          Engine.reset_services!
-          svc2 = Engine.eval_service
-          refute_same svc1, svc2
-        end
-
-        def test_configure_yields_config_and_resets_services
+        def test_configure_yields_config_without_resetting_eval_service
           svc_before = Engine.eval_service
           evaluator = Braintrust::Eval::Evaluator.new(task: ->(input) { input })
+          payload = {"name" => "configured-eval", "data" => {"data" => [{"input" => "hello"}]}}
 
           Engine.configure do |config|
             config.evaluators = {"configured-eval" => evaluator}
@@ -74,7 +101,8 @@ module Braintrust
 
           assert_same evaluator, Engine.evaluators["configured-eval"]
           assert_instance_of Braintrust::Server::Auth::NoAuth, Engine.auth_strategy
-          refute_same svc_before, Engine.eval_service
+          assert_same svc_before, Engine.eval_service
+          assert_same evaluator, Engine.eval_service.validate(payload)[:evaluator]
         end
 
         def test_cors_middleware_is_in_middleware_stack

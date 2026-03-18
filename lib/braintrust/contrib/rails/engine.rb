@@ -23,28 +23,23 @@ module Braintrust
         end
 
         def self.auth_strategy
-          @auth_strategy ||= resolve_auth(config.auth)
+          resolve_auth(config.auth)
         end
 
         def self.list_service
-          @list_service ||= Server::Services::List.new(config.evaluators)
+          Server::Services::List.new(-> { config.evaluators })
         end
 
         # Long-lived so the state cache persists across requests.
         def self.eval_service
-          @eval_service ||= Server::Services::Eval.new(config.evaluators)
+          @eval_service ||= Server::Services::Eval.new(-> { config.evaluators })
         end
 
-        # Reset memoized services (useful in tests when config changes).
-        def self.reset_services!
-          @auth_strategy = nil
-          @list_service = nil
-          @eval_service = nil
-        end
-
-        def self.configure
-          yield config
-          reset_services!
+        # Support the explicit `|config|` style used by this integration while
+        # still delegating zero-arity DSL blocks to Rails' native implementation.
+        def self.configure(&block)
+          return super(&block) if block&.arity == 0
+          yield config if block
         end
 
         def self.resolve_auth(auth)
