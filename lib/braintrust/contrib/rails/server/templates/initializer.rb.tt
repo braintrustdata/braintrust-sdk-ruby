@@ -1,6 +1,6 @@
-require "braintrust/server/rails"
+require "braintrust/contrib/rails/server"
 
-Braintrust::Contrib::Rails::Engine.configure do |config|
+Braintrust::Contrib::Rails::Server::Engine.configure do |config|
   config.evaluators = {
 <% if @evaluators.empty? -%>
     # Add evaluator instances here, for example:

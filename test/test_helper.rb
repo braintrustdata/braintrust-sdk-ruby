@@ -77,7 +77,6 @@ require_relative "support/mock_helper"
 require_relative "support/provider_helper"
 require_relative "support/eval_helper"
 require_relative "support/server_helper"
-require_relative "support/rails_server_helper"
 require_relative "support/tracing_helper"
 
 # Include helper in all test cases
@@ -90,7 +89,6 @@ class Minitest::Test
   include ::Test::Support::MockHelper
   include ::Test::Support::ProviderHelper
   include ::Test::Support::ServerHelper
-  include ::Test::Support::RailsServerHelper
   include ::Test::Support::TracingHelper
 
   # Use Minitest hooks to clear global state after every test
