@@ -99,3 +99,12 @@ appraise "rails" do
   gem "activesupport", "~> 8.0"
   gem "railties", "~> 8.0"
 end
+
+# Rails engine testing for the eval server engine
+appraise "rails-server" do
+  gem "actionpack", "~> 8.0"
+  gem "railties", "~> 8.0"
+  gem "activesupport", "~> 8.0"
+  gem "rack", "~> 3.0"
+  gem "rack-test", "~> 2.1"
+end

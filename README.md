@@ -392,7 +392,11 @@ See [trace_scoring.rb](./examples/eval/trace_scoring.rb) for a full example.
 
 ### Dev Server
 
-Run evaluations from the Braintrust web UI against code in your own application. Define evaluators, pass them to the dev server, and start serving:
+Run evaluations from the Braintrust web UI against code in your own application.
+
+#### Run as a Rack app
+
+Define evaluators, pass them to the dev server, and start serving:
 
 ```ruby
 # eval_server.ru
@@ -418,9 +422,20 @@ run Braintrust::Server::Rack.app(
 )
 ```
 
+Add your Rack server to your Gemfile:
+
+```ruby
+gem "rack"
+gem "puma" # recommended
+```
+
+Then start the server:
+
 ```bash
 bundle exec rackup eval_server.ru -p 8300 -o 0.0.0.0
 ```
+
+See example: [server/eval.ru](./examples/server/eval.ru)
 
 **Custom evaluators**
 
@@ -438,6 +453,51 @@ class FoodClassifier < Braintrust::Eval::Evaluator
 end
 ```
 
+#### Run as a Rails engine
+
+Use the Rails engine when your evaluators live inside an existing Rails app and you want to mount the Braintrust eval server into that application.
+
+Define each evaluator in its own file, for example under `app/evaluators/`:
+
+```ruby
+# app/evaluators/food_classifier.rb
+class FoodClassifier < Braintrust::Eval::Evaluator
+  def task
+    ->(input:) { classify(input) }
+  end
+
+  def scorers
+    [Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }]
+  end
+end
+```
+
+Then generate the Braintrust initializer:
+
+```bash
+bin/rails generate braintrust:eval_server
+```
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  mount Braintrust::Contrib::Rails::Engine, at: "/braintrust"
+end
+```
+
+The generator writes `config/initializers/braintrust_server.rb`, where you can review or customize the slug-to-evaluator mapping it discovers from `app/evaluators/**/*.rb` and `evaluators/**/*.rb`.
+
+See example: [contrib/rails/eval.rb](./examples/contrib/rails/eval.rb)
+
+**Developing locally**
+
+If you want to skip authentication on incoming eval requests while developing locally:
+
+- **For Rack**: Pass `auth: :none` to `Braintrust::Server::Rack.app(...)`
+- **For Rails**: Set `config.auth = :none` in `config/initializers/braintrust_server.rb`
+
+*NOTE: Setting `:none` disables authentication on incoming requests into your server; executing evals requires a `BRAINTRUST_API_KEY` to fetch resources.*
+
 **Supported web servers**
 
 The dev server requires the `rack` gem and a Rack-compatible web server.
@@ -449,14 +509,7 @@ The dev server requires the `rack` gem and a Rack-compatible web server.
 | [Passenger](https://www.phusionpassenger.com/) | 6.x               |                                      |
 | [WEBrick](https://github.com/ruby/webrick)     | Not supported     | Does not support server-sent events. |
 
-Add your chosen server to your Gemfile:
-
-```ruby
-gem "rack"
-gem "puma" # recommended
-```
-
-See example: [server/eval.ru](./examples/server/eval.ru)
+See examples: [server/eval.ru](./examples/server/eval.ru), 
 
 ## Documentation
 
