@@ -111,9 +111,8 @@ module Braintrust
           case_context.trace = build_trace(eval_span)
 
           # Run scorers
-          case_scores = nil
           begin
-            case_scores = run_scorers(case_context)
+            run_scorers(case_context)
           rescue => e
             # Error already recorded on score span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
@@ -123,7 +122,7 @@ module Braintrust
           # Set output after task completes
           set_json_attr(eval_span, "braintrust.output_json", {output: case_context.output})
 
-          report_progress(eval_span, case_context, data: case_context.output, scores: case_scores || {})
+          report_progress(eval_span, case_context, data: case_context.output)
         end
       ensure
         eval_span&.finish
@@ -157,7 +156,6 @@ module Braintrust
       # Run scorers with OpenTelemetry tracing.
       # Creates one span per scorer, each a direct child of the current (eval) span.
       # @param case_context [CaseContext] The per-case context (output must be populated)
-      # @return [Hash] Scores hash { scorer_name => score_value }
       def run_scorers(case_context)
         scorer_kwargs = {
           input: case_context.input,
@@ -173,47 +171,41 @@ module Braintrust
           metadata: case_context.metadata || {}
         }
 
-        scores = {}
         scorer_error = nil
         eval_context.scorers.each do |scorer|
-          run_scorer(scorer, scorer_kwargs, scorer_input, scores)
+          collect_scores(run_scorer(scorer, scorer_kwargs, scorer_input))
         rescue => e
           scorer_error ||= e
         end
 
         raise scorer_error if scorer_error
-
-        scores
       end
 
       # Run a single scorer inside its own span.
       # @param scorer [Scorer] The scorer to run
       # @param scorer_kwargs [Hash] Keyword arguments for the scorer
       # @param scorer_input [Hash] Input to log on the span
-      # @param scores [Hash] Accumulator for score results
-      def run_scorer(scorer, scorer_kwargs, scorer_input, scores)
+      # @return [Array<Hash>] Raw score results from the scorer
+      def run_scorer(scorer, scorer_kwargs, scorer_input)
         tracer.in_span(scorer.name) do |score_span|
           score_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(score_span, "braintrust.span_attributes", build_scorer_span_attributes(scorer.name))
           set_json_attr(score_span, "braintrust.input_json", scorer_input)
 
-          raw_result = scorer.call(**scorer_kwargs)
-          normalized = normalize_score_result(raw_result, scorer.name)
+          score_results = scorer.call(**scorer_kwargs)
 
-          score_name = normalized[:name]
-          scores[score_name] = normalized[:score]
-
-          scorer_scores = {score_name => normalized[:score]}
-          set_json_attr(score_span, "braintrust.output_json", scorer_scores)
-          set_json_attr(score_span, "braintrust.scores", scorer_scores)
-
-          # Set scorer metadata on its span
-          if normalized[:metadata].is_a?(Hash)
-            set_json_attr(score_span, "braintrust.metadata", normalized[:metadata])
+          scorer_scores = {}
+          scorer_metadata = {}
+          score_results.each do |s|
+            scorer_scores[s[:name]] = s[:score]
+            scorer_metadata[s[:name]] = s[:metadata] if s[:metadata].is_a?(Hash)
           end
 
-          # Collect raw score for summary (thread-safe)
-          collect_score(score_name, normalized[:score])
+          set_json_attr(score_span, "braintrust.output_json", scorer_scores)
+          set_json_attr(score_span, "braintrust.scores", scorer_scores)
+          set_json_attr(score_span, "braintrust.metadata", scorer_metadata) unless scorer_metadata.empty?
+
+          score_results
         rescue => e
           record_span_error(score_span, e, "ScorerError")
           raise
@@ -302,28 +294,11 @@ module Braintrust
         span.set_attribute(key, JSON.dump(value))
       end
 
-      # Collect a single score value for summary calculation
-      # @param name [String] Scorer name
-      # @param value [Object] Score value (only Numeric values are collected)
-      def collect_score(name, value)
-        return unless value.is_a?(Numeric)
-
+      # Collect score results into the summary accumulator (thread-safe).
+      # @param score_results [Array<Hash>] Score results from a scorer
+      def collect_scores(score_results)
         @score_mutex.synchronize do
-          (@scores[name] ||= []) << value
-        end
-      end
-
-      # Normalize a scorer return value into its component parts.
-      # Scorers may return a raw Numeric or a Hash with :score, :metadata, and :name keys.
-      # @param result [Object] Raw scorer return value
-      # @param default_name [String] Scorer name to use if not overridden
-      # @return [Hash] Normalized hash with :score, :metadata, :name keys
-      def normalize_score_result(result, default_name)
-        if result.is_a?(Hash)
-          result[:name] ||= default_name
-          result
-        else
-          {score: result, metadata: nil, name: default_name}
+          score_results.each { |s| (@scores[s[:name]] ||= []) << s[:score] }
         end
       end
     end

@@ -979,7 +979,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal "HELLO", progress_calls.first["data"]
   end
 
-  def test_on_progress_receives_scores
+  def test_on_progress_receives_data
     scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
     progress_calls = []
     runner = build_simple_runner(
@@ -991,7 +991,8 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
 
     runner.run
 
-    assert_equal({"exact" => 1.0}, progress_calls.first["scores"])
+    assert_equal "HELLO", progress_calls.first["data"]
+    refute progress_calls.first.key?("scores")
   end
 
   def test_on_progress_receives_error_on_task_failure
@@ -1375,10 +1376,10 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
 
     score_span = rig.exporter.finished_spans.find { |s| s.name == "meta_scorer" }
     metadata = JSON.parse(score_span.attributes["braintrust.metadata"])
-    assert_equal({"failure_type" => "none", "confidence" => 0.99}, metadata)
+    assert_equal({"meta_scorer" => {"failure_type" => "none", "confidence" => 0.99}}, metadata)
   end
 
-  def test_scorer_hash_without_score_key
+  def test_scorer_hash_without_score_key_raises
     rig = setup_otel_test_rig
 
     scorer = Braintrust::Scorer.new("no_score_key") { |output:|
@@ -1398,12 +1399,12 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     )
     result = Braintrust::Eval::Runner.new(context).run
 
-    assert result.success?
-    # nil score is not Numeric, so not collected for stats
-    assert_equal({}, result.scores)
+    refute result.success?
+    assert_equal 1, result.errors.length
+    assert_match(/score must be Numeric/, result.errors.first)
   end
 
-  def test_scorer_hash_with_nil_score
+  def test_scorer_hash_with_nil_score_raises
     rig = setup_otel_test_rig
 
     scorer = Braintrust::Scorer.new("nil_score") { |output:|
@@ -1423,13 +1424,9 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     )
     result = Braintrust::Eval::Runner.new(context).run
 
-    assert result.success?
-    assert_equal({}, result.scores)
-
-    # Metadata should still be logged even with nil score
-    score_span = rig.exporter.finished_spans.find { |s| s.name == "nil_score" }
-    metadata = JSON.parse(score_span.attributes["braintrust.metadata"])
-    assert_equal({"reason" => "could not score"}, metadata)
+    refute result.success?
+    assert_equal 1, result.errors.length
+    assert_match(/score must be Numeric/, result.errors.first)
   end
 
   def test_multiple_scorers_mixed_return_types
@@ -1460,7 +1457,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     numeric_span = score_spans.find { |s| s.name == "numeric" }
 
     metadata = JSON.parse(structured_span.attributes["braintrust.metadata"])
-    assert_equal({"detail" => "partial"}, metadata)
+    assert_equal({"structured" => {"detail" => "partial"}}, metadata)
     assert_nil numeric_span.attributes["braintrust.metadata"]
   end
 
@@ -1488,7 +1485,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal 0.75, scores["structured"]
   end
 
-  def test_on_progress_receives_extracted_score_from_hash
+  def test_on_progress_receives_data_with_hash_scorer
     progress_calls = []
     scorer = Braintrust::Scorer.new("structured") { {score: 0.5, metadata: {x: 1}} }
     runner = build_simple_runner(
@@ -1500,7 +1497,8 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
 
     runner.run
 
-    assert_equal({"structured" => 0.5}, progress_calls.first["scores"])
+    assert_equal "HELLO", progress_calls.first["data"]
+    refute progress_calls.first.key?("scores")
   end
 
   def test_scorer_no_metadata_attr_when_all_numeric
@@ -1579,7 +1577,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal({"quality" => [0.2, 0.5]}, result.scores)
   end
 
-  def test_scorer_empty_hash_return
+  def test_scorer_empty_hash_raises
     rig = setup_otel_test_rig
 
     scorer = Braintrust::Scorer.new("empty") { |output:| {} }
@@ -1597,9 +1595,201 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     )
     result = Braintrust::Eval::Runner.new(context).run
 
+    refute result.success?
+    assert_equal 1, result.errors.length
+    assert_match(/score must be Numeric/, result.errors.first)
+  end
+
+  # ============================================
+  # Runner#run tests - multi-score (Array) return
+  # ============================================
+
+  def test_scorer_array_return_two_scores
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("llm_judge") { |output:|
+      [
+        {score: 0.9, name: "relevance"},
+        {score: 0.7, name: "factuality"}
+      ]
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    result = Braintrust::Eval::Runner.new(context).run
+
     assert result.success?
-    # Empty hash has no :score key, so score is nil and not collected
-    assert_equal({}, result.scores)
+    assert_equal({"relevance" => [0.9], "factuality" => [0.7]}, result.scores)
+  end
+
+  def test_scorer_array_return_scores_on_span
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("llm_judge") { |output:|
+      [
+        {score: 0.9, name: "relevance"},
+        {score: 0.7, name: "factuality"}
+      ]
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "llm_judge" }
+    scores = JSON.parse(score_span.attributes["braintrust.scores"])
+    assert_equal({"relevance" => 0.9, "factuality" => 0.7}, scores)
+  end
+
+  def test_scorer_array_return_metadata_keyed_by_score_name
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("llm_judge") { |output:|
+      [
+        {score: 0.9, name: "relevance", metadata: {reason: "on topic"}},
+        {score: 0.7, name: "factuality"}
+      ]
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "llm_judge" }
+    metadata = JSON.parse(score_span.attributes["braintrust.metadata"])
+    # Only the score with metadata should appear; keyed by score name
+    assert_equal({"relevance" => {"reason" => "on topic"}}, metadata)
+  end
+
+  def test_scorer_array_return_no_metadata_attr_when_none_present
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("llm_judge") { |output:|
+      [
+        {score: 0.9, name: "relevance"},
+        {score: 0.7, name: "factuality"}
+      ]
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
+
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "llm_judge" }
+    assert_nil score_span.attributes["braintrust.metadata"]
+  end
+
+  def test_scorer_array_return_multiple_cases_accumulates
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("llm_judge") { |output:|
+      [
+        {score: 1.0, name: "relevance"},
+        {score: 0.5, name: "tone"}
+      ]
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "a"}, {input: "b"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    result = Braintrust::Eval::Runner.new(context).run
+
+    assert result.success?
+    assert_equal({"relevance" => [1.0, 1.0], "tone" => [0.5, 0.5]}, result.scores)
+  end
+
+  def test_scorer_array_return_single_numeric_unchanged
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("exact") { |output:, expected:| (output == expected) ? 1.0 : 0.0 }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    result = Braintrust::Eval::Runner.new(context).run
+
+    assert result.success?
+    assert_equal({"exact" => [1.0]}, result.scores)
+  end
+
+  def test_scorer_array_return_single_hash_unchanged
+    rig = setup_otel_test_rig
+
+    scorer = Braintrust::Scorer.new("quality") { |output:|
+      {score: 0.8, metadata: {reason: "good"}}
+    }
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    result = Braintrust::Eval::Runner.new(context).run
+
+    assert result.success?
+    assert_equal({"quality" => [0.8]}, result.scores)
+
+    score_span = rig.exporter.finished_spans.find { |s| s.name == "quality" }
+    metadata = JSON.parse(score_span.attributes["braintrust.metadata"])
+    assert_equal({"quality" => {"reason" => "good"}}, metadata)
   end
 
   private
