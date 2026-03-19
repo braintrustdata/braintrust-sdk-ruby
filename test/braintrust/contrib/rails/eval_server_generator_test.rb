@@ -4,13 +4,13 @@ require "test_helper"
 
 if RAILS_SERVER_AVAILABLE
   require "rails/generators/test_case"
-  require "generators/braintrust/eval_server/eval_server_generator"
+  require "generators/braintrust/contrib/rails/eval_server/eval_server_generator"
 
   module Braintrust
     module Contrib
       module Rails
         class EvalServerGeneratorTest < ::Rails::Generators::TestCase
-          tests ::Braintrust::Generators::EvalServerGenerator
+          tests ::Braintrust::Contrib::Rails::Generators::EvalServerGenerator
           destination File.expand_path("../../../../tmp/eval_server_generator", __dir__)
           setup :prepare_destination
 
