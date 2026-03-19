@@ -99,7 +99,8 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     result = factory.normalize_scorers([lam])
     assert_equal 1, result.length
     assert_kind_of Braintrust::Scorer, result.first
-    assert_equal 1.0, result.first.call(input: "x", expected: "YES", output: "YES")
+    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
+      result.first.call(input: "x", expected: "YES", output: "YES")
   end
 
   def test_normalize_scorers_wraps_callable_class_with_kwargs
@@ -122,7 +123,8 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     result = factory.normalize_scorers([callable])
     assert_equal 1, result.length
     assert_equal "threshold_scorer", result.first.name
-    assert_equal 0.5, result.first.call(input: "x", expected: "a", output: "b")
+    assert_equal [{score: 0.5, metadata: nil, name: "threshold_scorer"}],
+      result.first.call(input: "x", expected: "a", output: "b")
   end
 
   # ============================================
@@ -201,7 +203,8 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     result = factory.normalize_scorers([lam])
     assert_equal 1, result.length
     assert_kind_of Braintrust::Scorer, result.first
-    assert_equal 1.0, result.first.call(input: "x", expected: "a", output: "a")
+    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
+      result.first.call(input: "x", expected: "a", output: "a")
   end
 
   def test_normalize_scorers_callable_class_without_name
@@ -216,7 +219,8 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     result = factory.normalize_scorers([callable])
     assert_equal 1, result.length
     assert_equal "scorer", result.first.name
-    assert_equal 1.0, result.first.call(input: "x", expected: "a", output: "a")
+    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
+      result.first.call(input: "x", expected: "a", output: "a")
   end
 
   # ============================================

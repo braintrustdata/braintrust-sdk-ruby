@@ -40,12 +40,52 @@ module Braintrust
       Block.new(name: name || DEFAULT_NAME, &block)
     end
 
-    # Included into classes that +include Scorer+. Prepends KeywordFilter
-    # so #call receives only its declared kwargs, and provides a default #name.
+    # Included into classes that +include Scorer+. Prepends KeywordFilter and
+    # ResultNormalizer so #call receives only declared kwargs and always returns
+    # Array<Hash>. Also provides a default #name and #call_parameters.
     module Callable
+      # Normalizes the raw return value of #call into Array<Hash>.
+      # Nested inside Callable because it depends on #name which Callable provides.
+      module ResultNormalizer
+        # @return [Array<Hash>] normalized score hashes with :score, :metadata, :name keys
+        def call(**kwargs)
+          normalize_score_result(super)
+        end
+
+        private
+
+        # @param result [Numeric, Hash, Array<Hash>] raw return value from #call
+        # @return [Array<Hash>] one or more score hashes with :score, :metadata, :name keys
+        # @raise [ArgumentError] if any score value is not Numeric
+        def normalize_score_result(result)
+          case result
+          when Array then result.map { |item| normalize_score_item(item) }
+          when Hash then [normalize_score_item(result)]
+          else
+            raise ArgumentError, "#{name}: score must be Numeric, got #{result.inspect}" unless result.is_a?(Numeric)
+            [{score: result, metadata: nil, name: name}]
+          end
+        end
+
+        # Fills in missing :name from the scorer and validates :score.
+        # @param item [Hash] a score hash with at least a :score key
+        # @return [Hash] the same hash with :name set
+        # @raise [ArgumentError] if :score is not Numeric
+        def normalize_score_item(item)
+          item[:name] ||= name
+          raise ArgumentError, "#{item[:name]}: score must be Numeric, got #{item[:score].inspect}" unless item[:score].is_a?(Numeric)
+          item
+        end
+      end
+
+      # Infrastructure modules prepended onto every scorer class.
+      # Used both to set up the ancestor chain and to skip past them in
+      # #call_parameters so KeywordFilter sees the real call signature.
+      PREPENDED = [Internal::Callable::KeywordFilter, ResultNormalizer].freeze
+
       # @param base [Class] the class including Callable
       def self.included(base)
-        base.prepend(Internal::Callable::KeywordFilter)
+        PREPENDED.each { |mod| base.prepend(mod) }
       end
 
       # Default name derived from the class name (e.g. FuzzyMatch -> "fuzzy_match").
@@ -54,6 +94,17 @@ module Braintrust
         klass = self.class.name&.split("::")&.last
         return Scorer::DEFAULT_NAME unless klass
         klass.gsub(/([a-z])([A-Z])/, '\1_\2').downcase
+      end
+
+      # Provides KeywordFilter with the actual call signature of the subclass.
+      # Walks past PREPENDED modules in the ancestor chain so that user-defined
+      # #call keyword params are correctly introspected.
+      # Block overrides this to point directly at @block.parameters.
+      # @return [Array<Array>] parameter list
+      def call_parameters
+        meth = method(:call)
+        meth = meth.super_method while meth.super_method && PREPENDED.include?(meth.owner)
+        meth.parameters
       end
     end
 
@@ -75,7 +126,7 @@ module Braintrust
       end
 
       # @param kwargs [Hash] keyword arguments (filtered by KeywordFilter)
-      # @return [Float, Hash, Array] score result
+      # @return [Array<Hash>] normalized score results
       def call(**kwargs)
         @block.call(**kwargs)
       end

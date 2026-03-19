@@ -10,16 +10,18 @@ class Braintrust::Internal::CallableTest < Minitest::Test
   # ============================================
 
   def test_keyword_block_receives_only_declared_kwargs
+    received = nil
     scorer = Braintrust::Scorer.new("subset") do |output:, expected:|
-      {output: output, expected: expected}
+      received = {output: output, expected: expected}
+      1.0
     end
 
-    result = scorer.call(
+    scorer.call(
       input: "apple", expected: "fruit", output: "fruit",
       metadata: {key: "val"}, tags: ["t1"]
     )
 
-    assert_equal({output: "fruit", expected: "fruit"}, result)
+    assert_equal({output: "fruit", expected: "fruit"}, received)
   end
 
   def test_keyword_block_with_single_kwarg
@@ -76,7 +78,8 @@ class Braintrust::Internal::CallableTest < Minitest::Test
     suppress_logs do
       scorer = Braintrust::Scorer.new("pos3") { |i, e, o| (o == e) ? 1.0 : 0.0 }
 
-      assert_equal 1.0, scorer.call(input: "a", expected: "b", output: "b", metadata: {})
+      assert_equal [{score: 1.0, metadata: nil, name: "pos3"}],
+        scorer.call(input: "a", expected: "b", output: "b", metadata: {})
     end
   end
 
@@ -84,7 +87,8 @@ class Braintrust::Internal::CallableTest < Minitest::Test
     suppress_logs do
       scorer = Braintrust::Scorer.new("pos4") { |i, e, o, m| m[:threshold] }
 
-      assert_equal 0.9, scorer.call(input: "a", expected: "b", output: "c", metadata: {threshold: 0.9})
+      assert_equal [{score: 0.9, metadata: nil, name: "pos4"}],
+        scorer.call(input: "a", expected: "b", output: "c", metadata: {threshold: 0.9})
     end
   end
 
@@ -95,7 +99,8 @@ class Braintrust::Internal::CallableTest < Minitest::Test
   def test_zero_arity_block_passes_through
     scorer = Braintrust::Scorer.new("zero") { 42 }
 
-    assert_equal 42, scorer.call(input: "a", expected: "b", output: "c")
+    assert_equal [{score: 42, metadata: nil, name: "zero"}],
+      scorer.call(input: "a", expected: "b", output: "c")
   end
 
   # ============================================
@@ -147,7 +152,8 @@ class Braintrust::Internal::CallableTest < Minitest::Test
 
     scorer = klass.new
     # KeywordFilter strips extra kwargs (input:, metadata:, tags:) before calling user's #call
-    assert_equal 1.0, scorer.call(input: "a", expected: "b", output: "b", metadata: {}, tags: [])
+    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
+      scorer.call(input: "a", expected: "b", output: "b", metadata: {}, tags: [])
   end
 
   # ============================================
@@ -172,6 +178,108 @@ class Braintrust::Internal::CallableTest < Minitest::Test
   def test_invalid_positional_arity_raises_for_scorer
     assert_raises(ArgumentError) do
       Braintrust::Scorer.new("bad") { |a, b| a }
+    end
+  end
+end
+
+# Direct unit tests for ResultNormalizer prepend behavior.
+class Braintrust::Scorer::Callable::ResultNormalizerTest < Minitest::Test
+  # Build a minimal class with ResultNormalizer prepended and a controllable #call return.
+  def make_scorer(name, &block)
+    klass = Class.new do
+      prepend Braintrust::Scorer::Callable::ResultNormalizer
+
+      define_method(:name) { name }
+      define_method(:call) { |**| instance_exec(&block) }
+    end
+    klass.new
+  end
+
+  # ============================================
+  # Scalar return (else branch)
+  # ============================================
+
+  def test_scalar_float_wrapped
+    scorer = make_scorer("s") { 0.9 }
+    assert_equal [{score: 0.9, metadata: nil, name: "s"}], scorer.call
+  end
+
+  def test_scalar_integer_wrapped
+    scorer = make_scorer("s") { 1 }
+    assert_equal [{score: 1, metadata: nil, name: "s"}], scorer.call
+  end
+
+  def test_scalar_nil_raises
+    scorer = make_scorer("s") { nil }
+    assert_raises(ArgumentError) { scorer.call }
+  end
+
+  def test_scalar_boolean_raises
+    scorer = make_scorer("s") { true }
+    assert_raises(ArgumentError) { scorer.call }
+  end
+
+  def test_hash_with_nil_score_raises
+    scorer = make_scorer("s") { {score: nil} }
+    assert_raises(ArgumentError) { scorer.call }
+  end
+
+  def test_array_item_with_nil_score_raises
+    scorer = make_scorer("s") { [{name: "a", score: 1.0}, {name: "b", score: nil}] }
+    assert_raises(ArgumentError) { scorer.call }
+  end
+
+  # ============================================
+  # Hash return
+  # ============================================
+
+  def test_hash_without_name_gets_scorer_name
+    scorer = make_scorer("my_scorer") { {score: 0.5} }
+    assert_equal [{score: 0.5, name: "my_scorer"}], scorer.call
+  end
+
+  def test_hash_with_name_preserves_name
+    scorer = make_scorer("my_scorer") { {score: 0.5, name: "override"} }
+    assert_equal [{score: 0.5, name: "override"}], scorer.call
+  end
+
+  def test_hash_with_metadata_preserved
+    scorer = make_scorer("s") { {score: 0.8, metadata: {reason: "close"}} }
+    assert_equal [{score: 0.8, metadata: {reason: "close"}, name: "s"}], scorer.call
+  end
+
+  # ============================================
+  # Array return
+  # ============================================
+
+  def test_array_items_passed_through
+    scorer = make_scorer("s") { [{name: "a", score: 1.0}, {name: "b", score: 0.5}] }
+    assert_equal [{name: "a", score: 1.0}, {name: "b", score: 0.5}], scorer.call
+  end
+
+  def test_array_items_without_name_get_scorer_name
+    scorer = make_scorer("my_scorer") { [{score: 1.0}, {score: 0.5}] }
+    assert_equal [{score: 1.0, name: "my_scorer"}, {score: 0.5, name: "my_scorer"}], scorer.call
+  end
+
+  def test_array_items_mixed_name_presence
+    scorer = make_scorer("fallback") { [{name: "explicit", score: 1.0}, {score: 0.5}] }
+    assert_equal [{name: "explicit", score: 1.0}, {score: 0.5, name: "fallback"}], scorer.call
+  end
+
+  def test_empty_array_returns_empty_array
+    scorer = make_scorer("s") { [] }
+    assert_equal [], scorer.call
+  end
+
+  # ============================================
+  # Always returns Array
+  # ============================================
+
+  def test_result_is_always_array
+    [0.5, {score: 1.0}, [{score: 0.9}]].each do |raw|
+      scorer = make_scorer("s") { raw }
+      assert_instance_of Array, scorer.call
     end
   end
 end

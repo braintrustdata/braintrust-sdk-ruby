@@ -259,6 +259,8 @@ Braintrust::Eval.run(
 )
 ```
 
+See [eval.rb](./examples/eval.rb) for a full example.
+
 ### Datasets
 
 Use test cases from a Braintrust dataset:
@@ -286,6 +288,8 @@ Braintrust::Eval.run(
   scorers: [...]
 )
 ```
+
+See [dataset.rb](./examples/eval/dataset.rb) for a full example.
 
 ### Scorers
 
@@ -315,6 +319,8 @@ Braintrust::Eval.run(
 )
 ```
 
+See [remote_functions.rb](./examples/eval/remote_functions.rb) for a full example.
+
 #### Scorer metadata
 
 Scorers can return a Hash with `:score` and `:metadata` to attach structured context to the score. The metadata is logged on the scorer's span and visible in the Braintrust UI for debugging and filtering:
@@ -331,6 +337,27 @@ end
 ```
 
 See [scorer_metadata.rb](./examples/eval/scorer_metadata.rb) for a full example.
+
+#### Multiple scores from one scorer
+
+When several scores can be computed together (e.g. in one LLM call), you can return an `Array` of score `Hash` instead of a single value. Each metric appears as a separate score column in the Braintrust UI:
+
+```ruby
+Braintrust::Scorer.new("summary_quality") do |output:, expected:|
+  words = output.downcase.split
+  key_terms = expected[:key_terms]
+  covered = key_terms.count { |t| words.include?(t) }
+
+  [
+    {name: "coverage", score: covered.to_f / key_terms.size, metadata: {missing: key_terms - words}},
+    {name: "conciseness", score: words.size <= expected[:max_words] ? 1.0 : 0.0}
+  ]
+end
+```
+
+`name` and `score` are required, `metadata` is optional.
+
+See [multi_score.rb](./examples/eval/multi_score.rb) for a full example.
 
 #### Trace scoring
 
@@ -361,7 +388,7 @@ Braintrust::Eval.run(
 )
 ```
 
-See examples: [eval.rb](./examples/eval.rb), [dataset.rb](./examples/eval/dataset.rb), [remote_functions.rb](./examples/eval/remote_functions.rb), [trace_scoring.rb](./examples/eval/trace_scoring.rb)
+See [trace_scoring.rb](./examples/eval/trace_scoring.rb) for a full example.
 
 ### Dev Server
 

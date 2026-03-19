@@ -312,8 +312,7 @@ class Braintrust::FunctionsTest < Minitest::Test
 
       result = scorer.call(input: "hello", expected: "HELLO", output: "HELLO", metadata: {})
 
-      assert_kind_of Numeric, result
-      assert_equal 1.0, result
+      assert_equal [{score: 1.0, metadata: nil, name: "test-ruby-sdk-scorer-structured"}], result
     end
   end
 
@@ -343,8 +342,7 @@ class Braintrust::FunctionsTest < Minitest::Test
 
       result = scorer.call(input: "test", expected: "test", output: "test", metadata: {})
 
-      assert_kind_of Numeric, result
-      assert_equal 0.45, result
+      assert_equal [{score: 0.45, metadata: nil, name: "test-ruby-sdk-code-scorer"}], result
     end
   end
 
@@ -355,45 +353,44 @@ class Braintrust::FunctionsTest < Minitest::Test
   def test_remote_scorer_handles_integer_response
     scorer = scorer_with_stubbed_invoke(1)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_equal 1.0, result
-    assert_instance_of Float, result
+    assert_equal [{score: 1.0, metadata: nil, name: "test-scorer"}], result
   end
 
   def test_remote_scorer_handles_float_response
     scorer = scorer_with_stubbed_invoke(0.75)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_equal 0.75, result
-    assert_instance_of Float, result
+    assert_equal [{score: 0.75, metadata: nil, name: "test-scorer"}], result
   end
 
   def test_remote_scorer_handles_boolean_true_response
     scorer = scorer_with_stubbed_invoke(true)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_equal 1.0, result
+    assert_equal [{score: 1.0, metadata: nil, name: "test-scorer"}], result
   end
 
   def test_remote_scorer_handles_boolean_false_response
     scorer = scorer_with_stubbed_invoke(false)
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_equal 0.0, result
+    assert_equal [{score: 0.0, metadata: nil, name: "test-scorer"}], result
   end
 
-  def test_remote_scorer_handles_nil_response
+  def test_remote_scorer_raises_for_nil_response
     scorer = scorer_with_stubbed_invoke(nil)
-    result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_nil result
+    assert_raises(ArgumentError) do
+      scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
+    end
   end
 
   def test_remote_scorer_handles_hash_with_score_key
     scorer = scorer_with_stubbed_invoke({"name" => "my_scorer", "score" => 0.9, "metadata" => {}})
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_equal 0.9, result
+    assert_equal [{score: 0.9, metadata: nil, name: "test-scorer"}], result
   end
 
   def test_remote_scorer_handles_string_numeric_response
     scorer = scorer_with_stubbed_invoke("0.85")
     result = scorer.call(input: "input", expected: "expected", output: "output", metadata: {})
-    assert_equal 0.85, result
+    assert_equal [{score: 0.85, metadata: nil, name: "test-scorer"}], result
   end
 
   def test_remote_scorer_raises_for_hash_without_score_key
