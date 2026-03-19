@@ -1,0 +1,19 @@
+require "braintrust/server/rails"
+
+Braintrust::Contrib::Rails::Engine.configure do |config|
+  config.evaluators = {
+<% if @evaluators.empty? -%>
+    # Add evaluator instances here, for example:
+    # "food-classifier" => FoodClassifier.new
+<% else -%>
+<% @evaluators.each_with_index do |evaluator, index| -%>
+    "<%= evaluator[:slug] %>" => <%= evaluator[:class_name] %>.new<%= "," unless index == @evaluators.length - 1 %>
+<% end -%>
+<% end -%>
+  }
+
+  # Default is :clerk_token. Use :none only when developing locally without
+  # incoming request authentication; outgoing Braintrust API calls still need
+  # a valid Braintrust API key.
+  config.auth = :clerk_token
+end

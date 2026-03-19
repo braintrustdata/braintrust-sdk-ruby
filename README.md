@@ -428,25 +428,27 @@ bundle exec rackup eval_server.ru -p 8300 -o 0.0.0.0
 
 **Run as a Rails engine**
 
-Use the Rails engine when your evaluators live inside an existing Rails app and you want to mount the Braintrust endpoints into that application.
+Use the Rails engine when your evaluators live inside an existing Rails app and you want to mount the Braintrust eval server into that application.
+
+Define each evaluator in its own file, for example under `app/evaluators/`:
 
 ```ruby
-# config/initializers/braintrust_server.rb
-require "braintrust/server/rails"
+# app/evaluators/food_classifier.rb
+class FoodClassifier < Braintrust::Eval::Evaluator
+  def task
+    ->(input:) { classify(input) }
+  end
 
-Braintrust::Contrib::Rails::Engine.configure do |config|
-  config.evaluators = {
-    "food-classifier" => Braintrust::Eval::Evaluator.new(
-      task: ->(input:) { FoodClassifier.classify(input) },
-      scorers: [
-        Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }
-      ]
-    )
-  }
-
-  # Default is :clerk_token. Use :none for local development.
-  config.auth = :none
+  def scorers
+    [Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }]
+  end
 end
+```
+
+Then generate the Braintrust initializer:
+
+```bash
+bin/rails generate braintrust:eval_server
 ```
 
 ```ruby
@@ -456,11 +458,13 @@ Rails.application.routes.draw do
 end
 ```
 
-Mounted at `/braintrust`, the engine exposes:
+The generator writes `config/initializers/braintrust_server.rb`, where you can review or customize the slug-to-evaluator mapping it discovers from `app/evaluators/**/*.rb` and `evaluators/**/*.rb`.
 
-- `GET /braintrust/` for the health check
-- `GET /braintrust/list` and `POST /braintrust/list` to enumerate evaluators
-- `POST /braintrust/eval` to run an evaluation and stream SSE results
+**Developing locally**
+
+If you want to skip authentication on incoming eval requests while developing locally, set `config.auth = :none` in `config/initializers/braintrust_server.rb`.
+
+That only disables authentication on requests into your Rails app. Any outgoing Braintrust API calls still require normal Braintrust credentials such as `BRAINTRUST_API_KEY`.
 
 See example: [contrib/rails/eval.rb](./examples/contrib/rails/eval.rb)
 

@@ -33,7 +33,7 @@ BRAINTRUST_DEBUG=true ruby examples/login/login_basic.rb
 ### Dev Server Examples
 
 - **`server/eval.ru`**: Set up a dev server for remote evals — define evaluators (subclass or inline) and serve them via a Rack app. Start with: `bundle exec appraisal server rackup examples/server/eval.ru -p 8300 -o 0.0.0.0`
-- **`contrib/rails/eval.rb`**: Mount the dev server as a Rails engine and configure evaluators via `Braintrust::Contrib::Rails::Engine.configure`
+- **`contrib/rails/eval.rb`**: Mount the dev server as a Rails engine, define evaluator classes under `app/evaluators/`, and generate `config/initializers/braintrust_server.rb` with `bin/rails generate braintrust:eval_server`
 
 ## Coming Soon
 
