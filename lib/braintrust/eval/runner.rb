@@ -24,8 +24,7 @@ module Braintrust
       # @param eval_context [Context] Normalized eval context
       def initialize(eval_context)
         @eval_context = eval_context
-        tracer_provider = eval_context.tracer_provider || OpenTelemetry.tracer_provider
-        @tracer = tracer_provider.tracer("braintrust-eval")
+        @tracer = eval_context.tracer_provider.tracer("braintrust-eval")
 
         # Mutex for thread-safe score collection
         @score_mutex = Mutex.new
@@ -107,7 +106,7 @@ module Braintrust
           end
 
           # Flush spans so they're queryable via BTQL, then build trace
-          eval_context.tracer_provider&.force_flush
+          eval_context.tracer_provider.force_flush if eval_context.tracer_provider.respond_to?(:force_flush)
           case_context.trace = build_trace(eval_span)
 
           # Run scorers

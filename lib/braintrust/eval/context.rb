@@ -29,36 +29,48 @@ module Braintrust
       end
 
       # Build a Context from raw user inputs.
-      # Factory normalizes task, scorers, and cases into typed wrappers.
-      # Parent is resolved into parent_span_attr and generation.
+      # Delegates to Factory for normalization.
       def self.build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
         project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
         on_progress: nil, parent: nil)
-        factory = Factory.new(state: state, tracer_provider: tracer_provider, project_name: project_name)
-
-        Context.new(
-          task: factory.normalize_task(task),
-          scorers: factory.normalize_scorers(scorers),
-          cases: factory.normalize_cases(cases),
-          experiment_id: experiment_id,
-          experiment_name: experiment_name,
-          project_id: project_id,
-          project_name: project_name,
-          state: state,
-          tracer_provider: tracer_provider,
-          on_progress: on_progress,
-          parent_span_attr: factory.resolve_parent_span_attr(parent),
-          generation: parent&.dig(:generation)
+        Factory.new(
+          state: state, tracer_provider: tracer_provider,
+          project_id: project_id, project_name: project_name
+        ).build(
+          task: task, scorers: scorers, cases: cases,
+          experiment_id: experiment_id, experiment_name: experiment_name,
+          on_progress: on_progress, parent: parent
         )
       end
 
       # Encapsulates normalization of raw user inputs into typed wrappers.
       class Factory
-        def initialize(state: nil, tracer_provider: nil, project_name: nil)
+        def initialize(state: nil, tracer_provider: nil, project_id: nil, project_name: nil)
           @state = state
           @tracer_provider = tracer_provider
+          @project_id = project_id
           @project_name = project_name
         end
+
+        def build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
+          on_progress: nil, parent: nil)
+          Context.new(
+            task: normalize_task(task),
+            scorers: normalize_scorers(scorers),
+            cases: normalize_cases(cases),
+            experiment_id: experiment_id,
+            experiment_name: experiment_name,
+            project_id: @project_id,
+            project_name: @project_name,
+            state: @state,
+            tracer_provider: @tracer_provider || OpenTelemetry.tracer_provider,
+            on_progress: on_progress,
+            parent_span_attr: resolve_parent_span_attr(parent),
+            generation: parent&.dig(:generation)
+          )
+        end
+
+        private
 
         def normalize_cases(raw)
           case raw
