@@ -6,38 +6,30 @@ require "braintrust/eval"
 # Unit tests for Eval::Context and Context::Factory
 class Braintrust::Eval::ContextTest < Minitest::Test
   # ============================================
-  # normalize_task
+  # Factory#build — task normalization
   # ============================================
 
-  def test_normalize_task_passes_through_task_instance
+  def test_build_passes_through_task_instance
     task = Braintrust::Task.new("my_task") { |input:| input.upcase }
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_task(task)
-    assert_same task, result
+    ctx = build_context(task: task)
+    assert_same task, ctx.task
   end
 
-  def test_normalize_task_wraps_lambda_with_kwargs
-    lam = ->(input:) { input.upcase }
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_task(lam)
-    assert_kind_of Braintrust::Task, result
-    assert_equal "HELLO", result.call(input: "hello")
+  def test_build_wraps_lambda_task
+    ctx = build_context(task: ->(input:) { input.upcase })
+    assert_kind_of Braintrust::Task, ctx.task
+    assert_equal "HELLO", ctx.task.call(input: "hello")
   end
 
-  def test_normalize_task_wraps_legacy_positional_lambda
+  def test_build_wraps_legacy_positional_lambda_task
     suppress_logs do
-      lam = ->(input) { input.upcase }
-      factory = Braintrust::Eval::Context::Factory.new
-
-      result = factory.normalize_task(lam)
-      assert_kind_of Braintrust::Task, result
-      assert_equal "HELLO", result.call(input: "hello")
+      ctx = build_context(task: ->(input) { input.upcase })
+      assert_kind_of Braintrust::Task, ctx.task
+      assert_equal "HELLO", ctx.task.call(input: "hello")
     end
   end
 
-  def test_normalize_task_wraps_callable_class_with_kwargs
+  def test_build_wraps_callable_class_task
     callable = Class.new do
       def initialize(prefix)
         @prefix = prefix
@@ -52,15 +44,13 @@ class Braintrust::Eval::ContextTest < Minitest::Test
       end
     end.new("Result")
 
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_task(callable)
-    assert_kind_of Braintrust::Task, result
-    assert_equal "prefixer", result.name
-    assert_equal "Result: hello", result.call(input: "hello")
+    ctx = build_context(task: callable)
+    assert_kind_of Braintrust::Task, ctx.task
+    assert_equal "prefixer", ctx.task.name
+    assert_equal "Result: hello", ctx.task.call(input: "hello")
   end
 
-  def test_normalize_task_callable_class_preserves_instance_state
+  def test_build_callable_class_task_preserves_instance_state
     callable = Class.new do
       attr_accessor :mode
 
@@ -69,41 +59,48 @@ class Braintrust::Eval::ContextTest < Minitest::Test
       end
     end.new
 
-    factory = Braintrust::Eval::Context::Factory.new
-
     callable.mode = :shout
-    task = factory.normalize_task(callable)
-    assert_equal "HELLO", task.call(input: "hello")
+    ctx = build_context(task: callable)
+    assert_equal "HELLO", ctx.task.call(input: "hello")
 
     callable.mode = :whisper
-    assert_equal "hello", task.call(input: "HELLO")
+    assert_equal "hello", ctx.task.call(input: "HELLO")
+  end
+
+  def test_build_callable_class_task_without_name
+    callable = Class.new do
+      def call(input:)
+        input.upcase
+      end
+    end.new
+
+    ctx = build_context(task: callable)
+    assert_kind_of Braintrust::Task, ctx.task
+    assert_equal "task", ctx.task.name
+    assert_equal "HELLO", ctx.task.call(input: "hello")
   end
 
   # ============================================
-  # normalize_scorers
+  # Factory#build — scorer normalization
   # ============================================
 
-  def test_normalize_scorers_passes_through_scorer_instance
+  def test_build_passes_through_scorer_instance
     scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_scorers([scorer])
-    assert_equal 1, result.length
-    assert_same scorer, result.first
+    ctx = build_context(scorers: [scorer])
+    assert_equal 1, ctx.scorers.length
+    assert_same scorer, ctx.scorers.first
   end
 
-  def test_normalize_scorers_wraps_lambda_with_kwargs
+  def test_build_wraps_lambda_scorer
     lam = ->(expected:, output:) { (output == expected) ? 1.0 : 0.0 }
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_scorers([lam])
-    assert_equal 1, result.length
-    assert_kind_of Braintrust::Scorer, result.first
+    ctx = build_context(scorers: [lam])
+    assert_equal 1, ctx.scorers.length
+    assert_kind_of Braintrust::Scorer, ctx.scorers.first
     assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
-      result.first.call(input: "x", expected: "YES", output: "YES")
+      ctx.scorers.first.call(input: "x", expected: "YES", output: "YES")
   end
 
-  def test_normalize_scorers_wraps_callable_class_with_kwargs
+  def test_build_wraps_callable_class_scorer
     callable = Class.new do
       def initialize(threshold)
         @threshold = threshold
@@ -118,52 +115,156 @@ class Braintrust::Eval::ContextTest < Minitest::Test
       end
     end.new(0.5)
 
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_scorers([callable])
-    assert_equal 1, result.length
-    assert_equal "threshold_scorer", result.first.name
+    ctx = build_context(scorers: [callable])
+    assert_equal 1, ctx.scorers.length
+    assert_equal "threshold_scorer", ctx.scorers.first.name
     assert_equal [{score: 0.5, metadata: nil, name: "threshold_scorer"}],
-      result.first.call(input: "x", expected: "a", output: "b")
+      ctx.scorers.first.call(input: "x", expected: "a", output: "b")
+  end
+
+  def test_build_wraps_lambda_scorer_alternate_arg_order
+    lam = ->(output:, expected:) { (output == expected) ? 1.0 : 0.0 }
+    ctx = build_context(scorers: [lam])
+    assert_equal 1, ctx.scorers.length
+    assert_kind_of Braintrust::Scorer, ctx.scorers.first
+    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
+      ctx.scorers.first.call(input: "x", expected: "a", output: "a")
+  end
+
+  def test_build_callable_class_scorer_without_name
+    callable = Class.new do
+      def call(output:, expected:)
+        (output == expected) ? 1.0 : 0.0
+      end
+    end.new
+
+    ctx = build_context(scorers: [callable])
+    assert_equal 1, ctx.scorers.length
+    assert_equal "scorer", ctx.scorers.first.name
+    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
+      ctx.scorers.first.call(input: "x", expected: "a", output: "a")
   end
 
   # ============================================
-  # normalize_cases
+  # Factory#build — scorer slug/ID resolution
   # ============================================
 
-  def test_normalize_cases_passes_through_cases_instance
+  def test_build_resolves_string_scorer_slug
+    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
+    resolved_kwargs = nil
+
+    Braintrust::Functions.stub(:scorer, ->(**kw) {
+      resolved_kwargs = kw
+      fake_scorer
+    }) do
+      ctx = Braintrust::Eval::Context.build(
+        task: ->(input:) { input },
+        scorers: ["my-scorer-slug"],
+        cases: [{input: "a"}],
+        project_name: "my-project",
+        state: :fake_state,
+        tracer_provider: :fake_tp
+      )
+
+      assert_equal 1, ctx.scorers.length
+      assert_same fake_scorer, ctx.scorers.first
+      assert_equal "my-project", resolved_kwargs[:project]
+      assert_equal "my-scorer-slug", resolved_kwargs[:slug]
+      assert_equal :fake_state, resolved_kwargs[:state]
+      assert_equal :fake_tp, resolved_kwargs[:tracer_provider]
+    end
+  end
+
+  def test_build_string_scorer_slug_raises_without_project
+    error = assert_raises(ArgumentError) do
+      build_context(scorers: ["some-slug"])
+    end
+    assert_match(/project is required/, error.message)
+  end
+
+  def test_build_resolves_scorer_id
+    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
+    resolved_kwargs = nil
+
+    Braintrust::Functions.stub(:scorer, ->(**kw) {
+      resolved_kwargs = kw
+      fake_scorer
+    }) do
+      scorer_id = Braintrust::Scorer::ID.new(function_id: "func-abc", version: "v3")
+      ctx = Braintrust::Eval::Context.build(
+        task: ->(input:) { input },
+        scorers: [scorer_id],
+        cases: [{input: "a"}],
+        state: :fake_state,
+        tracer_provider: :fake_tp
+      )
+
+      assert_equal 1, ctx.scorers.length
+      assert_same fake_scorer, ctx.scorers.first
+      assert_equal "func-abc", resolved_kwargs[:id]
+      assert_equal "v3", resolved_kwargs[:version]
+      assert_equal :fake_state, resolved_kwargs[:state]
+      assert_equal :fake_tp, resolved_kwargs[:tracer_provider]
+    end
+  end
+
+  def test_build_resolves_deprecated_scorer_id_alias
+    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
+    resolved_kwargs = nil
+
+    Braintrust::Functions.stub(:scorer, ->(**kw) {
+      resolved_kwargs = kw
+      fake_scorer
+    }) do
+      scorer_id = Braintrust::ScorerId.new(function_id: "func-legacy", version: "v1")
+      ctx = Braintrust::Eval::Context.build(
+        task: ->(input:) { input },
+        scorers: [scorer_id],
+        cases: [{input: "a"}],
+        state: :fake_state
+      )
+
+      assert_equal 1, ctx.scorers.length
+      assert_same fake_scorer, ctx.scorers.first
+      assert_equal "func-legacy", resolved_kwargs[:id]
+      assert_equal "v1", resolved_kwargs[:version]
+    end
+  end
+
+  # ============================================
+  # Factory#build — cases normalization
+  # ============================================
+
+  def test_build_passes_through_cases_instance
     cases = Braintrust::Eval::Cases.new([{input: "a"}])
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_cases(cases)
-    assert_same cases, result
+    ctx = build_context(cases: cases)
+    assert_same cases, ctx.cases
   end
 
-  def test_normalize_cases_wraps_array
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_cases([{input: "a"}, {input: "b"}])
-    assert_instance_of Braintrust::Eval::Cases, result
-    assert_equal 2, result.to_a.length
+  def test_build_wraps_array_cases
+    ctx = build_context(cases: [{input: "a"}, {input: "b"}])
+    assert_instance_of Braintrust::Eval::Cases, ctx.cases
+    assert_equal 2, ctx.cases.to_a.length
   end
 
-  # ============================================
-  # resolve_parent_span_attr
-  # ============================================
+  def test_build_wraps_custom_enumerable_cases
+    enum = Object.new
+    def enum.each(&block)
+      [{input: "a"}, {input: "b"}].each(&block)
+    end
 
-  def test_resolve_parent_span_attr_returns_nil_for_nil
-    factory = Braintrust::Eval::Context::Factory.new
-    assert_nil factory.resolve_parent_span_attr(nil)
+    ctx = build_context(cases: enum)
+    assert_instance_of Braintrust::Eval::Cases, ctx.cases
   end
 
-  def test_resolve_parent_span_attr_formats_correctly
-    factory = Braintrust::Eval::Context::Factory.new
-    result = factory.resolve_parent_span_attr(object_type: "experiment_id", object_id: "exp-123")
-    assert_equal "experiment_id:exp-123", result
+  def test_build_rejects_non_enumerable_cases
+    assert_raises(ArgumentError) do
+      build_context(cases: "not enumerable")
+    end
   end
 
   # ============================================
-  # Context.build
+  # Factory#build — parent resolution
   # ============================================
 
   def test_build_extracts_generation_from_parent
@@ -177,152 +278,15 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     assert_equal "experiment_id:exp-1", ctx.parent_span_attr
   end
 
-  # ============================================
-  # Factory edge cases
-  # ============================================
-
-  def test_normalize_task_callable_class_without_name
-    callable = Class.new do
-      def call(input:)
-        input.upcase
-      end
-    end.new
-
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_task(callable)
-    assert_kind_of Braintrust::Task, result
-    assert_equal "task", result.name
-    assert_equal "HELLO", result.call(input: "hello")
-  end
-
-  def test_normalize_scorers_wraps_lambda
-    lam = ->(output:, expected:) { (output == expected) ? 1.0 : 0.0 }
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_scorers([lam])
-    assert_equal 1, result.length
-    assert_kind_of Braintrust::Scorer, result.first
-    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
-      result.first.call(input: "x", expected: "a", output: "a")
-  end
-
-  def test_normalize_scorers_callable_class_without_name
-    callable = Class.new do
-      def call(output:, expected:)
-        (output == expected) ? 1.0 : 0.0
-      end
-    end.new
-
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_scorers([callable])
-    assert_equal 1, result.length
-    assert_equal "scorer", result.first.name
-    assert_equal [{score: 1.0, metadata: nil, name: "scorer"}],
-      result.first.call(input: "x", expected: "a", output: "a")
+  def test_build_nil_parent
+    ctx = build_context
+    assert_nil ctx.parent_span_attr
+    assert_nil ctx.generation
   end
 
   # ============================================
-  # normalize_scorers — String slug resolution
+  # Context.build — field pass-through
   # ============================================
-
-  def test_normalize_scorers_resolves_string_slug
-    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
-    resolved_kwargs = nil
-
-    Braintrust::Functions.stub(:scorer, ->(**kw) {
-      resolved_kwargs = kw
-      fake_scorer
-    }) do
-      factory = Braintrust::Eval::Context::Factory.new(
-        project_name: "my-project",
-        state: :fake_state,
-        tracer_provider: :fake_tp
-      )
-      result = factory.normalize_scorers(["my-scorer-slug"])
-
-      assert_equal 1, result.length
-      assert_same fake_scorer, result.first
-      assert_equal "my-project", resolved_kwargs[:project]
-      assert_equal "my-scorer-slug", resolved_kwargs[:slug]
-      assert_equal :fake_state, resolved_kwargs[:state]
-      assert_equal :fake_tp, resolved_kwargs[:tracer_provider]
-    end
-  end
-
-  def test_normalize_scorers_string_slug_raises_without_project
-    factory = Braintrust::Eval::Context::Factory.new
-
-    error = assert_raises(ArgumentError) do
-      factory.normalize_scorers(["some-slug"])
-    end
-    assert_match(/project is required/, error.message)
-  end
-
-  # ============================================
-  # normalize_scorers — Scorer::ID resolution
-  # ============================================
-
-  def test_normalize_scorers_resolves_scorer_id
-    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
-    resolved_kwargs = nil
-
-    Braintrust::Functions.stub(:scorer, ->(**kw) {
-      resolved_kwargs = kw
-      fake_scorer
-    }) do
-      factory = Braintrust::Eval::Context::Factory.new(state: :fake_state, tracer_provider: :fake_tp)
-      scorer_id = Braintrust::Scorer::ID.new(function_id: "func-abc", version: "v3")
-      result = factory.normalize_scorers([scorer_id])
-
-      assert_equal 1, result.length
-      assert_same fake_scorer, result.first
-      assert_equal "func-abc", resolved_kwargs[:id]
-      assert_equal "v3", resolved_kwargs[:version]
-      assert_equal :fake_state, resolved_kwargs[:state]
-      assert_equal :fake_tp, resolved_kwargs[:tracer_provider]
-    end
-  end
-
-  def test_normalize_scorers_resolves_deprecated_scorer_id_alias
-    fake_scorer = Braintrust::Scorer.new("resolved") { |**| 1.0 }
-    resolved_kwargs = nil
-
-    Braintrust::Functions.stub(:scorer, ->(**kw) {
-      resolved_kwargs = kw
-      fake_scorer
-    }) do
-      factory = Braintrust::Eval::Context::Factory.new(state: :fake_state)
-      scorer_id = Braintrust::ScorerId.new(function_id: "func-legacy", version: "v1")
-      result = factory.normalize_scorers([scorer_id])
-
-      assert_equal 1, result.length
-      assert_same fake_scorer, result.first
-      assert_equal "func-legacy", resolved_kwargs[:id]
-      assert_equal "v1", resolved_kwargs[:version]
-    end
-  end
-
-  def test_normalize_cases_rejects_non_enumerable
-    factory = Braintrust::Eval::Context::Factory.new
-
-    assert_raises(ArgumentError) do
-      factory.normalize_cases("not enumerable")
-    end
-  end
-
-  def test_normalize_cases_wraps_custom_enumerable
-    enum = Object.new
-    def enum.each(&block)
-      [{input: "a"}, {input: "b"}].each(&block)
-    end
-
-    factory = Braintrust::Eval::Context::Factory.new
-
-    result = factory.normalize_cases(enum)
-    assert_instance_of Braintrust::Eval::Cases, result
-  end
 
   def test_build_passes_through_all_fields
     on_progress = ->(_) {}
@@ -343,5 +307,27 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     assert_same on_progress, ctx.on_progress
     assert_nil ctx.parent_span_attr
     assert_nil ctx.generation
+  end
+
+  def test_build_defaults_tracer_provider_to_global
+    ctx = build_context
+    assert_same OpenTelemetry.tracer_provider, ctx.tracer_provider
+  end
+
+  def test_build_uses_explicit_tracer_provider
+    fake_tp = Object.new
+    ctx = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      cases: [{input: "a"}],
+      tracer_provider: fake_tp
+    )
+    assert_same fake_tp, ctx.tracer_provider
+  end
+
+  private
+
+  def build_context(task: ->(input:) { input }, scorers: [], cases: [{input: "a"}], **kwargs)
+    Braintrust::Eval::Context.build(task: task, scorers: scorers, cases: cases, **kwargs)
   end
 end

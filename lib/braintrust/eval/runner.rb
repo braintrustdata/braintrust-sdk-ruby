@@ -24,8 +24,7 @@ module Braintrust
       # @param eval_context [Context] Normalized eval context
       def initialize(eval_context)
         @eval_context = eval_context
-        tracer_provider = eval_context.tracer_provider || OpenTelemetry.tracer_provider
-        @tracer = tracer_provider.tracer("braintrust-eval")
+        @tracer = eval_context.tracer_provider.tracer("braintrust-eval")
 
         # Mutex for thread-safe score collection
         @score_mutex = Mutex.new
@@ -79,50 +78,50 @@ module Braintrust
 
       # Run a single test case with OpenTelemetry tracing
       # Creates eval span (parent) with task and score as children
-      # @param case_context [CaseContext] The per-case accumulator
+      # @param kase [CaseContext] The per-case accumulator
       # @param errors [Queue] Thread-safe error collection queue
-      def run_eval_case(case_context, errors)
+      def run_eval_case(kase, errors)
         # Each eval case starts its own trace — detach from any ambient span context
         eval_span = tracer.start_root_span("eval")
         OpenTelemetry::Trace.with_span(eval_span) do
           # Set attributes known before task execution
           eval_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(eval_span, "braintrust.span_attributes", build_span_attributes("eval"))
-          set_json_attr(eval_span, "braintrust.input_json", {input: case_context.input})
-          set_json_attr(eval_span, "braintrust.expected", case_context.expected) if case_context.expected
-          set_json_attr(eval_span, "braintrust.metadata", case_context.metadata) if case_context.metadata
-          eval_span.set_attribute("braintrust.tags", case_context.tags) if case_context.tags
-          eval_span.set_attribute("braintrust.origin", case_context.origin) if case_context.origin
+          set_json_attr(eval_span, "braintrust.input_json", {input: kase.input})
+          set_json_attr(eval_span, "braintrust.expected", kase.expected) if kase.expected
+          set_json_attr(eval_span, "braintrust.metadata", kase.metadata) if kase.metadata
+          eval_span.set_attribute("braintrust.tags", kase.tags) if kase.tags
+          eval_span.set_attribute("braintrust.origin", kase.origin) if kase.origin
 
           # Run task
           begin
-            case_context.output = run_task(case_context)
+            kase.output = run_task(kase)
           rescue => e
             # Error already recorded on task span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
             set_json_attr(eval_span, "braintrust.output_json", {output: nil})
-            errors << "Task failed for input '#{case_context.input}': #{e.message}"
-            report_progress(eval_span, case_context, error: e.message)
+            errors << "Task failed for input '#{kase.input}': #{e.message}"
+            report_progress(eval_span, kase, error: e.message)
             next
           end
 
           # Flush spans so they're queryable via BTQL, then build trace
-          eval_context.tracer_provider&.force_flush
-          case_context.trace = build_trace(eval_span)
+          eval_context.tracer_provider.force_flush if eval_context.tracer_provider.respond_to?(:force_flush)
+          kase.trace = build_trace(eval_span)
 
           # Run scorers
           begin
-            run_scorers(case_context)
+            run_scorers(kase)
           rescue => e
             # Error already recorded on score span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
-            errors << "Scorers failed for input '#{case_context.input}': #{e.message}"
+            errors << "Scorers failed for input '#{kase.input}': #{e.message}"
           end
 
           # Set output after task completes
-          set_json_attr(eval_span, "braintrust.output_json", {output: case_context.output})
+          set_json_attr(eval_span, "braintrust.output_json", {output: kase.output})
 
-          report_progress(eval_span, case_context, data: case_context.output)
+          report_progress(eval_span, kase, data: kase.output)
         end
       ensure
         eval_span&.finish
@@ -130,17 +129,17 @@ module Braintrust
 
       # Run task with OpenTelemetry tracing
       # Creates task span with input and output
-      # @param case_context [CaseContext] The per-case context
+      # @param kase [CaseContext] The per-case context
       # @return [Object] Task output
-      def run_task(case_context)
+      def run_task(kase)
         tracer.in_span("task") do |task_span|
           task_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(task_span, "braintrust.span_attributes", build_span_attributes("task"))
-          set_json_attr(task_span, "braintrust.input_json", case_context.input)
+          set_json_attr(task_span, "braintrust.input_json", kase.input)
 
           begin
             output = eval_context.task.call(
-              input: case_context.input
+              input: kase.input
             )
             set_json_attr(task_span, "braintrust.output_json", output)
             output
@@ -155,20 +154,20 @@ module Braintrust
 
       # Run scorers with OpenTelemetry tracing.
       # Creates one span per scorer, each a direct child of the current (eval) span.
-      # @param case_context [CaseContext] The per-case context (output must be populated)
-      def run_scorers(case_context)
+      # @param kase [CaseContext] The per-case context (output must be populated)
+      def run_scorers(kase)
         scorer_kwargs = {
-          input: case_context.input,
-          expected: case_context.expected,
-          output: case_context.output,
-          metadata: case_context.metadata || {},
-          trace: case_context.trace
+          input: kase.input,
+          expected: kase.expected,
+          output: kase.output,
+          metadata: kase.metadata || {},
+          trace: kase.trace
         }
         scorer_input = {
-          input: case_context.input,
-          expected: case_context.expected,
-          output: case_context.output,
-          metadata: case_context.metadata || {}
+          input: kase.input,
+          expected: kase.expected,
+          output: kase.output,
+          metadata: kase.metadata || {}
         }
 
         scorer_error = nil
@@ -241,11 +240,11 @@ module Braintrust
 
       # Report progress for a case via on_progress callback.
       # Rescues errors in the callback so a broken handler never crashes the eval.
-      def report_progress(eval_span, case_context, **fields)
+      def report_progress(eval_span, kase, **fields)
         return unless eval_context.on_progress
         progress = {"id" => eval_span.context.hex_span_id}.merge(fields.transform_keys(&:to_s))
-        if case_context.origin
-          progress["origin"] = case_context.origin.is_a?(String) ? JSON.parse(case_context.origin) : case_context.origin
+        if kase.origin
+          progress["origin"] = kase.origin.is_a?(String) ? JSON.parse(kase.origin) : kase.origin
         end
         eval_context.on_progress.call(progress)
       rescue => e
