@@ -16,7 +16,7 @@ jobs:
     outputs:
       release_tag: ${{ steps.get-tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
 
@@ -25,7 +25,7 @@ jobs:
         run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
         with:
           ruby-version: '3.4'
           bundler-cache: true
@@ -42,19 +42,18 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
         with:
           ruby-version: '3.4'
           bundler-cache: true
 
       - name: Configure RubyGems credentials
-        uses: rubygems/configure-rubygems-credentials@main
-
+        uses: rubygems/configure-rubygems-credentials@a991f145d5e4a60c4b0a3ddb204f557dc1a4f985 # main
       - name: Release
         run: bundle exec rake release
         env:
