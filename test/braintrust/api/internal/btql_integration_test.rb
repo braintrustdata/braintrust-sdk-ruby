@@ -40,22 +40,23 @@ class Braintrust::API::Internal::BTQLIntegrationTest < Minitest::Test
 
       # Query back via BTQL
       btql = Braintrust::API::Internal::BTQL.new(state)
-      result = btql.trace_spans(
+      rows, freshness = btql.trace_spans(
         object_type: "experiment",
         object_id: experiment["id"],
         root_span_id: root_span_id
       )
 
-      refute_empty result, "BTQL should return spans for the trace"
+      refute_empty rows, "BTQL should return spans for the trace"
+      assert_equal "complete", freshness
 
-      result.each do |span|
+      rows.each do |span|
         assert span.key?("span_id"), "span should have span_id"
         assert span.key?("root_span_id"), "span should have root_span_id"
         assert span.key?("span_attributes"), "span should have span_attributes"
       end
 
       # Verify score spans are excluded by the query filter
-      types = result.map { |s| s.dig("span_attributes", "type") }
+      types = rows.map { |s| s.dig("span_attributes", "type") }
       refute_includes types, "score"
     ensure
       cleanup_experiment(experiments, experiment)
@@ -76,18 +77,13 @@ class Braintrust::API::Internal::BTQLIntegrationTest < Minitest::Test
       )
 
       btql = Braintrust::API::Internal::BTQL.new(state)
+      rows, _freshness = btql.trace_spans(
+        object_type: "experiment",
+        object_id: experiment["id"],
+        root_span_id: "0000000000000000ffffffffffffffff"
+      )
 
-      Braintrust::API::Internal::BTQL.stub_const(:FRESHNESS_BASE_DELAY, 0.001) do
-        Braintrust::API::Internal::BTQL.stub_const(:MAX_FRESHNESS_DELAY, 0.001) do
-          result = btql.trace_spans(
-            object_type: "experiment",
-            object_id: experiment["id"],
-            root_span_id: "0000000000000000ffffffffffffffff"
-          )
-
-          assert_equal [], result
-        end
-      end
+      assert_equal [], rows
     ensure
       cleanup_experiment(experiments, experiment)
     end

@@ -11,19 +11,6 @@ module Braintrust
       # Internal BTQL client for querying spans.
       # Not part of the public API — instantiated directly where needed.
       class BTQL
-        # Maximum number of retries before returning partial results.
-        # Covers both freshness lag (partially indexed) and ingestion lag
-        # (spans not yet visible to BTQL after OTel flush).
-        MAX_FRESHNESS_RETRIES = 7
-
-        # Base delay (seconds) between retries (doubles each attempt, capped).
-        FRESHNESS_BASE_DELAY = 1.0
-
-        # Maximum delay (seconds) between retries. Caps exponential growth
-        # so we keep polling at a reasonable rate in the later window.
-        # Schedule: 1, 2, 4, 8, 8, 8, 8 = ~39s total worst-case.
-        MAX_FRESHNESS_DELAY = 8.0
-
         def initialize(state)
           @state = state
         end
@@ -31,36 +18,19 @@ module Braintrust
         # Query spans belonging to a specific trace within an object.
         #
         # Builds a BTQL SQL query that matches the root_span_id and excludes scorer spans.
-        # Retries with exponential backoff if the response indicates data is not yet fresh.
+        # Returns a single-shot result; callers are responsible for retry and error handling.
         #
         # @param object_type [String] e.g. "experiment"
         # @param object_id [String] Object UUID
         # @param root_span_id [String] Hex trace ID of the root span
-        # @return [Array<Hash>] Parsed span data
+        # @return [Array(Array<Hash>, String)] [rows, freshness]
         def trace_spans(object_type:, object_id:, root_span_id:)
           query = build_trace_query(
             object_type: object_type,
             object_id: object_id,
             root_span_id: root_span_id
           )
-          payload = {query: query, fmt: "jsonl"}
-
-          retries = 0
-          loop do
-            rows, freshness = execute_query(payload)
-            # Return when data is fresh AND non-empty, or we've exhausted retries.
-            # We retry on empty even when "complete" because there is ingestion lag
-            # between OTel flush and BTQL indexing — the server may report "complete"
-            # before it knows about newly-flushed spans.
-            return rows if (freshness == "complete" && !rows.empty?) || retries >= MAX_FRESHNESS_RETRIES
-
-            retries += 1
-            delay = [FRESHNESS_BASE_DELAY * (2**(retries - 1)), MAX_FRESHNESS_DELAY].min
-            sleep(delay)
-          end
-        rescue => e
-          Braintrust::Log.warn("[BTQL] Query failed: #{e.message}")
-          []
+          execute_query(query: query, fmt: "jsonl")
         end
 
         private

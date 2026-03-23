@@ -6,6 +6,7 @@ require_relative "summary"
 require_relative "trace"
 require_relative "../internal/thread_pool"
 require_relative "../api/internal/btql"
+require_relative "../internal/retry"
 
 require "opentelemetry/sdk"
 require "json"
@@ -223,9 +224,23 @@ module Braintrust
         object_id = eval_context.experiment_id
         btql = API::Internal::BTQL.new(eval_context.state)
 
-        Eval::Trace.new(
-          spans: -> { btql.trace_spans(object_type: object_type, object_id: object_id, root_span_id: root_span_id) }
-        )
+        Eval::Trace.new(spans: -> { fetch_trace_spans(btql, object_type, object_id, root_span_id) })
+      end
+
+      # Fetch trace spans with retry to handle freshness and ingestion lag.
+      # @return [Array<Hash>] Parsed span data
+      def fetch_trace_spans(btql, object_type, object_id, root_span_id)
+        rows, _freshness = Internal::Retry.with_backoff(
+          max_retries: 7, base_delay: 1.0, max_delay: 8.0,
+          until: ->(result) {
+            r, f = result
+            f == "complete" && !r.empty?
+          }
+        ) { btql.trace_spans(object_type: object_type, object_id: object_id, root_span_id: root_span_id) }
+        rows || []
+      rescue => e
+        Braintrust::Log.warn("[BTQL] Query failed: #{e.message}")
+        []
       end
 
       # Build a CaseContext from a Case struct

@@ -1792,6 +1792,84 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal({"quality" => {"reason" => "good"}}, metadata)
   end
 
+  # ============================================
+  # fetch_trace_spans — retry and error handling
+  # ============================================
+
+  def test_fetch_trace_spans_retries_until_fresh_and_non_empty
+    call_count = 0
+    btql = mock_btql do
+      call_count += 1
+      if call_count < 3
+        [[], "incomplete"]
+      else
+        [[{"span_id" => "s1"}], "complete"]
+      end
+    end
+
+    runner = build_trace_runner
+    without_retry_sleep do
+      spans = runner.send(:fetch_trace_spans, btql, "experiment", "exp-1", "trace-1")
+
+      assert_equal 1, spans.length
+      assert_equal "s1", spans[0]["span_id"]
+      assert_equal 3, call_count
+    end
+  end
+
+  def test_fetch_trace_spans_retries_when_fresh_but_empty
+    call_count = 0
+    btql = mock_btql do
+      call_count += 1
+      [[], "complete"]
+    end
+
+    runner = build_trace_runner
+    without_retry_sleep do
+      spans = runner.send(:fetch_trace_spans, btql, "experiment", "exp-1", "trace-1")
+
+      assert_equal [], spans
+      assert_equal 8, call_count # 1 initial + 7 retries
+    end
+  end
+
+  def test_fetch_trace_spans_returns_immediately_when_fresh_with_data
+    call_count = 0
+    btql = mock_btql do
+      call_count += 1
+      [[{"span_id" => "s1"}], "complete"]
+    end
+
+    runner = build_trace_runner
+    spans = runner.send(:fetch_trace_spans, btql, "experiment", "exp-1", "trace-1")
+
+    assert_equal 1, spans.length
+    assert_equal 1, call_count
+  end
+
+  def test_fetch_trace_spans_returns_empty_on_error
+    btql = mock_btql { raise Errno::ECONNREFUSED }
+
+    runner = build_trace_runner
+    spans = suppress_logs {
+      runner.send(:fetch_trace_spans, btql, "experiment", "exp-1", "trace-1")
+    }
+
+    assert_equal [], spans
+  end
+
+  def test_fetch_trace_spans_returns_partial_after_max_retries
+    btql = mock_btql { [[{"span_id" => "s1"}], "incomplete"] }
+
+    runner = build_trace_runner
+    without_retry_sleep do
+      spans = runner.send(:fetch_trace_spans, btql, "experiment", "exp-1", "trace-1")
+
+      assert_equal 1, spans.length
+      assert_equal "s1", spans[0]["span_id"]
+    end
+  end
+
   private
 
   def build_simple_runner(task:, cases:, scorers: [], on_progress: nil)
@@ -1804,5 +1882,28 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
       tracer_provider: @simple_rig.tracer_provider
     )
     Braintrust::Eval::Runner.new(context)
+  end
+
+  def build_trace_runner
+    rig = setup_otel_test_rig
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      cases: [{input: "a"}],
+      experiment_id: "exp-1",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context)
+  end
+
+  def mock_btql(&response)
+    btql = Object.new
+    btql.define_singleton_method(:trace_spans) { |**_| response.call }
+    btql
+  end
+
+  def without_retry_sleep(&block)
+    Braintrust::Internal::Retry.stub(:sleep, ->(_) {}, &block)
   end
 end
