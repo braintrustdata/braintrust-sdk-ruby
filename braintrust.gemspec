@@ -39,15 +39,4 @@ Gem::Specification.new do |spec|
   # See: https://github.com/ruby/openssl/issues/949
   # This dependency may be removable in future Ruby versions once the fix is widely available.
   spec.add_runtime_dependency "openssl", "~> 3.3.1"
-
-  # Development dependencies
-  spec.add_development_dependency "minitest", "~> 5.0"
-  spec.add_development_dependency "rake", "~> 13.0"
-  spec.add_development_dependency "standard", "~> 1.0"
-  spec.add_development_dependency "simplecov", "~> 0.22"
-  spec.add_development_dependency "vcr", "~> 6.0"
-  spec.add_development_dependency "webmock", "~> 3.0"
-  spec.add_development_dependency "appraisal", "~> 2.5"
-  spec.add_development_dependency "yard", "~> 0.9"
-  spec.add_development_dependency "kramdown", "~> 2.0"
 end
