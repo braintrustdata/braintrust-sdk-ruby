@@ -5,7 +5,7 @@ experimental = true
 _.file = ".env"
 
 [tools]
-ruby = "3.2"
+ruby = ["4.0", "3.2"]
 watchexec = "latest"
 
 [tasks.lint]

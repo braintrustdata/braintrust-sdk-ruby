@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        ruby-version: ['3.2', '3.3', '3.4']
+        ruby-version: ['3.2', '3.3', '3.4', '4.0']
 
     steps:
     # Security: Pin to commit SHA instead of tag to prevent tag hijacking
@@ -29,6 +29,7 @@ jobs:
       uses: ruby/setup-ruby@ac793fdd38cc468a4dd57246fa9d0e868aba9085
       with:
         ruby-version: ${{ matrix.ruby-version }}
+        bundler: 'latest'
         bundler-cache: true
 
     # Security: Provide secrets only to the step that needs them, not all steps
