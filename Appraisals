@@ -1,49 +1,41 @@
 # frozen_string_literal: true
 
-# Additional dependencies needed for specific gems.
-# These work around upstream gems that haven't declared dependencies properly.
-# See docs/appraisal-ruby-version-support.md for future Ruby version support.
-GEM_DEPENDENCIES = {
-  "openai" => ["base64"] # openai uses base64 but doesn't declare it (needed for Ruby 3.4+)
-}
-
-def gem_dependencies_for(gem_name)
-  GEM_DEPENDENCIES.fetch(gem_name, [])
-end
-
-# Optional dependencies to test
+# Optional dependencies to test.
+# Each version entry is a hash with:
+#   constraint: version constraint for the gem
+#   deps: hash of additional gem dependencies to install, mapping gem name to
+#         constraint (or nil for no constraint). Works around upstream gems that
+#         haven't declared dependencies properly (e.g. base64/cgi removed from stdlib).
 OPTIONAL_GEMS = {
   "openai" => {
-    "0.33" => "~> 0.33.0",
-    "0.34" => "~> 0.34.0",
-    "latest" => ">= 0.34"
+    "0.33" => {constraint: "~> 0.33.0", deps: {"base64" => nil, "cgi" => nil}},
+    "0.34" => {constraint: "~> 0.34.0", deps: {"base64" => nil, "cgi" => nil}},
+    "latest" => {constraint: ">= 0.34", deps: {"base64" => nil, "cgi" => nil}}
   },
   "anthropic" => {
-    "1.11" => "~> 1.11.0",
-    "1.12" => "~> 1.12.0",
-    "latest" => ">= 1.11"
+    "1.11" => {constraint: "~> 1.11.0", deps: {"base64" => nil, "cgi" => nil}},
+    "1.12" => {constraint: "~> 1.12.0", deps: {"base64" => nil, "cgi" => nil}},
+    "latest" => {constraint: ">= 1.11", deps: {"base64" => nil, "cgi" => nil}}
   },
   "ruby-openai" => {
-    "7.0" => "~> 7.0",
-    "8.0" => "~> 8.0",
-    "latest" => ">= 8.0"
+    "7.0" => {constraint: "~> 7.0", deps: {}},
+    "8.0" => {constraint: "~> 8.0", deps: {}},
+    "latest" => {constraint: ">= 8.0", deps: {}}
   },
   "ruby_llm" => {
-    "1.8" => "~> 1.8.0",
-    "1.9" => "~> 1.9.0",
-    "latest" => ">= 1.9"
+    "1.8" => {constraint: "~> 1.8.0", deps: {}},
+    "1.9" => {constraint: "~> 1.9.0", deps: {}},
+    "latest" => {constraint: ">= 1.9", deps: {}}
   }
 }
 
 # Generate appraisals for each optional gem
 OPTIONAL_GEMS.each do |gem_name, versions|
-  extra_deps = gem_dependencies_for(gem_name)
-
-  versions.each do |name, constraint|
+  versions.each do |name, config|
     suffix = (name == "latest") ? "" : "-#{name.tr(".", "-")}"
     appraise "#{gem_name}#{suffix}" do
-      gem gem_name, constraint
-      extra_deps.each { |dep| gem dep }
+      gem gem_name, config[:constraint]
+      config[:deps].each { |dep, version| gem dep, *[version].compact }
     end
   end
 
@@ -78,6 +70,7 @@ appraise "contrib" do
   gem "anthropic", ">= 1.11"
   gem "ruby_llm", ">= 1.9"
   gem "base64" # needed for openai gem on Ruby 3.4+
+  gem "cgi" # needed for openai/anthropic gems on Ruby 4.0+
 end
 
 # Server testing - all latest LLM SDKs + server deps for eval dev server
@@ -86,6 +79,7 @@ appraise "server" do
   gem "anthropic", ">= 1.11"
   gem "ruby_llm", ">= 1.9"
   gem "base64" # needed for openai gem on Ruby 3.4+
+  gem "cgi" # needed for openai/anthropic gems on Ruby 4.0+
   gem "rack", "~> 3.0"
   gem "rack-test", "~> 2.1"
   gem "rackup", "~> 2.3"
