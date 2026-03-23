@@ -30,6 +30,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Runtime dependencies
+  spec.add_runtime_dependency "logger", ">= 1.0"
   spec.add_runtime_dependency "opentelemetry-sdk", "~> 1.3"
   spec.add_runtime_dependency "opentelemetry-exporter-otlp", "~> 0.28"
 
