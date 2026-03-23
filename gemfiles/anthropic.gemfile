@@ -15,6 +15,7 @@ gem "vcr", "~> 6.0"
 gem "webmock", "~> 3.0"
 gem "yard", "~> 0.9"
 gem "anthropic", ">= 1.11"
+gem "base64"
 gem "cgi"
 
 gemspec path: "../"

@@ -13,9 +13,9 @@ OPTIONAL_GEMS = {
     "latest" => {constraint: ">= 0.34", deps: {"base64" => nil, "cgi" => nil}}
   },
   "anthropic" => {
-    "1.11" => {constraint: "~> 1.11.0", deps: {"cgi" => nil}},
-    "1.12" => {constraint: "~> 1.12.0", deps: {"cgi" => nil}},
-    "latest" => {constraint: ">= 1.11", deps: {"cgi" => nil}}
+    "1.11" => {constraint: "~> 1.11.0", deps: {"base64" => nil, "cgi" => nil}},
+    "1.12" => {constraint: "~> 1.12.0", deps: {"base64" => nil, "cgi" => nil}},
+    "latest" => {constraint: ">= 1.11", deps: {"base64" => nil, "cgi" => nil}}
   },
   "ruby-openai" => {
     "7.0" => {constraint: "~> 7.0", deps: {}},
