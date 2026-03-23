@@ -43,8 +43,7 @@ jobs:
         run: bundle config set --local frozen false
 
       - name: Configure RubyGems credentials
-        uses: rubygems/configure-rubygems-credentials@main
-
+        uses: rubygems/configure-rubygems-credentials@a991f145d5e4a60c4b0a3ddb204f557dc1a4f985 # main
       - name: Build and publish prerelease
         run: bundle exec rake release:prerelease
         env:
