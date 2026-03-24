@@ -25,6 +25,27 @@ class Braintrust::API::FunctionsTest < Minitest::Test
     end
   end
 
+  def test_functions_list_with_project_id
+    VCR.use_cassette("functions/list_with_project_id") do
+      api = get_test_api
+
+      # First get a project ID by listing with project_name
+      name_result = api.functions.list(project_name: @project_name)
+      assert name_result.key?("objects")
+
+      # If we have any functions, grab the project_id to test with
+      if name_result["objects"].any?
+        project_id = name_result["objects"].first["project_id"]
+
+        # Now list using project_id instead of project_name
+        id_result = api.functions.list(project_id: project_id)
+        assert_instance_of Hash, id_result
+        assert id_result.key?("objects")
+        assert_instance_of Array, id_result["objects"]
+      end
+    end
+  end
+
   def test_functions_create_new_function
     VCR.use_cassette("functions/create") do
       api = get_test_api

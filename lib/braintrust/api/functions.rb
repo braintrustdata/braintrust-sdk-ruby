@@ -25,13 +25,15 @@ module Braintrust
       # List functions with optional filters
       # GET /v1/function?project_name=X&...
       # @param project_name [String, nil] Filter by project name
+      # @param project_id [String, nil] Filter by project ID (UUID)
       # @param function_name [String, nil] Filter by function name
       # @param slug [String, nil] Filter by slug
       # @param limit [Integer, nil] Limit number of results
       # @return [Hash] Response with "objects" array
-      def list(project_name: nil, function_name: nil, slug: nil, limit: nil)
+      def list(project_name: nil, project_id: nil, function_name: nil, slug: nil, limit: nil)
         params = {}
         params["project_name"] = project_name if project_name
+        params["project_id"] = project_id if project_id
         params["function_name"] = function_name if function_name
         params["slug"] = slug if slug
         params["limit"] = limit if limit
