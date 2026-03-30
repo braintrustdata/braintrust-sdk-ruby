@@ -230,4 +230,30 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
 
     assert result.success?
   end
+
+  def test_run_forwards_parameters
+    evaluator = Braintrust::Eval::Evaluator.new(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("s") { 1.0 }]
+    )
+
+    received_params = :not_called
+    Braintrust::Eval.stub(:run, ->(task:, scorers:, parameters:, **rest) {
+      received_params = parameters
+      Braintrust::Eval::Result.new(
+        experiment_id: nil, experiment_name: nil,
+        project_id: nil, project_name: nil,
+        permalink: nil, scores: {"s" => [1.0]}, errors: [], duration: 0.01
+      )
+    }) do
+      evaluator.run(
+        [{input: "hello"}],
+        parameters: {"model" => "gpt-4"},
+        quiet: true,
+        tracer_provider: @rig.tracer_provider
+      )
+    end
+
+    assert_equal({"model" => "gpt-4"}, received_params)
+  end
 end

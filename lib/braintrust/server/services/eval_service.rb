@@ -40,7 +40,8 @@ module Braintrust
             experiment_name: body["experiment_name"],
             remote_scorer_ids: resolve_remote_scorers(body["scores"]),
             parent: resolve_parent(body["parent"]),
-            project_id: body["project_id"]
+            project_id: body["project_id"],
+            parameters: resolve_parameters(body["parameters"], evaluator)
           }
         end
 
@@ -57,6 +58,7 @@ module Braintrust
           remote_scorer_ids = validated[:remote_scorer_ids]
           parent = validated[:parent]
           project_id = validated[:project_id]
+          parameters = validated[:parameters]
 
           state = build_state(auth)
 
@@ -89,6 +91,7 @@ module Braintrust
           }
           run_opts[:parent] = parent if parent
           run_opts[:scorers] = remote_scorer_ids if remote_scorer_ids
+          run_opts[:parameters] = parameters if parameters && !parameters.empty?
           run_opts[:dataset] = dataset if dataset
 
           if state
@@ -159,6 +162,15 @@ module Braintrust
         def current_evaluators
           return @evaluators.call if @evaluators.respond_to?(:call)
           @evaluators
+        end
+
+        # Merge request parameters with evaluator's parameter defaults.
+        # Request values override defaults. Returns a string-keyed Hash.
+        def resolve_parameters(raw_params, evaluator)
+          defaults = (evaluator.parameters || {}).to_h { |name, spec|
+            [name.to_s, spec.is_a?(Hash) ? (spec[:default] || spec["default"]) : nil]
+          }.compact
+          defaults.merge(raw_params || {})
         end
 
         # Resolve data source from the data field.

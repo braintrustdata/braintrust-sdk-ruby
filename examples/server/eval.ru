@@ -44,10 +44,15 @@ class FoodClassifier < Braintrust::Eval::Evaluator
 end
 
 # Inline pattern: pass task and scorers as constructor arguments.
+# The task declares `parameters:` to receive runtime values from the Playground UI.
+# When run remotely, users can override max_length in the Playground.
 text_summarizer = Braintrust::Eval::Evaluator.new(
-  task: ->(input:) {
+  task: ->(input:, parameters:) {
+    max_length = parameters["max_length"] || 100
     words = input.to_s.split
-    words.first(10).join(" ") + ((words.length > 10) ? "..." : "")
+    summary = words.first(max_length).join(" ")
+    summary += "..." if words.length > max_length
+    summary
   },
   scorers: [
     Braintrust::Scorer.new("length_check") { |input:, output:|
@@ -55,7 +60,7 @@ text_summarizer = Braintrust::Eval::Evaluator.new(
     }
   ],
   parameters: {
-    "max_length" => {type: "number", default: 100, description: "Maximum summary length"}
+    "max_length" => {type: "number", default: 100, description: "Maximum number of words in summary"}
   }
 )
 

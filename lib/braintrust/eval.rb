@@ -105,6 +105,21 @@ module Braintrust
   #     scorers: [->(expected:, output:) { output == expected ? 1.0 : 0.0 }]
   #   )
   #
+  # @example Using parameters for configurable tasks
+  #   # Tasks and scorers that declare `parameters:` receive it automatically.
+  #   # Those that don't are unaffected — KeywordFilter strips unknown kwargs.
+  #   Braintrust::Eval.run(
+  #     project: "my-project",
+  #     experiment: "with-params",
+  #     cases: [{input: "hello", expected: "HELLO!"}],
+  #     task: ->(input:, parameters:) {
+  #       suffix = parameters["suffix"] || ""
+  #       input.upcase + suffix
+  #     },
+  #     scorers: [->(expected:, output:) { output == expected ? 1.0 : 0.0 }],
+  #     parameters: {"suffix" => "!"}
+  #   )
+  #
   # @example Using metadata and tags
   #   Braintrust::Eval.run(
   #     project: "my-project",
@@ -158,11 +173,15 @@ module Braintrust
       # @param quiet [Boolean] If true, suppress result output (default: false)
       # @param state [State, nil] Braintrust state (defaults to global state)
       # @param tracer_provider [TracerProvider, nil] OpenTelemetry tracer provider (defaults to global)
+      # @param project_id [String, nil] Project UUID (skips project creation when provided)
+      # @param parent [Hash, nil] Parent span context ({object_type:, object_id:, generation:})
+      # @param parameters [Hash, nil] Runtime parameters passed to task and scorers as a `parameters:` keyword argument
       # @return [Result]
       def run(task:, scorers:, project: nil, experiment: nil,
         cases: nil, dataset: nil, on_progress: nil,
         parallelism: 1, tags: nil, metadata: nil, update: false, quiet: false,
-        state: nil, tracer_provider: nil, project_id: nil, parent: nil)
+        state: nil, tracer_provider: nil, project_id: nil, parent: nil,
+        parameters: nil)
         # Validate required parameters
         validate_params!(task: task, scorers: scorers, cases: cases, dataset: dataset)
 
@@ -205,7 +224,8 @@ module Braintrust
           state: state,
           tracer_provider: tracer_provider,
           on_progress: on_progress,
-          parent: parent
+          parent: parent,
+          parameters: parameters
         )
         result = Runner.new(context).run(parallelism: parallelism)
 

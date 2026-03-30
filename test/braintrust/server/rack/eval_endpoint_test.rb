@@ -162,6 +162,33 @@ module Braintrust
           assert_equal 400, last_response.status
         end
 
+        def test_parameters_forwarded_to_task
+          @evaluators["param-eval"] = test_evaluator(
+            task: ->(input:, parameters:) {
+              prefix = parameters["greeting"] || "hey"
+              "#{prefix} #{input}"
+            }
+          )
+
+          post_json "/eval", {
+            name: "param-eval",
+            data: {data: [{input: "world", expected: "hi world"}]},
+            parameters: {"greeting" => "hi"},
+            experiment_name: "test-experiment",
+            project_id: "proj-123",
+            parent: {object_type: "playground_id", object_id: "pg-123"}
+          }
+
+          assert_equal 200, last_response.status
+
+          events = parse_sse_events(last_response.body)
+          progress = events.find { |e|
+            e[:event] == "progress" && JSON.parse(e[:data]).dig("event") == "json_delta"
+          }
+          data = JSON.parse(progress[:data])
+          assert_equal "hi world", JSON.parse(data["data"])
+        end
+
         def test_rejects_get
           get "/eval"
           assert_equal 405, last_response.status

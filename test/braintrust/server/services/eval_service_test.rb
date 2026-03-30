@@ -174,6 +174,99 @@ module Braintrust
           assert_nil received_opts[:state]
         end
 
+        # --- validate: parameters ---
+
+        def test_validate_extracts_parameters_from_body
+          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => [{"input" => "x"}]},
+            "parameters" => {"model" => "gpt-4", "temperature" => 0.7}
+          })
+
+          refute result.key?(:error)
+          assert_equal({"model" => "gpt-4", "temperature" => 0.7}, result[:parameters])
+        end
+
+        def test_validate_merges_parameters_with_evaluator_defaults
+          @evaluators["test-eval"] = test_evaluator(
+            task: ->(input) { input },
+            parameters: {
+              "model" => {type: "string", default: "gpt-3.5"},
+              "temperature" => {type: "number", default: 0.5}
+            }
+          )
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => [{"input" => "x"}]},
+            "parameters" => {"model" => "gpt-4"}
+          })
+
+          refute result.key?(:error)
+          assert_equal "gpt-4", result[:parameters]["model"]
+          assert_equal 0.5, result[:parameters]["temperature"]
+        end
+
+        def test_validate_returns_empty_parameters_when_none_provided
+          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => [{"input" => "x"}]}
+          })
+
+          refute result.key?(:error)
+          assert_equal({}, result[:parameters])
+        end
+
+        def test_stream_passes_parameters_to_evaluator_run
+          received_opts = nil
+          spy = test_evaluator(task: ->(input) { input })
+          spy.define_singleton_method(:run) do |cases, **opts|
+            received_opts = opts
+            Braintrust::Eval::Result.new(
+              experiment_id: nil, experiment_name: nil,
+              project_id: nil, project_name: nil,
+              permalink: nil, scores: {}, errors: [], duration: 0.01
+            )
+          end
+
+          @evaluators["spy-eval"] = spy
+          s = service
+          validated = s.validate({
+            "name" => "spy-eval",
+            "data" => {"data" => [{"input" => "x"}]},
+            "parameters" => {"model" => "gpt-4"}
+          })
+
+          collect_streamed_events(s, validated, auth: true)
+
+          assert_equal({"model" => "gpt-4"}, received_opts[:parameters])
+        end
+
+        def test_stream_does_not_pass_empty_parameters
+          received_opts = nil
+          spy = test_evaluator(task: ->(input) { input })
+          spy.define_singleton_method(:run) do |cases, **opts|
+            received_opts = opts
+            Braintrust::Eval::Result.new(
+              experiment_id: nil, experiment_name: nil,
+              project_id: nil, project_name: nil,
+              permalink: nil, scores: {}, errors: [], duration: 0.01
+            )
+          end
+
+          @evaluators["spy-eval"] = spy
+          s = service
+          validated = s.validate({
+            "name" => "spy-eval",
+            "data" => {"data" => [{"input" => "x"}]}
+          })
+
+          collect_streamed_events(s, validated, auth: true)
+
+          refute received_opts.key?(:parameters)
+        end
+
         # --- build_state ---
 
         def test_build_state_returns_nil_for_non_hash_auth

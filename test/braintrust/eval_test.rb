@@ -1339,4 +1339,49 @@ class Braintrust::EvalTest < Minitest::Test
       end
     end
   end
+
+  # ============================================
+  # Parameters integration tests
+  # ============================================
+
+  def test_eval_run_with_parameters
+    VCR.use_cassette("eval/run_with_parameters") do
+      api = get_integration_test_api
+      experiments = Braintrust::API::Internal::Experiments.new(api.state)
+      result = nil
+
+      begin
+        # Task uses parameters to transform output
+        task = ->(input:, parameters:) {
+          suffix = parameters["suffix"] || ""
+          input.upcase + suffix
+        }
+
+        scorer = Braintrust::Scorer.new("exact") do |expected:, output:|
+          (output == expected) ? 1.0 : 0.0
+        end
+
+        result = Braintrust::Eval.run(
+          project: "ruby-sdk-test",
+          experiment: "test-ruby-sdk-parameters",
+          cases: [
+            {input: "hello", expected: "HELLO!"},
+            {input: "world", expected: "WORLD!"}
+          ],
+          task: task,
+          scorers: [scorer],
+          parameters: {"suffix" => "!"},
+          state: api.state,
+          tracer_provider: @rig.tracer_provider,
+          quiet: true
+        )
+
+        assert result.success?
+        assert_equal [], result.errors
+        assert_equal [1.0, 1.0], result.scores["exact"]
+      ensure
+        experiments.delete(id: result.experiment_id) if result&.experiment_id
+      end
+    end
+  end
 end
