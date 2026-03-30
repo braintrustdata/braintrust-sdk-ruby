@@ -140,7 +140,8 @@ module Braintrust
 
           begin
             output = eval_context.task.call(
-              input: kase.input
+              input: kase.input,
+              parameters: eval_context.parameters || {}
             )
             set_json_attr(task_span, "braintrust.output_json", output)
             output
@@ -162,13 +163,15 @@ module Braintrust
           expected: kase.expected,
           output: kase.output,
           metadata: kase.metadata || {},
-          trace: kase.trace
+          trace: kase.trace,
+          parameters: eval_context.parameters || {}
         }
         scorer_input = {
           input: kase.input,
           expected: kase.expected,
           output: kase.output,
-          metadata: kase.metadata || {}
+          metadata: kase.metadata || {},
+          parameters: eval_context.parameters || {}
         }
 
         scorer_error = nil

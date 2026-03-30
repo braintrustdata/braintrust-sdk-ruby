@@ -30,6 +30,10 @@ BRAINTRUST_DEBUG=true ruby examples/login/login_basic.rb
 
 - **`login/login_basic.rb`**: Basic login example showing how to authenticate and retrieve organization information
 
+### Eval Examples
+
+- **`eval/parameters.rb`**: Use `parameters:` to configure task and scorer behavior at runtime — useful for remote evals run from the Braintrust Playground
+
 ### Dev Server Examples
 
 - **`server/eval.ru`**: Set up a dev server for remote evals — define evaluators (subclass or inline) and serve them via a Rack app. Start with: `bundle exec appraisal server rackup examples/server/eval.ru -p 8300 -o 0.0.0.0`

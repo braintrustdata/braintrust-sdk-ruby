@@ -21,6 +21,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
   - [Attachments](#attachments)
   - [Viewing traces](#viewing-traces)
 - [Evals](#evals)
+  - [Tasks](#tasks)
   - [Datasets](#datasets)
   - [Scorers](#scorers)
   - [Dev Server](#dev-server)
@@ -261,6 +262,48 @@ Braintrust::Eval.run(
 
 See [eval.rb](./examples/eval.rb) for a full example.
 
+### Tasks
+
+Define the code being evaluated as a lambda or a class. Tasks receive `input:` as a keyword argument:
+
+```ruby
+# Lambda
+task = ->(input:) { classify(input) }
+
+# Class-based (auto-derives name from class: "food_classifier")
+class FoodClassifier
+  include Braintrust::Task
+
+  def call(input:)
+    classify(input)
+  end
+end
+```
+
+#### With parameters
+
+Tasks can accept `parameters:` as input to drive their behavior:
+
+```ruby
+task = ->(input:, parameters:) {
+  value = parameters["value"]
+  from_unit = parameters["to_unit"] || 'c'
+  to_unit = parameters["from_unit"] || 'f'
+
+  convert_temp(temperature: value, from_unit: from_unit , to_unit: to_unit)
+}
+
+Braintrust::Eval.run(
+  project: "my-project",
+  cases: [...],
+  task: task,
+  scorers: [...],
+  parameters: {"value" => 23.0}
+)
+```
+
+See [parameters.rb](./examples/eval/parameters.rb) for a full example.
+
 ### Datasets
 
 Use test cases from a Braintrust dataset:
@@ -389,6 +432,19 @@ Braintrust::Eval.run(
 ```
 
 See [trace_scoring.rb](./examples/eval/trace_scoring.rb) for a full example.
+
+#### Scorer parameters
+
+Scorers can also accept `parameters:` to use runtime configuration in their scoring logic. Like tasks, scorers that don't declare `parameters:` are unaffected:
+
+```ruby
+Braintrust::Scorer.new("threshold_match") do |expected:, output:, parameters:|
+  threshold = parameters["threshold"] || 0.8
+  similarity(output, expected) >= threshold ? 1.0 : 0.0
+end
+```
+
+See [parameters.rb](./examples/eval/parameters.rb) for a full example.
 
 ### Dev Server
 

@@ -9,7 +9,7 @@ module Braintrust
     class Context
       attr_reader :task, :scorers, :cases, :experiment_id, :experiment_name,
         :project_id, :project_name, :state, :tracer_provider,
-        :on_progress, :parent_span_attr, :generation
+        :on_progress, :parent_span_attr, :generation, :parameters
 
       # @param task [Task] Normalized task wrapper
       # @param scorers [Array<Scorer>] Normalized scorer wrappers
@@ -23,9 +23,10 @@ module Braintrust
       # @param on_progress [Proc, nil] Callback invoked after each case completes, receiving a progress Hash
       # @param parent_span_attr [String, nil] Formatted parent span identifier ("type:id"), linking spans to a parent context
       # @param generation [Integer, nil] Generation number from the parent span context, used to link spans in a trace hierarchy
+      # @param parameters [Hash, nil] Runtime parameters passed to task and scorers as a `parameters:` keyword argument
       def initialize(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
         project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
-        on_progress: nil, parent_span_attr: nil, generation: nil)
+        on_progress: nil, parent_span_attr: nil, generation: nil, parameters: nil)
         @task = task
         @scorers = scorers
         @cases = cases
@@ -38,6 +39,7 @@ module Braintrust
         @on_progress = on_progress
         @parent_span_attr = parent_span_attr
         @generation = generation
+        @parameters = parameters
       end
 
       # Build a Context from raw user inputs.
@@ -53,17 +55,18 @@ module Braintrust
       # @param tracer_provider [#tracer, nil] OpenTelemetry tracer provider; defaults to global provider
       # @param on_progress [Proc, nil] Callback invoked after each case completes, receiving a progress Hash
       # @param parent [Hash, nil] Parent span info with keys :object_type, :object_id, and optionally :generation
+      # @param parameters [Hash, nil] Runtime parameters passed to task and scorers as a `parameters:` keyword argument
       # @return [Context]
       def self.build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
         project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
-        on_progress: nil, parent: nil)
+        on_progress: nil, parent: nil, parameters: nil)
         Factory.new(
           state: state, tracer_provider: tracer_provider,
           project_id: project_id, project_name: project_name
         ).build(
           task: task, scorers: scorers, cases: cases,
           experiment_id: experiment_id, experiment_name: experiment_name,
-          on_progress: on_progress, parent: parent
+          on_progress: on_progress, parent: parent, parameters: parameters
         )
       end
 
@@ -90,7 +93,7 @@ module Braintrust
         # @param parent [Hash, nil] Parent span info with keys :object_type, :object_id, and optionally :generation
         # @return [Context]
         def build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
-          on_progress: nil, parent: nil)
+          on_progress: nil, parent: nil, parameters: nil)
           Context.new(
             task: normalize_task(task),
             scorers: normalize_scorers(scorers),
@@ -103,7 +106,8 @@ module Braintrust
             tracer_provider: @tracer_provider || OpenTelemetry.tracer_provider,
             on_progress: on_progress,
             parent_span_attr: resolve_parent_span_attr(parent),
-            generation: parent&.dig(:generation)
+            generation: parent&.dig(:generation),
+            parameters: parameters
           )
         end
 

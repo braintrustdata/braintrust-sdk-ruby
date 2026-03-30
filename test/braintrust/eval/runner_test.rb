@@ -1906,4 +1906,162 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
   def without_retry_sleep(&block)
     Braintrust::Internal::Retry.stub(:sleep, ->(_) {}, &block)
   end
+
+  # ============================================
+  # Runner — parameters support
+  # ============================================
+
+  def test_runner_passes_parameters_to_task
+    rig = setup_otel_test_rig
+    received_params = nil
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:, parameters:) {
+        received_params = parameters
+        input.upcase
+      },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider,
+      parameters: {"model" => "gpt-4", "temperature" => 0.7}
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({"model" => "gpt-4", "temperature" => 0.7}, received_params)
+  end
+
+  def test_runner_task_without_parameters_kwarg_still_works
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider,
+      parameters: {"model" => "gpt-4"}
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+  end
+
+  def test_runner_passes_parameters_to_scorer
+    rig = setup_otel_test_rig
+    received_params = nil
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [
+        Braintrust::Scorer.new("param_scorer") { |output:, parameters:|
+          received_params = parameters
+          1.0
+        }
+      ],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider,
+      parameters: {"threshold" => 0.5}
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({"threshold" => 0.5}, received_params)
+  end
+
+  def test_runner_scorer_without_parameters_kwarg_still_works
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [
+        Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
+      ],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider,
+      parameters: {"model" => "gpt-4"}
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({"exact" => [1.0]}, result.scores)
+  end
+
+  def test_runner_passes_empty_hash_when_no_parameters
+    rig = setup_otel_test_rig
+    received_params = nil
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:, parameters:) {
+        received_params = parameters
+        input.upcase
+      },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({}, received_params)
+  end
+
+  def test_runner_passes_parameters_to_callable_class_task
+    rig = setup_otel_test_rig
+    received_params = nil
+
+    callable = Class.new do
+      define_method(:call) do |input:, parameters:|
+        received_params = parameters
+        input.upcase
+      end
+    end.new
+
+    context = Braintrust::Eval::Context.build(
+      task: callable,
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider,
+      parameters: {"model" => "gpt-4"}
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({"model" => "gpt-4"}, received_params)
+  end
+
+  def test_runner_parameters_with_parallelism
+    rig = setup_otel_test_rig
+    received = Queue.new
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:, parameters:) {
+        received << parameters
+        input.upcase
+      },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "a"}, {input: "b"}, {input: "c"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider,
+      parameters: {"model" => "gpt-4"}
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run(parallelism: 3)
+    assert result.success?
+    params = [].tap { |a| a << received.pop until received.empty? }
+    assert_equal 3, params.length
+    assert(params.all? { |p| p == {"model" => "gpt-4"} })
+  end
 end

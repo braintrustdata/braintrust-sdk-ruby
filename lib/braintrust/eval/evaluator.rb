@@ -27,6 +27,18 @@ module Braintrust
     #       Braintrust::Scorer.new("exact_match") { |expected:, output:| output == expected ? 1.0 : 0.0 }
     #     ]
     #   )
+    #
+    # @example Remote eval with parameters (for Playground UI)
+    #   Braintrust::Eval::Evaluator.new(
+    #     task: ->(input:, parameters:) {
+    #       model = parameters["model"] || "gpt-4"
+    #       # Use model to generate response...
+    #     },
+    #     scorers: [Braintrust::Scorer.new("exact") { |expected:, output:| output == expected ? 1.0 : 0.0 }],
+    #     parameters: {
+    #       "model" => {type: "string", default: "gpt-4", description: "Model to use"}
+    #     }
+    #   )
     class Evaluator
       attr_accessor :task, :scorers, :parameters
 
@@ -64,13 +76,15 @@ module Braintrust
       def run(cases, on_progress: nil, quiet: false,
         project: nil, experiment: nil, project_id: nil,
         dataset: nil, scorers: nil, parent: nil,
-        state: nil, update: false, tracer_provider: nil)
+        state: nil, update: false, tracer_provider: nil,
+        parameters: nil)
         all_scorers = scorers ? self.scorers + scorers : self.scorers
         Braintrust::Eval.run(
           task: task, scorers: all_scorers, cases: cases, dataset: dataset,
           project: project, experiment: experiment, project_id: project_id,
           parent: parent, on_progress: on_progress, quiet: quiet,
-          state: state, update: update, tracer_provider: tracer_provider
+          state: state, update: update, tracer_provider: tracer_provider,
+          parameters: parameters
         )
       end
     end

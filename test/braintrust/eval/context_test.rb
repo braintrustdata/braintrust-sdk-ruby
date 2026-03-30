@@ -325,6 +325,21 @@ class Braintrust::Eval::ContextTest < Minitest::Test
     assert_same fake_tp, ctx.tracer_provider
   end
 
+  # ============================================
+  # Context.build — parameters pass-through
+  # ============================================
+
+  def test_build_passes_through_parameters
+    params = {"model" => "gpt-4", "temperature" => 0.7}
+    ctx = build_context(parameters: params)
+    assert_equal params, ctx.parameters
+  end
+
+  def test_build_defaults_parameters_to_nil
+    ctx = build_context
+    assert_nil ctx.parameters
+  end
+
   private
 
   def build_context(task: ->(input:) { input }, scorers: [], cases: [{input: "a"}], **kwargs)
