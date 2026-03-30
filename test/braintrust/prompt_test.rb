@@ -35,6 +35,19 @@ class Braintrust::PromptTest < Minitest::Test
     assert_equal "proj-456", prompt.project_id
   end
 
+  def test_prompt_version
+    data = @function_data.merge("_xact_id" => "xact-789")
+    prompt = Braintrust::Prompt.new(data)
+
+    assert_equal "xact-789", prompt.version
+  end
+
+  def test_prompt_version_nil_when_not_present
+    prompt = Braintrust::Prompt.new(@function_data)
+
+    assert_nil prompt.version
+  end
+
   def test_prompt_messages
     prompt = Braintrust::Prompt.new(@function_data)
     messages = prompt.messages
@@ -330,6 +343,57 @@ class Braintrust::PromptLoadTest < Minitest::Test
     end
   end
 
+  def test_prompt_load_requires_project_or_project_id
+    error = assert_raises(ArgumentError) do
+      Braintrust::Prompt.load(slug: "some-prompt")
+    end
+
+    assert_match(/either project or project_id/i, error.message)
+  end
+
+  def test_prompt_load_with_project_id
+    VCR.use_cassette("prompt/load_with_project_id") do
+      api = get_test_api
+      slug = "test-prompt-project-id"
+
+      # Create a prompt to get a valid project_id
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [
+              {role: "user", content: "Project ID test: {{name}}"}
+            ]
+          },
+          options: {
+            model: "gpt-4o-mini"
+          }
+        }
+      )
+
+      project_id = created["project_id"]
+      assert project_id, "Expected project_id in response"
+
+      # Load the prompt using project_id instead of project name
+      prompt = Braintrust::Prompt.load(project_id: project_id, slug: slug, api: api)
+
+      assert_instance_of Braintrust::Prompt, prompt
+      assert_equal slug, prompt.slug
+      assert_equal project_id, prompt.project_id
+      assert_equal "gpt-4o-mini", prompt.model
+
+      # Build and verify content
+      result = prompt.build(name: "World")
+      assert_equal "Project ID test: World", result[:messages][0][:content]
+
+      # Clean up
+      api.functions.delete(id: prompt.id)
+    end
+  end
+
   def test_prompt_load_with_version
     VCR.use_cassette("prompt/load_with_version") do
       api = get_test_api
@@ -367,6 +431,9 @@ class Braintrust::PromptLoadTest < Minitest::Test
       assert_instance_of Braintrust::Prompt, prompt
       assert_equal slug, prompt.slug
       assert_equal "gpt-4o-mini", prompt.model
+
+      # Verify version accessor returns _xact_id
+      assert prompt.version, "Expected version to be set from _xact_id"
 
       # Build and verify content
       result = prompt.build(name: "World")
