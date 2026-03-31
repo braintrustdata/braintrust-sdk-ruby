@@ -28,20 +28,34 @@ class Braintrust::API::FunctionsTest < Minitest::Test
   def test_functions_list_with_project_id
     VCR.use_cassette("functions/list_with_project_id") do
       api = get_test_api
+      function_slug = "test-ruby-sdk-list-by-project-id"
 
-      # First get a project ID by listing with project_name
-      name_result = api.functions.list(project_name: @project_name)
-      assert name_result.key?("objects")
+      # Create a function so we always have something to list
+      created = api.functions.create(
+        project_name: @project_name,
+        slug: function_slug,
+        function_data: {type: "prompt"},
+        prompt_data: {
+          prompt: {
+            type: "chat",
+            messages: [{role: "user", content: "Test"}]
+          },
+          options: {model: "gpt-4o-mini"}
+        }
+      )
+      project_id = created["project_id"]
+      assert project_id, "Expected project_id in create response"
 
-      # If we have any functions, grab the project_id to test with
-      if name_result["objects"].any?
-        project_id = name_result["objects"].first["project_id"]
-
-        # Now list using project_id instead of project_name
+      begin
+        # List using project_id — must always exercise this code path
         id_result = api.functions.list(project_id: project_id)
         assert_instance_of Hash, id_result
         assert id_result.key?("objects")
         assert_instance_of Array, id_result["objects"]
+        assert id_result["objects"].any?, "Expected at least one function"
+        assert id_result["objects"].all? { |f| f["project_id"] == project_id }
+      ensure
+        api.functions.delete(id: created["id"])
       end
     end
   end

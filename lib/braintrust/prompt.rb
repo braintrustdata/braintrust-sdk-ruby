@@ -31,8 +31,8 @@ module Braintrust
       result = api.functions.list(project_name: project, project_id: project_id, slug: slug)
       function = result.dig("objects")&.first
 
-      identifier = project || project_id
-      raise Error, "Prompt '#{slug}' not found in project '#{identifier}'" unless function
+      identifier = project ? "project '#{project}'" : "project_id '#{project_id}'"
+      raise Error, "Prompt '#{slug}' not found in #{identifier}" unless function
 
       # Fetch full function data including prompt_data
       full_data = api.functions.get(id: function["id"], version: version)

@@ -432,8 +432,8 @@ class Braintrust::PromptLoadTest < Minitest::Test
       assert_equal slug, prompt.slug
       assert_equal "gpt-4o-mini", prompt.model
 
-      # Verify version accessor returns _xact_id
-      assert prompt.version, "Expected version to be set from _xact_id"
+      # Verify version accessor returns the exact _xact_id that was requested
+      assert_equal version_id, prompt.version
 
       # Build and verify content
       result = prompt.build(name: "World")
