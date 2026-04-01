@@ -11,23 +11,28 @@ module Braintrust
   #   params = prompt.build(text: "Article to summarize...")
   #   client.messages.create(**params)
   class Prompt
-    attr_reader :id, :name, :slug, :project_id
+    attr_reader :id, :name, :slug, :project_id, :version
 
     # Load a prompt from Braintrust
     #
-    # @param project [String] Project name
+    # @param project [String, nil] Project name (provide either project or project_id)
+    # @param project_id [String, nil] Project ID (UUID, provide either project or project_id)
     # @param slug [String] Prompt slug
     # @param version [String, nil] Specific version (default: latest)
     # @param defaults [Hash] Default variable values for build()
     # @param api [API, nil] Braintrust API client (default: creates one using global state)
     # @return [Prompt]
-    def self.load(project:, slug:, version: nil, defaults: {}, api: nil)
+    def self.load(slug:, project: nil, project_id: nil, version: nil, defaults: {}, api: nil)
+      raise ArgumentError, "Either project or project_id is required" unless project || project_id
+
       api ||= API.new
 
       # Find the function by project + slug
-      result = api.functions.list(project_name: project, slug: slug)
+      result = api.functions.list(project_name: project, project_id: project_id, slug: slug)
       function = result.dig("objects")&.first
-      raise Error, "Prompt '#{slug}' not found in project '#{project}'" unless function
+
+      identifier = project ? "project '#{project}'" : "project_id '#{project_id}'"
+      raise Error, "Prompt '#{slug}' not found in #{identifier}" unless function
 
       # Fetch full function data including prompt_data
       full_data = api.functions.get(id: function["id"], version: version)
@@ -47,6 +52,7 @@ module Braintrust
       @name = data["name"]
       @slug = data["slug"]
       @project_id = data["project_id"]
+      @version = data["_xact_id"]
     end
 
     # Get the raw prompt definition
