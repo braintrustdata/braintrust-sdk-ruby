@@ -168,12 +168,11 @@ Follow existing example patterns:
 **Do in this order:**
 
 - [ ] **Appraisals FIRST**: Add to `Appraisals` file (latest + 2 recent + uninstalled), run `bundle exec appraisal generate`
-- [ ] **Tests**: `test/braintrust/trace/your_provider_test.rb`
-- [ ] **Integration**: `lib/braintrust/trace/contrib/your_provider.rb`
-- [ ] **VCR cassettes**: Record with `VCR_MODE=all bundle exec appraisal <name> rake test` — **never hand-craft cassettes**
-- [ ] **Auto-load**: Add to `lib/braintrust/trace.rb` with `begin/rescue LoadError`
-- [ ] **Example**: `examples/your_provider.rb`
-- [ ] **Example**: `examples/internal/your_provider.rb` (comprehensive internal example)
+- [ ] **Tests**: `test/braintrust/contrib/your_provider/`
+- [ ] **Integration**: `lib/braintrust/contrib/your_provider/`
+- [ ] **VCR cassettes**: Record with `VCR_MODE=all bundle exec appraisal <name> ruby -Ilib:test test/...` — **never hand-craft cassettes**
+- [ ] **Example**: `examples/contrib/your_provider.rb` — run it and verify the permalink works
+- [ ] **Example**: `examples/internal/contrib/your_provider/basic.rb` (comprehensive internal example)
 - [ ] **Env var**: Add to `.env.example` if needed
 
 ## Test Coverage (LLM Providers)
