@@ -168,12 +168,11 @@ Follow existing example patterns:
 **Do in this order:**
 
 - [ ] **Appraisals FIRST**: Add to `Appraisals` file (latest + 2 recent + uninstalled), run `bundle exec appraisal generate`
-- [ ] **Tests**: `test/braintrust/trace/your_provider_test.rb`
-- [ ] **Integration**: `lib/braintrust/trace/contrib/your_provider.rb`
-- [ ] **VCR cassettes**: `test/fixtures/vcr_cassettes/your_provider/` (record as you write tests)
-- [ ] **Auto-load**: Add to `lib/braintrust/trace.rb` with `begin/rescue LoadError`
-- [ ] **Example**: `examples/your_provider.rb`
-- [ ] **Example**: `examples/internal/your_provider.rb` (comprehensive internal example)
+- [ ] **Tests**: `test/braintrust/contrib/your_provider/`
+- [ ] **Integration**: `lib/braintrust/contrib/your_provider/`
+- [ ] **VCR cassettes**: Record with `VCR_MODE=all bundle exec appraisal <name> ruby -Ilib:test test/...` — **never hand-craft cassettes**
+- [ ] **Example**: `examples/contrib/your_provider.rb` — run it and verify the permalink works
+- [ ] **Example**: `examples/internal/contrib/your_provider/basic.rb` (comprehensive internal example)
 - [ ] **Env var**: Add to `.env.example` if needed
 
 ## Test Coverage (LLM Providers)
@@ -324,11 +323,25 @@ Use shared `TokenParser.parse_usage_tokens(usage)` in `lib/braintrust/trace/toke
 
 ## VCR Cassettes
 
+**CRITICAL: Never hand-craft cassette YAML files.** Cassettes must be recorded from real API responses so they contain authentic request/response data. Hand-crafted cassettes produce tests that pass against fake data but fail against real APIs.
+
+To record cassettes (requires real API keys in env):
+
 ```bash
-VCR_MODE=all bundle exec rake test           # Re-record all
-VCR_MODE=new_episodes bundle exec rake test  # Record new only
-VCR_OFF=true bundle exec rake test           # Skip VCR
+# Record cassettes for a specific appraisal (preferred — targets only your new tests)
+VCR_MODE=all bundle exec appraisal <name> ruby -Ilib:test test/braintrust/contrib/<name>/...
+
+# Re-record all cassettes for an appraisal
+VCR_MODE=all bundle exec appraisal <name> rake test
+
+# Record only new cassettes (keep existing)
+VCR_MODE=new_episodes bundle exec appraisal <name> rake test
+
+# Skip VCR entirely (useful for local debugging with a real key)
+VCR_OFF=true bundle exec rake test
 ```
+
+An `AGENTS.md` file in `test/fixtures/vcr_cassettes/` explains this to future contributors.
 
 ## Reference Files
 
