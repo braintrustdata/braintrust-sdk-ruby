@@ -38,5 +38,5 @@ Gem::Specification.new do |spec|
   # that occur with OpenSSL 3.6 + Ruby (certificate verify failed: unable to get certificate CRL).
   # See: https://github.com/ruby/openssl/issues/949
   # This dependency may be removable in future Ruby versions once the fix is widely available.
-  spec.add_runtime_dependency "openssl", "~> 3.3.1"
+  spec.add_runtime_dependency "openssl", ">= 3.3.1", "< 5.0"
 end
