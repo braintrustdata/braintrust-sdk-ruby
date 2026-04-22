@@ -40,11 +40,12 @@ module Braintrust
     #     }
     #   )
     class Evaluator
-      attr_accessor :task, :scorers, :parameters
+      attr_accessor :task, :scorers, :classifiers, :parameters
 
-      def initialize(task: nil, scorers: [], parameters: {})
+      def initialize(task: nil, scorers: [], classifiers: [], parameters: {})
         @task = task
         @scorers = scorers
+        @classifiers = classifiers
         @parameters = parameters
       end
 
@@ -68,6 +69,7 @@ module Braintrust
       # @param project_id [String, nil] Project UUID (skips project creation)
       # @param dataset [String, Hash, Dataset, Dataset::ID, nil] Dataset to fetch
       # @param scorers [Array, nil] Additional scorers (merged with evaluator's own)
+      # @param classifiers [Array, nil] Additional classifiers (merged with evaluator's own)
       # @param parent [Hash, nil] Parent span context
       # @param state [State, nil] Braintrust state
       # @param update [Boolean] If true, allow reusing existing experiment (default: false)
@@ -75,16 +77,19 @@ module Braintrust
       # @return [Result]
       def run(cases, on_progress: nil, quiet: false,
         project: nil, experiment: nil, project_id: nil,
-        dataset: nil, scorers: nil, parent: nil,
+        dataset: nil, scorers: nil, classifiers: nil, parent: nil,
         state: nil, update: false, tracer_provider: nil,
         parameters: nil)
         all_scorers = scorers ? self.scorers + scorers : self.scorers
+        all_classifiers = classifiers ?
+          self.classifiers + classifiers :
+          self.classifiers
         Braintrust::Eval.run(
-          task: task, scorers: all_scorers, cases: cases, dataset: dataset,
-          project: project, experiment: experiment, project_id: project_id,
-          parent: parent, on_progress: on_progress, quiet: quiet,
-          state: state, update: update, tracer_provider: tracer_provider,
-          parameters: parameters
+          task: task, scorers: all_scorers, classifiers: all_classifiers,
+          cases: cases, dataset: dataset, project: project,
+          experiment: experiment, project_id: project_id, parent: parent,
+          on_progress: on_progress, quiet: quiet, state: state, update: update,
+          tracer_provider: tracer_provider, parameters: parameters
         )
       end
     end

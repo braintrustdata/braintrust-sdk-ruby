@@ -2065,3 +2065,272 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert(params.all? { |p| p == {"model" => "gpt-4"} })
   end
 end
+
+class Braintrust::Eval::RunnerClassifierTest < Minitest::Test
+  def test_runner_with_classifiers_only
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("category") { |output:| {name: "category", id: "greeting", label: "Greeting"} }
+      ],
+      cases: [{input: "hello", expected: nil}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({}, result.scores)
+    assert_equal({"category" => [{id: "greeting", label: "Greeting"}]}, result.classifications)
+  end
+
+  def test_runner_with_scorers_and_classifiers
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }],
+      classifiers: [
+        Braintrust::Classifier.new("category") { |**| {name: "category", id: "text"} }
+      ],
+      cases: [{input: "hello", expected: "HELLO"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal [1.0], result.scores["exact"]
+    assert_equal({"category" => [{id: "text"}]}, result.classifications)
+  end
+
+  def test_runner_classifier_nil_return_produces_no_classifications
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("maybe") { |**| nil }
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_nil result.classifications
+  end
+
+  def test_runner_classifier_error_does_not_abort_eval
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [Braintrust::Scorer.new("always_one") { 1.0 }],
+      classifiers: [
+        Braintrust::Classifier.new("broken") { |**| raise "classifier boom" }
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    # Eval succeeds — classifier errors don't add to errors queue
+    assert result.success?
+    assert_equal [1.0], result.scores["always_one"]
+    assert_nil result.classifications
+  end
+
+  def test_runner_classifier_error_does_not_affect_other_classifiers
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("broken") { |**| raise "boom" },
+        Braintrust::Classifier.new("working") { |**| {name: "working", id: "ok"} }
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_equal({"working" => [{id: "ok"}]}, result.classifications)
+  end
+
+  def test_runner_classifier_error_logged_to_span_metadata
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("broken") { |**| raise "classifier boom" }
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    Braintrust::Eval::Runner.new(context).run
+    spans = rig.drain
+
+    eval_span = spans.find { |s| s.name == "eval" }
+    refute_nil eval_span
+    metadata = JSON.parse(eval_span.attributes["braintrust.metadata"] || "{}")
+    assert_equal "classifier boom", metadata.dig("classifier_errors", "broken")
+  end
+
+  def test_runner_classifier_span_attributes
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("my_classifier") { |**| {name: "my_classifier", id: "foo"} }
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    Braintrust::Eval::Runner.new(context).run
+    spans = rig.drain
+
+    classifier_span = spans.find { |s| s.name == "my_classifier" }
+    refute_nil classifier_span
+    span_attrs = JSON.parse(classifier_span.attributes["braintrust.span_attributes"])
+    assert_equal "classifier", span_attrs["type"]
+    assert_equal "scorer", span_attrs["purpose"]
+    assert_equal "my_classifier", span_attrs["name"]
+  end
+
+  def test_runner_classifier_multi_label_result
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("sentiment") do |**|
+          [
+            {name: "sentiment", id: "positive", label: "Positive"},
+            {name: "sentiment", id: "enthusiastic", label: "Enthusiastic"}
+          ]
+        end
+      ],
+      cases: [{input: "great!"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    sentiment = result.classifications["sentiment"]
+    assert_equal 2, sentiment.length
+    assert_equal({id: "positive", label: "Positive"}, sentiment[0])
+    assert_equal({id: "enthusiastic", label: "Enthusiastic"}, sentiment[1])
+  end
+
+  def test_runner_classifier_name_defaults_to_function_name
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("my_classifier") { |**| {id: "foo"} } # no :name in result
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert result.classifications.key?("my_classifier")
+  end
+
+  def test_runner_classifications_logged_to_eval_span
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("category") { |**| {name: "category", id: "greeting"} }
+      ],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    Braintrust::Eval::Runner.new(context).run
+    spans = rig.drain
+
+    eval_span = spans.find { |s| s.name == "eval" }
+    refute_nil eval_span
+    raw = eval_span.attributes["braintrust.classifications"]
+    refute_nil raw
+    classifications = JSON.parse(raw)
+    assert_equal [{"id" => "greeting"}], classifications["category"]
+  end
+
+  def test_runner_classifications_nil_when_no_classifiers
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [Braintrust::Scorer.new("exact") { 1.0 }],
+      cases: [{input: "hello"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    assert_nil result.classifications
+  end
+
+  def test_runner_multiple_cases_accumulate_classifications
+    rig = setup_otel_test_rig
+
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input },
+      scorers: [],
+      classifiers: [
+        Braintrust::Classifier.new("category") { |input:| {name: "category", id: (input.length > 3) ? "long" : "short"} }
+      ],
+      cases: [{input: "hi"}, {input: "hello"}, {input: "ok"}],
+      experiment_id: "exp-123",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    result = Braintrust::Eval::Runner.new(context).run
+    assert result.success?
+    category = result.classifications["category"]
+    assert_equal 3, category.length
+  end
+end
