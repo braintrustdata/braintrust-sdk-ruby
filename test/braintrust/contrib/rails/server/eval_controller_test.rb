@@ -159,6 +159,7 @@ module Braintrust
           private
 
           def test_evaluator(**kwargs)
+            kwargs[:scorers] ||= [Braintrust::Scorer.new("noop") { 1.0 }]
             Test::Support::EvalHelper::TestEvaluator.new(tracer_provider: @rig.tracer_provider, **kwargs)
           end
 
