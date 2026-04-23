@@ -92,7 +92,7 @@ module Braintrust
         # --- stream ---
 
         def test_stream_emits_progress_and_done_events
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase }, scorers: [noop_scorer])
           s = service
           validated = s.validate({
             "name" => "upcase-eval",
@@ -129,7 +129,7 @@ module Braintrust
         end
 
         def test_stream_emits_error_progress_on_task_failure
-          @evaluators["failing-eval"] = test_evaluator(task: ->(_input) { raise "boom" })
+          @evaluators["failing-eval"] = test_evaluator(task: ->(_input) { raise "boom" }, scorers: [noop_scorer])
           s = service
           validated = s.validate({
             "name" => "failing-eval",
@@ -327,8 +327,11 @@ module Braintrust
         private
 
         def test_evaluator(**kwargs)
-          kwargs[:scorers] ||= [Braintrust::Scorer.new("noop") { 1.0 }]
           Test::Support::EvalHelper::TestEvaluator.new(tracer_provider: @rig.tracer_provider, **kwargs)
+        end
+
+        def noop_scorer
+          Braintrust::Scorer.new("noop") { 1.0 }
         end
 
         def collect_streamed_events(svc, validated, auth: nil)

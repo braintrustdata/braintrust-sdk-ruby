@@ -24,7 +24,7 @@ module Braintrust
           end
 
           def test_streams_sse_events_for_inline_data
-            @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+            @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase }, scorers: [noop_scorer])
             reset_engine!(evaluators: @evaluators, auth: :none)
 
             post_json "/eval", {
@@ -53,7 +53,7 @@ module Braintrust
           end
 
           def test_progress_events_contain_output
-            @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase })
+            @evaluators["upcase-eval"] = test_evaluator(task: ->(input) { input.to_s.upcase }, scorers: [noop_scorer])
             reset_engine!(evaluators: @evaluators, auth: :none)
 
             post_json "/eval", {
@@ -94,7 +94,7 @@ module Braintrust
           end
 
           def test_error_still_emits_progress_and_done
-            @evaluators["failing-eval"] = test_evaluator(task: ->(_input) { raise "task exploded" })
+            @evaluators["failing-eval"] = test_evaluator(task: ->(_input) { raise "task exploded" }, scorers: [noop_scorer])
             reset_engine!(evaluators: @evaluators, auth: :none)
 
             post_json "/eval", {
@@ -159,8 +159,11 @@ module Braintrust
           private
 
           def test_evaluator(**kwargs)
-            kwargs[:scorers] ||= [Braintrust::Scorer.new("noop") { 1.0 }]
             Test::Support::EvalHelper::TestEvaluator.new(tracer_provider: @rig.tracer_provider, **kwargs)
+          end
+
+          def noop_scorer
+            Braintrust::Scorer.new("noop") { 1.0 }
           end
 
           def post_json(path, body)
