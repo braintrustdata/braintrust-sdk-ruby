@@ -1384,4 +1384,52 @@ class Braintrust::EvalTest < Minitest::Test
       end
     end
   end
+
+  # ============================================
+  # Classifier validation tests
+  # ============================================
+
+  def test_eval_run_requires_at_least_scorers_or_classifiers
+    error = assert_raises(ArgumentError) do
+      Braintrust::Eval.run(
+        cases: [{input: "hello"}],
+        task: ->(input:) { input }
+      )
+    end
+    assert_match(/at least one of scorers or classifiers is required/i, error.message)
+  end
+
+  def test_eval_run_requires_at_least_scorers_or_classifiers_when_empty_arrays
+    error = assert_raises(ArgumentError) do
+      Braintrust::Eval.run(
+        cases: [{input: "hello"}],
+        task: ->(input:) { input },
+        scorers: [],
+        classifiers: []
+      )
+    end
+    assert_match(/at least one of scorers or classifiers is required/i, error.message)
+  end
+
+  def test_eval_run_with_classifiers_only_no_scorers
+    rig = setup_otel_test_rig
+
+    result = run_test_eval(
+      experiment_id: "exp-123",
+      experiment_name: "classifier-only",
+      project_id: "proj-456",
+      project_name: "test-project",
+      cases: [{input: "hello"}],
+      task: ->(input:) { input },
+      classifiers: [
+        Braintrust::Classifier.new("category") { |**| {name: "category", id: "greeting"} }
+      ],
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    assert result.success?
+    assert_equal({}, result.scores)
+    assert_equal({"category" => [{id: "greeting"}]}, result.classifications)
+  end
 end

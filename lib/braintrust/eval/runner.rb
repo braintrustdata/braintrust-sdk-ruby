@@ -27,8 +27,9 @@ module Braintrust
         @eval_context = eval_context
         @tracer = eval_context.tracer_provider.tracer("braintrust-eval")
 
-        # Mutex for thread-safe score collection
+        # Mutexes for thread-safe result collection
         @score_mutex = Mutex.new
+        @classification_mutex = Mutex.new
       end
 
       # Run evaluation and return Result
@@ -39,6 +40,7 @@ module Braintrust
         eval_cases = eval_context.cases
         errors = Queue.new
         @scores = {} # Reset for each run: { scorer_name => Array<Numeric> }
+        @classifications = {} # Reset for each run: { classifier_name => Array<ClassificationItem> }
 
         if parallelism && parallelism > 1
           Internal::ThreadPool.each(eval_cases, parallelism: parallelism) do |eval_case|
@@ -69,7 +71,8 @@ module Braintrust
           permalink: permalink,
           errors: error_array,
           duration: duration,
-          scores: @scores
+          scores: @scores,
+          classifications: @classifications.empty? ? nil : @classifications
         )
       end
 
@@ -117,6 +120,14 @@ module Braintrust
             # Error already recorded on score span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
             errors << "Scorers failed for input '#{kase.input}': #{e.message}"
+          end
+
+          # Run classifiers (independent of scorers; errors do not abort eval)
+          classifier_errors = run_classifiers(kase, eval_span)
+          unless classifier_errors.empty?
+            existing_metadata = kase.metadata || {}
+            classifier_errors_metadata = existing_metadata.merge(classifier_errors: classifier_errors)
+            set_json_attr(eval_span, "braintrust.metadata", classifier_errors_metadata)
           end
 
           # Set output after task completes
@@ -316,6 +327,104 @@ module Braintrust
       def collect_scores(score_results)
         @score_mutex.synchronize do
           score_results.each { |s| (@scores[s[:name]] ||= []) << s[:score] }
+        end
+      end
+
+      # Run all classifiers for a case. Classifier errors are non-fatal and stored in metadata.
+      # @param kase [CaseContext] The per-case context (output must be populated)
+      # @param eval_span [OpenTelemetry::Trace::Span] The eval span for this case
+      # @return [Hash] classifier_errors map (name -> error message), empty if no errors
+      def run_classifiers(kase, eval_span)
+        return {} if eval_context.classifiers.empty?
+
+        classifier_kwargs = {
+          input: kase.input,
+          expected: kase.expected,
+          output: kase.output,
+          metadata: kase.metadata || {},
+          trace: kase.trace,
+          parameters: eval_context.parameters || {}
+        }
+        classifier_input = {
+          input: kase.input,
+          expected: kase.expected,
+          output: kase.output,
+          metadata: kase.metadata || {},
+          parameters: eval_context.parameters || {}
+        }
+
+        case_classifications = {}
+        classifier_errors = {}
+
+        eval_context.classifiers.each_with_index do |classifier, index|
+          classifier_name = classifier.name || "classifier_#{index}"
+          begin
+            results = run_classifier(classifier, classifier_kwargs, classifier_input)
+            results.each do |item|
+              item_name = item[:name]
+              classification_item = item.except(:name)
+              (case_classifications[item_name] ||= []) << classification_item
+            end
+            collect_classifications(results)
+          rescue => e
+            Braintrust::Log.warn("[Classifier] #{classifier_name} failed: #{e.message}")
+            classifier_errors[classifier_name] = e.message
+          end
+        end
+
+        unless case_classifications.empty?
+          set_json_attr(eval_span, "braintrust.classifications", case_classifications)
+        end
+
+        classifier_errors
+      end
+
+      # Run a single classifier inside its own span.
+      # @param classifier [Classifier] The classifier to run
+      # @param classifier_kwargs [Hash] Keyword arguments for the classifier
+      # @param classifier_input [Hash] Input to log on the span
+      # @return [Array<Hash>] Normalized classification results from the classifier
+      def run_classifier(classifier, classifier_kwargs, classifier_input)
+        tracer.in_span(classifier.name) do |classifier_span|
+          classifier_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
+          set_json_attr(classifier_span, "braintrust.span_attributes", build_classifier_span_attributes(classifier.name))
+          set_json_attr(classifier_span, "braintrust.input_json", classifier_input)
+
+          classification_results = classifier.call(**classifier_kwargs)
+
+          # Build output dict keyed by name -> array of items (for span logging)
+          output_by_name = {}
+          classification_results.each do |item|
+            (output_by_name[item[:name]] ||= []) << item.except(:name)
+          end
+
+          set_json_attr(classifier_span, "braintrust.output_json", output_by_name)
+
+          classification_results
+        rescue => e
+          record_span_error(classifier_span, e, "ClassifierError")
+          raise
+        end
+      end
+
+      # Build span_attributes for a classifier span.
+      # @param classifier_name [String] The classifier name
+      # @return [Hash]
+      def build_classifier_span_attributes(classifier_name)
+        attrs = {type: "classifier", name: classifier_name, purpose: "scorer"}
+        attrs[:generation] = eval_context.generation if eval_context.generation
+        attrs
+      end
+
+      # Collect classification results into the global accumulator (thread-safe).
+      # Converts Classification to ClassificationItem by dropping :name.
+      # @param classification_results [Array<Hash>] Classification results from a classifier
+      def collect_classifications(classification_results)
+        @classification_mutex.synchronize do
+          classification_results.each do |item|
+            item_name = item[:name]
+            (@classifications[item_name] ||= []) << item.except(:name)
+          end
         end
       end
     end

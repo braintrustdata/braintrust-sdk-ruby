@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "classifier"
 require_relative "scorer"
 require_relative "task"
 require_relative "functions"
@@ -160,7 +161,10 @@ module Braintrust
       #   - String: dataset name (fetches from same project)
       #   - Hash: {name:, id:, project:, version:, limit:}
       # @param task [#call] The task to evaluate (must be callable)
-      # @param scorers [Array<String, Scorer, #call>] The scorers to use (String names, Scorer objects, or callables)
+      # @param scorers [Array<String, Scorer, #call>, nil] The scorers to use (String names, Scorer objects, or callables).
+      #   At least one of scorers or classifiers must be provided.
+      # @param classifiers [Array<Classifier, #call>, nil] The classifiers to use.
+      #   At least one of scorers or classifiers must be provided.
       # @param on_progress [#call, nil] Optional callback fired after each test case.
       #   Receives a Hash: {"data" => output, "scores" => {name => value}} on success,
       #   or {"error" => message} on failure.
@@ -177,13 +181,16 @@ module Braintrust
       # @param parent [Hash, nil] Parent span context ({object_type:, object_id:, generation:})
       # @param parameters [Hash, nil] Runtime parameters passed to task and scorers as a `parameters:` keyword argument
       # @return [Result]
-      def run(task:, scorers:, project: nil, experiment: nil,
-        cases: nil, dataset: nil, on_progress: nil,
+      def run(task:, scorers: nil, classifiers: nil, project: nil,
+        experiment: nil, cases: nil, dataset: nil, on_progress: nil,
         parallelism: 1, tags: nil, metadata: nil, update: false, quiet: false,
         state: nil, tracer_provider: nil, project_id: nil, parent: nil,
         parameters: nil)
         # Validate required parameters
-        validate_params!(task: task, scorers: scorers, cases: cases, dataset: dataset)
+        validate_params!(task: task, scorers: scorers,
+          classifiers: classifiers, cases: cases, dataset: dataset)
+        scorers ||= []
+        classifiers ||= []
 
         experiment_id = nil
         project_name = project
@@ -216,6 +223,7 @@ module Braintrust
         context = Context.build(
           task: task,
           scorers: scorers,
+          classifiers: classifiers,
           cases: cases,
           experiment_id: experiment_id,
           experiment_name: experiment,
@@ -245,9 +253,19 @@ module Braintrust
 
       # Validate required parameters
       # @raise [ArgumentError] if validation fails
-      def validate_params!(task:, scorers:, cases:, dataset:)
+      def validate_params!(task:, scorers:, classifiers:, cases:, dataset:)
         raise ArgumentError, "task is required" unless task
-        raise ArgumentError, "scorers is required" unless scorers
+
+        # Validate task is callable before anything else
+        unless task.respond_to?(:call)
+          raise ArgumentError, "task must be callable (respond to :call)"
+        end
+
+        has_scorers = scorers && !scorers.empty?
+        has_classifiers = classifiers && !classifiers.empty?
+        unless has_scorers || has_classifiers
+          raise ArgumentError, "at least one of scorers or classifiers is required"
+        end
 
         # Validate cases and dataset are mutually exclusive
         if cases && dataset
@@ -257,11 +275,6 @@ module Braintrust
         # Validate at least one data source is provided
         unless cases || dataset
           raise ArgumentError, "must specify either 'cases' or 'dataset'"
-        end
-
-        # Validate task is callable
-        unless task.respond_to?(:call)
-          raise ArgumentError, "task must be callable (respond to :call)"
         end
       end
 

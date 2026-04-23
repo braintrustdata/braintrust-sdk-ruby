@@ -77,7 +77,10 @@ class Braintrust::Eval::EvaluatorTest < Minitest::Test
   end
 
   def test_run_passes_on_progress
-    evaluator = Braintrust::Eval::Evaluator.new(task: ->(input:) { input })
+    evaluator = Braintrust::Eval::Evaluator.new(
+      task: ->(input:) { input },
+      scorers: [Braintrust::Scorer.new("noop") { 1.0 }]
+    )
 
     progress_events = []
     cases = [{input: "a"}, {input: "b"}]
