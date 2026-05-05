@@ -128,6 +128,9 @@ module Braintrust
             existing_metadata = kase.metadata || {}
             classifier_errors_metadata = existing_metadata.merge(classifier_errors: classifier_errors)
             set_json_attr(eval_span, "braintrust.metadata", classifier_errors_metadata)
+            classifier_errors.each do |classifier_name, message|
+              errors << "Classifier '#{classifier_name}' failed for input '#{kase.input}': #{message}"
+            end
           end
 
           # Set output after task completes

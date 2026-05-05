@@ -2145,8 +2145,10 @@ class Braintrust::Eval::RunnerClassifierTest < Minitest::Test
     )
 
     result = Braintrust::Eval::Runner.new(context).run
-    # Eval succeeds — classifier errors don't add to errors queue
-    assert result.success?
+    # Eval continues running task and scorers, but classifier errors are surfaced.
+    refute result.success?
+    assert_equal 1, result.errors.length
+    assert_match(/Classifier 'broken' failed for input 'hello': classifier boom/, result.errors.first)
     assert_equal [1.0], result.scores["always_one"]
     assert_nil result.classifications
   end
@@ -2168,7 +2170,9 @@ class Braintrust::Eval::RunnerClassifierTest < Minitest::Test
     )
 
     result = Braintrust::Eval::Runner.new(context).run
-    assert result.success?
+    refute result.success?
+    assert_equal 1, result.errors.length
+    assert_match(/Classifier 'broken' failed for input 'hello': boom/, result.errors.first)
     assert_equal({"working" => [{id: "ok"}]}, result.classifications)
   end
 
