@@ -75,11 +75,13 @@ module Test
 
       # Helper to run eval internally without API calls for testing
       # @param state [State] Braintrust state
-      def run_test_eval(experiment_id:, experiment_name:, project_id:, project_name:,
-        cases:, task:, scorers:, state:, parallelism: 1, tracer_provider: nil)
+      def run_test_eval(experiment_id:, experiment_name:, project_id:,
+        project_name:, cases:, task:, state:, scorers: [], classifiers: [],
+        parallelism: 1, tracer_provider: nil)
         context = Braintrust::Eval::Context.build(
           task: task,
           scorers: scorers,
+          classifiers: classifiers,
           cases: cases,
           experiment_id: experiment_id,
           experiment_name: experiment_name,

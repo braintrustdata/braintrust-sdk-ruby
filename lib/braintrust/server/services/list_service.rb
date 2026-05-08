@@ -20,6 +20,11 @@ module Braintrust
               {"name" => scorer_name}
             end
             entry = {"scores" => scores}
+            classifiers = (evaluator.classifiers || []).each_with_index.map do |classifier, i|
+              classifier_name = classifier.respond_to?(:name) ? classifier.name : "classifier_#{i}"
+              {"name" => classifier_name}
+            end
+            entry["classifiers"] = classifiers unless classifiers.empty?
             params = serialize_parameters(evaluator.parameters)
             entry["parameters"] = params if params
             result[name] = entry

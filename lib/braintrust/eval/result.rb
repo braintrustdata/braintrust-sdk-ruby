@@ -9,7 +9,7 @@ module Braintrust
     # Contains experiment metadata, errors, timing information, and raw score data
     class Result
       attr_reader :experiment_id, :experiment_name, :project_id, :project_name,
-        :permalink, :errors, :duration, :scores
+        :permalink, :errors, :duration, :scores, :classifications
 
       # Create a new result
       # @param experiment_id [String] The experiment ID
@@ -20,8 +20,9 @@ module Braintrust
       # @param errors [Array<String>] List of errors that occurred
       # @param duration [Float] Duration in seconds
       # @param scores [Hash, nil] Raw score data { scorer_name => Array<Numeric> }
+      # @param classifications [Hash, nil] Classification results { name => Array<ClassificationItem> }, nil when no classifiers ran
       def initialize(experiment_id:, experiment_name:, project_id:, project_name:,
-        permalink:, errors:, duration:, scores: nil)
+        permalink:, errors:, duration:, scores: nil, classifications: nil)
         @experiment_id = experiment_id
         @experiment_name = experiment_name
         @project_id = project_id
@@ -30,6 +31,7 @@ module Braintrust
         @errors = errors
         @duration = duration
         @scores = scores
+        @classifications = classifications
       end
 
       # Check if the evaluation was successful (no errors)

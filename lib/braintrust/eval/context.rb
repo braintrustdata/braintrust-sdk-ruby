@@ -1,18 +1,20 @@
 # frozen_string_literal: true
 
 require_relative "cases"
+require_relative "../classifier"
 
 module Braintrust
   module Eval
     # Holds all normalized, ready-to-execute eval components.
     # Use Context.build to construct from raw user inputs.
     class Context
-      attr_reader :task, :scorers, :cases, :experiment_id, :experiment_name,
-        :project_id, :project_name, :state, :tracer_provider,
+      attr_reader :task, :scorers, :classifiers, :cases, :experiment_id,
+        :experiment_name, :project_id, :project_name, :state, :tracer_provider,
         :on_progress, :parent_span_attr, :generation, :parameters
 
       # @param task [Task] Normalized task wrapper
       # @param scorers [Array<Scorer>] Normalized scorer wrappers
+      # @param classifiers [Array<Classifier>] Normalized classifier wrappers
       # @param cases [Cases] Normalized eval cases
       # @param experiment_id [String, nil] Experiment ID for logging and trace linkage
       # @param experiment_name [String, nil] Experiment name, included in span attributes
@@ -24,11 +26,13 @@ module Braintrust
       # @param parent_span_attr [String, nil] Formatted parent span identifier ("type:id"), linking spans to a parent context
       # @param generation [Integer, nil] Generation number from the parent span context, used to link spans in a trace hierarchy
       # @param parameters [Hash, nil] Runtime parameters passed to task and scorers as a `parameters:` keyword argument
-      def initialize(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
-        project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
-        on_progress: nil, parent_span_attr: nil, generation: nil, parameters: nil)
+      def initialize(task:, scorers:, cases:, classifiers: [],
+        experiment_id: nil, experiment_name: nil, project_id: nil,
+        project_name: nil, state: nil, tracer_provider: nil, on_progress: nil,
+        parent_span_attr: nil, generation: nil, parameters: nil)
         @task = task
         @scorers = scorers
+        @classifiers = classifiers
         @cases = cases
         @experiment_id = experiment_id
         @experiment_name = experiment_name
@@ -46,6 +50,7 @@ module Braintrust
       # Delegates to Factory for normalization.
       # @param task [Task, Proc, #call] Task to evaluate; wrapped into a {Task} if needed
       # @param scorers [Array<Scorer, Proc, String, Scorer::ID, #call>] Scorers; each is normalized into a {Scorer}
+      # @param classifiers [Array<Classifier, Proc, #call>] Classifiers; each is normalized into a {Classifier}
       # @param cases [Cases, Array, Enumerable] Eval cases; wrapped into {Cases} if needed
       # @param experiment_id [String, nil] Experiment ID for logging
       # @param experiment_name [String, nil] Experiment name, included in span attributes
@@ -57,14 +62,15 @@ module Braintrust
       # @param parent [Hash, nil] Parent span info with keys :object_type, :object_id, and optionally :generation
       # @param parameters [Hash, nil] Runtime parameters passed to task and scorers as a `parameters:` keyword argument
       # @return [Context]
-      def self.build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
-        project_id: nil, project_name: nil, state: nil, tracer_provider: nil,
-        on_progress: nil, parent: nil, parameters: nil)
+      def self.build(task:, scorers:, cases:, classifiers: [],
+        experiment_id: nil, experiment_name: nil, project_id: nil,
+        project_name: nil, state: nil, tracer_provider: nil, on_progress: nil,
+        parent: nil, parameters: nil)
         Factory.new(
           state: state, tracer_provider: tracer_provider,
           project_id: project_id, project_name: project_name
         ).build(
-          task: task, scorers: scorers, cases: cases,
+          task: task, scorers: scorers, classifiers: classifiers, cases: cases,
           experiment_id: experiment_id, experiment_name: experiment_name,
           on_progress: on_progress, parent: parent, parameters: parameters
         )
@@ -86,17 +92,19 @@ module Braintrust
         # Normalize raw inputs and construct a {Context}.
         # @param task [Task, Proc, #call] Raw task
         # @param scorers [Array] Raw scorers
+        # @param classifiers [Array] Raw classifiers
         # @param cases [Cases, Array, Enumerable] Raw eval cases
         # @param experiment_id [String, nil]
         # @param experiment_name [String, nil]
         # @param on_progress [Proc, nil]
         # @param parent [Hash, nil] Parent span info with keys :object_type, :object_id, and optionally :generation
         # @return [Context]
-        def build(task:, scorers:, cases:, experiment_id: nil, experiment_name: nil,
-          on_progress: nil, parent: nil, parameters: nil)
+        def build(task:, scorers:, cases:, classifiers: [], experiment_id: nil,
+          experiment_name: nil, on_progress: nil, parent: nil, parameters: nil)
           Context.new(
             task: normalize_task(task),
             scorers: normalize_scorers(scorers),
+            classifiers: normalize_classifiers(classifiers),
             cases: normalize_cases(cases),
             experiment_id: experiment_id,
             experiment_name: experiment_name,
@@ -185,6 +193,23 @@ module Braintrust
             else
               name = scorer.respond_to?(:name) ? scorer.name : nil
               Braintrust::Scorer.new(name, &scorer.method(:call))
+            end
+          end
+        end
+
+        # @param raw [Array<Classifier, Proc, #call>]
+        # @return [Array<Classifier>]
+        def normalize_classifiers(raw)
+          raw.map do |classifier|
+            case classifier
+            when Braintrust::Classifier
+              classifier
+            when Proc
+              # Pass Proc/Lambda directly to preserve keyword arg info
+              Braintrust::Classifier.new(&classifier)
+            else
+              name = classifier.respond_to?(:name) ? classifier.name : nil
+              Braintrust::Classifier.new(name, &classifier.method(:call))
             end
           end
         end

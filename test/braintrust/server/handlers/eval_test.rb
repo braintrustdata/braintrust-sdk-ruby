@@ -59,7 +59,7 @@ module Braintrust
         # --- SSE streaming ---
 
         def test_returns_200_with_sse_content_type
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           status, headers, _ = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "hello"}]}, experiment_name: "exp"},
@@ -73,7 +73,7 @@ module Braintrust
         end
 
         def test_streams_progress_event_per_case
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "upcase-eval", data: {data: [{input: "a"}, {input: "b"}, {input: "c"}]}, experiment_name: "exp"},
@@ -88,7 +88,7 @@ module Braintrust
         end
 
         def test_progress_event_contains_protocol_fields
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "upcase-eval", data: {data: [{input: "hello"}]}, experiment_name: "exp"},
@@ -108,7 +108,7 @@ module Braintrust
         end
 
         def test_progress_event_contains_task_output_as_json_string
-          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase })
+          @evaluators["upcase-eval"] = test_evaluator(task: ->(input:) { input.to_s.upcase }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "upcase-eval", data: {data: [{input: "hello"}]}, experiment_name: "exp"},
@@ -165,7 +165,7 @@ module Braintrust
         end
 
         def test_stream_ends_with_done
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -177,7 +177,7 @@ module Braintrust
         end
 
         def test_task_error_still_emits_progress_and_done
-          @evaluators["failing-eval"] = test_evaluator(task: -> { raise "boom" })
+          @evaluators["failing-eval"] = test_evaluator(task: -> { raise "boom" }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "failing-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -191,7 +191,7 @@ module Braintrust
         end
 
         def test_task_error_progress_contains_error_event
-          @evaluators["failing-eval"] = test_evaluator(task: -> { raise "task exploded" })
+          @evaluators["failing-eval"] = test_evaluator(task: -> { raise "task exploded" }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "failing-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -239,7 +239,7 @@ module Braintrust
         # --- Auth passthrough ---
 
         def test_build_state_returns_nil_without_auth
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           env = rack_json_env(
             {name: "test-eval", data: {data: [{input: "hello"}]}},
@@ -252,7 +252,7 @@ module Braintrust
         end
 
         def test_build_state_returns_nil_for_non_hash_auth
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           env = rack_json_env(
             {name: "test-eval", data: {data: [{input: "hello"}]}},
@@ -442,7 +442,7 @@ module Braintrust
         # --- Server-specific body selection ---
 
         def test_returns_sse_body_without_protocol_http_request
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -453,7 +453,7 @@ module Braintrust
         end
 
         def test_returns_sse_stream_body_with_protocol_http_request
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           env = rack_json_env(
             {name: "test-eval", data: {data: [{input: "x"}]}, experiment_name: "exp"},
@@ -470,7 +470,7 @@ module Braintrust
         # --- Parent passthrough ---
 
         def test_handler_passes_parent_through
-          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input })
+          @evaluators["test-eval"] = test_evaluator(task: ->(input:) { input }, scorers: [noop_scorer])
 
           _, _, body = handler.call(rack_json_env(
             {
@@ -492,6 +492,10 @@ module Braintrust
 
         def test_evaluator(**kwargs)
           Test::Support::EvalHelper::TestEvaluator.new(tracer_provider: @rig.tracer_provider, **kwargs)
+        end
+
+        def noop_scorer
+          Braintrust::Scorer.new("noop") { 1.0 }
         end
 
         def handler
