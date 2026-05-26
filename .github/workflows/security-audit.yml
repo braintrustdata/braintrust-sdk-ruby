@@ -1,0 +1,41 @@
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 9 * * 1-5'  # Mon-Fri 9am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependabot-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate scoped token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.SDK_SECURITY_AUDIT_APP_ID }}
+          private-key: ${{ secrets.SDK_SECURITY_AUDIT_APP_PRIVATE_KEY }}
+          repositories: braintrust-sdk-ruby
+
+      - name: Check Dependabot alerts and notify Slack
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ vars.SLACK_SDK_SECURITY_CHANNEL }}
+        run: |
+          ALERTS=$(gh api "repos/$GITHUB_REPOSITORY/dependabot/alerts?state=open" --jq 'length')
+
+          if [ "$ALERTS" -gt 0 ]; then
+            SECURITY_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/security/dependabot"
+            curl -s -X POST "https://slack.com/api/chat.postMessage" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" \
+              -d "{
+                \"channel\": \"$SLACK_CHANNEL\",
+                \"text\": \":warning: *braintrust-sdk-ruby* has $ALERTS open Dependabot alert(s). <$SECURITY_URL|View alerts>\"
+              }"
+          fi
