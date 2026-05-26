@@ -40,11 +40,18 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
+  ensure-pinned-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - run: bash scripts/ensure-pinned-actions.sh
+
   # Summary job that requires all matrix tests to pass
   # This is what branch protection will check
   ci-success:
     name: CI Success
-    needs: test
+    needs: [test, ensure-pinned-actions]
     runs-on: ubuntu-latest
     if: always()
     steps:
