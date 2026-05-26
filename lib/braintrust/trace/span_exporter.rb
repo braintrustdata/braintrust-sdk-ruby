@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "opentelemetry/exporter/otlp"
+require_relative "../logger"
+require_relative "../state"
 
 module Braintrust
   module Trace
@@ -17,11 +19,17 @@ module Braintrust
       SUCCESS = OpenTelemetry::SDK::Trace::Export::SUCCESS
       FAILURE = OpenTelemetry::SDK::Trace::Export::FAILURE
 
-      def initialize(endpoint:, api_key:)
-        super(endpoint: endpoint, headers: {"Authorization" => "Bearer #{api_key}"})
+      def initialize(endpoint:, api_key:, api_key_resolver: nil)
+        @api_key = api_key
+        @api_key_resolver = api_key_resolver
+        headers = {}
+        headers["Authorization"] = "Bearer #{api_key}" if api_key
+        super(endpoint: endpoint, headers: headers)
       end
 
       def export(span_data, timeout: nil)
+        ensure_authorization_header!
+
         failed = false
         span_data.group_by { |sd| sd.attributes&.[](PARENT_ATTR_KEY) }.each do |parent_value, spans|
           @headers[PARENT_HEADER] = parent_value if parent_value
@@ -30,6 +38,20 @@ module Braintrust
           @headers.delete(PARENT_HEADER)
         end
         failed ? FAILURE : SUCCESS
+      rescue State::MissingAPIKeyError => e
+        Log.debug("Trace export skipped: #{e.message}")
+        FAILURE
+      end
+
+      private
+
+      def ensure_authorization_header!
+        return if @headers["Authorization"]
+
+        @api_key = @api_key_resolver.api_key if @api_key.nil? && @api_key_resolver
+        raise State::MissingAPIKeyError, "api_key is required" if @api_key.nil? || @api_key.empty?
+
+        @headers["Authorization"] = "Bearer #{@api_key}"
       end
     end
   end

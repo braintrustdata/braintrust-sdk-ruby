@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "tmpdir"
 
 class BraintrustTest < Minitest::Test
   def setup
@@ -68,6 +69,24 @@ class BraintrustTest < Minitest::Test
 
     assert_equal "test-api-key", state.api_key
     assert_equal "my-project", state.default_project
+  end
+
+  def test_init_uses_env_braintrust_api_key
+    ENV.delete("BRAINTRUST_API_KEY")
+    original_cwd = Dir.pwd
+
+    Dir.mktmpdir("braintrust-init-test") do |dir|
+      File.write(File.join(dir, ".env.braintrust"), "BRAINTRUST_API_KEY=test-api-key\n")
+      Dir.chdir(dir)
+
+      state = Braintrust.init(set_global: false, exporter: @memory_exporter)
+      state.wait_for_login(1)
+
+      assert_equal "test-api-key", state.api_key
+      assert state.logged_in
+    ensure
+      Dir.chdir(original_cwd)
+    end
   end
 
   def test_init_with_tracing_true_creates_tracer_provider

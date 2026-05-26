@@ -6,7 +6,10 @@ module Braintrust
   # State object that holds Braintrust configuration
   # Thread-safe global state management
   class State
-    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config
+    class MissingAPIKeyError < ArgumentError; end
+
+    attr_reader :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config,
+      :api_key_resolver
 
     @mutex = Mutex.new
     @global_state = nil
@@ -36,7 +39,8 @@ module Braintrust
         span_filter_funcs: span_filter_funcs
       )
       new(
-        api_key: config.api_key,
+        api_key: config.api_key_immediate,
+        api_key_resolver: config.api_key_resolver,
         org_name: config.org_name,
         default_project: config.default_project,
         app_url: config.app_url,
@@ -63,12 +67,14 @@ module Braintrust
     # @param config [Config, nil] Optional config object
     # @param exporter [Exporter, nil] Optional exporter for testing
     # @return [State] the created state
-    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil)
+    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil, api_key_resolver: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
-      raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
+      raise MissingAPIKeyError, "api_key is required" if api_key_resolver.nil? && (api_key.nil? || api_key.empty?)
+      raise MissingAPIKeyError, "api_key is required" if api_key&.empty?
 
       @api_key = api_key
+      @api_key_resolver = api_key_resolver
       @org_name = org_name
       @org_id = org_id
       @default_project = default_project
@@ -101,6 +107,21 @@ module Braintrust
       end
     end
 
+    def api_key
+      @api_key = @api_key_resolver.api_key if @api_key.nil? && @api_key_resolver
+      @api_key
+    end
+
+    def api_key_immediate
+      @api_key
+    end
+
+    def require_api_key
+      key = api_key
+      raise MissingAPIKeyError, "api_key is required" if key.nil? || key.empty?
+      key
+    end
+
     # Thread-safe global state getter
     def self.global
       @mutex.synchronize { @global_state }
@@ -121,9 +142,10 @@ module Braintrust
       @login_mutex.synchronize do
         # Return early if already logged in
         return self if @logged_in
+        api_key = require_api_key
 
         result = API::Internal::Auth.login(
-          api_key: @api_key,
+          api_key: api_key,
           app_url: @app_url,
           org_name: @org_name
         )
@@ -167,6 +189,9 @@ module Braintrust
           login
           Log.debug("Background login succeeded")
           break
+        rescue MissingAPIKeyError => e
+          Log.debug("Background login skipped: #{e.message}")
+          break
         rescue => e
           retry_count += 1
           delay = [0.001 * 2**(retry_count - 1), max_delay].min
@@ -190,7 +215,7 @@ module Braintrust
     # Raises ArgumentError if state is invalid
     # @return [self]
     def validate
-      raise ArgumentError, "api_key is required" if @api_key.nil? || @api_key.empty?
+      require_api_key
       raise ArgumentError, "api_url is required" if @api_url.nil? || @api_url.empty?
       raise ArgumentError, "app_url is required" if @app_url.nil? || @app_url.empty?
 
