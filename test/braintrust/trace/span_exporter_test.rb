@@ -108,6 +108,8 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
 
   def test_resolves_authorization_header_on_export
     original_cwd = Dir.pwd
+    original_api_key = ENV["BRAINTRUST_API_KEY"]
+    ENV.delete("BRAINTRUST_API_KEY")
 
     Dir.mktmpdir("braintrust-exporter-env") do |dir|
       File.write(File.join(dir, ".env.braintrust"), "BRAINTRUST_API_KEY=file-key\n")
@@ -121,6 +123,11 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
       assert_equal "Bearer file-key", exporter.calls[0][:headers]["Authorization"]
     ensure
       Dir.chdir(original_cwd)
+      if original_api_key
+        ENV["BRAINTRUST_API_KEY"] = original_api_key
+      else
+        ENV.delete("BRAINTRUST_API_KEY")
+      end
     end
   end
 
