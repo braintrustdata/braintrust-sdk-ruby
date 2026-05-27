@@ -78,11 +78,11 @@ class Braintrust::ConfigTest < Minitest::Test
     assert_equal "file-key", config.api_key
   end
 
-  def test_env_braintrust_lookup_uses_cwd_from_config_creation
-    write_braintrust_env("BRAINTRUST_API_KEY=file-key\n")
+  def test_env_braintrust_lookup_uses_cwd_from_api_key_lookup
     config = Braintrust::Config.from_env
     other_dir = File.join(@tmpdir, "other")
     FileUtils.mkdir_p(other_dir)
+    write_braintrust_env("BRAINTRUST_API_KEY=file-key\n", dir: other_dir)
 
     Dir.chdir(other_dir)
 

@@ -17,7 +17,6 @@ module Braintrust
         @resolved = false
         @api_key = nil
         @thread = nil
-        @search_start_dir = Dir.pwd
 
         if !explicit_api_key.nil?
           resolve_immediately(explicit_api_key)
@@ -41,8 +40,9 @@ module Braintrust
           return nil if @resolved
           return @thread if @thread
 
-          @thread = Thread.new do
-            key = self.class.find_file_api_key(@search_start_dir)
+          search_start_dir = Dir.pwd
+          @thread = Thread.new(search_start_dir) do |start_dir|
+            key = self.class.find_file_api_key(start_dir)
             @mutex.synchronize do
               @api_key = key
               @resolved = true

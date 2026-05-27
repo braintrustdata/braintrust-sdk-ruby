@@ -8,8 +8,7 @@ module Braintrust
   class State
     class MissingAPIKeyError < ArgumentError; end
 
-    attr_reader :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config,
-      :api_key_resolver
+    attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config
 
     @mutex = Mutex.new
     @global_state = nil
@@ -39,8 +38,7 @@ module Braintrust
         span_filter_funcs: span_filter_funcs
       )
       new(
-        api_key: config.api_key_immediate,
-        api_key_resolver: config.api_key_resolver,
+        api_key: config.api_key,
         org_name: config.org_name,
         default_project: config.default_project,
         app_url: config.app_url,
@@ -67,14 +65,12 @@ module Braintrust
     # @param config [Config, nil] Optional config object
     # @param exporter [Exporter, nil] Optional exporter for testing
     # @return [State] the created state
-    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil, api_key_resolver: nil)
+    def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
-      raise MissingAPIKeyError, "api_key is required" if api_key_resolver.nil? && (api_key.nil? || api_key.empty?)
-      raise MissingAPIKeyError, "api_key is required" if api_key&.empty?
+      raise MissingAPIKeyError, "api_key is required" if api_key.nil? || api_key.empty?
 
       @api_key = api_key
-      @api_key_resolver = api_key_resolver
       @org_name = org_name
       @org_id = org_id
       @default_project = default_project
@@ -107,17 +103,8 @@ module Braintrust
       end
     end
 
-    def api_key
-      @api_key = @api_key_resolver.api_key if @api_key.nil? && @api_key_resolver
-      @api_key
-    end
-
-    def api_key_immediate
-      @api_key
-    end
-
     def require_api_key
-      key = api_key
+      key = @api_key
       raise MissingAPIKeyError, "api_key is required" if key.nil? || key.empty?
       key
     end

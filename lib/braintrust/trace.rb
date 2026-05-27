@@ -91,8 +91,7 @@ module Braintrust
       # Create OTLP HTTP exporter unless override provided
       exporter ||= SpanExporter.new(
         endpoint: "#{state.api_url}/otel/v1/traces",
-        api_key: state.api_key_immediate,
-        api_key_resolver: state.api_key_resolver
+        api_key: state.api_key
       )
 
       # Use SimpleSpanProcessor for InMemorySpanExporter (testing), BatchSpanProcessor for production

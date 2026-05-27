@@ -89,6 +89,23 @@ class BraintrustTest < Minitest::Test
     end
   end
 
+  def test_init_fails_without_api_key_or_env_braintrust
+    ENV.delete("BRAINTRUST_API_KEY")
+    original_cwd = Dir.pwd
+
+    Dir.mktmpdir("braintrust-missing-key-test") do |dir|
+      Dir.chdir(dir)
+
+      error = assert_raises(Braintrust::State::MissingAPIKeyError) do
+        Braintrust.init(set_global: false, enable_tracing: false)
+      end
+
+      assert_match(/api_key is required/, error.message)
+    ensure
+      Dir.chdir(original_cwd)
+    end
+  end
+
   def test_init_with_tracing_true_creates_tracer_provider
     # Verify we start with the default proxy provider
     assert_instance_of OpenTelemetry::Internal::ProxyTracerProvider, OpenTelemetry.tracer_provider

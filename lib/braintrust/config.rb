@@ -7,12 +7,12 @@ module Braintrust
   # and allows overriding with explicit options
   class Config
     attr_reader :org_name, :default_project, :app_url, :api_url,
-      :filter_ai_spans, :span_filter_funcs, :api_key_resolver
+      :filter_ai_spans, :span_filter_funcs
 
     def initialize(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil,
-      filter_ai_spans: nil, span_filter_funcs: nil, api_key_resolver: nil)
+      filter_ai_spans: nil, span_filter_funcs: nil)
       @api_key = api_key
-      @api_key_resolver = api_key_resolver
+      @api_key_resolver = nil
       @org_name = org_name
       @default_project = default_project
       @app_url = app_url
@@ -23,10 +23,6 @@ module Braintrust
 
     def api_key
       @api_key = @api_key_resolver.api_key if @api_key.nil? && @api_key_resolver
-      @api_key
-    end
-
-    def api_key_immediate
       @api_key
     end
 
@@ -52,16 +48,17 @@ module Braintrust
         filter_ai_spans
       end
 
-      new(
+      config = new(
         api_key: api_key_resolver.immediate_api_key,
         org_name: org_name || ENV["BRAINTRUST_ORG_NAME"],
         default_project: default_project || ENV["BRAINTRUST_DEFAULT_PROJECT"],
         app_url: app_url || ENV["BRAINTRUST_APP_URL"] || "https://www.braintrust.dev",
         api_url: api_url || ENV["BRAINTRUST_API_URL"] || "https://api.braintrust.dev",
         filter_ai_spans: filter_ai_spans_value,
-        span_filter_funcs: span_filter_funcs,
-        api_key_resolver: api_key_resolver
+        span_filter_funcs: span_filter_funcs
       )
+      config.instance_variable_set(:@api_key_resolver, api_key_resolver)
+      config
     end
   end
 end
