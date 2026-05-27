@@ -1,0 +1,134 @@
+#
+# Primary release workflow for the Ruby SDK.
+# Triggered manually via GitHub Actions UI (browser session required — not via local git push).
+# Reads the version from lib/braintrust/version.rb on main, posts a job summary with the
+# list of changes for the reviewer, then waits for human approval before publishing.
+#
+
+name: Release Ruby SDK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_tag: ${{ steps.get-tag.outputs.tag }}
+      sha: ${{ steps.get-tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Read version and validate
+        id: get-tag
+        run: |
+          VERSION=$(ruby -r "./lib/braintrust/version.rb" -e "puts Braintrust::VERSION")
+          TAG="v${VERSION}"
+          SHA=$(git log -1 --format="%H" -- lib/braintrust/version.rb)
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Error: Tag $TAG already exists — has the version been bumped?"
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Ready to release $TAG @ $SHA"
+
+  notify:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Post release summary and notify Slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          TAG: ${{ needs.validate.outputs.release_tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 \
+            --match='v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || echo "")
+
+          NOTES=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            --method POST \
+            --field tag_name="$TAG" \
+            --jq '.body' 2>/dev/null || echo "_No previous release found — initial release._")
+
+          APPROVE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          # Write full PR list to job summary — visible on the approval page
+          echo "## braintrust-sdk-ruby $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "$NOTES" >> $GITHUB_STEP_SUMMARY
+
+          # Slack message is intentionally brief — full details are one click away
+          curl -s -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"channel\": \"$SLACK_CHANNEL\",
+              \"text\": \":gem: *braintrust-sdk-ruby $TAG* is awaiting release approval. <$APPROVE_URL|View changes & approve>\"
+            }"
+
+  publish:
+    needs: [validate, notify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: rubygems-publish
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+
+      - uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Configure RubyGems credentials
+        uses: rubygems/configure-rubygems-credentials@a991f145d5e4a60c4b0a3ddb204f557dc1a4f985 # main
+
+      - name: Publish gem
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF_NAME: ${{ needs.validate.outputs.release_tag }}
+        run: |
+          git tag "$GITHUB_REF_NAME"
+          bundle exec rake release
+
+      - name: Notify Slack on release
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          TAG: ${{ needs.validate.outputs.release_tag }}
+        run: |
+          curl -s -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"channel\": \"$SLACK_CHANNEL\",
+              \"text\": \":white_check_mark: *braintrust-sdk-ruby $TAG* has been published to RubyGems.\"
+            }"

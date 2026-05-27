@@ -241,9 +241,9 @@ namespace :release do
     require_relative "lib/braintrust/version"
     original_version = Braintrust::VERSION
 
-    # Generate prerelease version with GitHub run number or timestamp
+    # Generate rc version with GitHub run number or timestamp
     run_number = ENV["GITHUB_RUN_NUMBER"] || Time.now.to_i.to_s
-    prerelease_version = "#{original_version}.alpha.#{run_number}"
+    prerelease_version = "#{original_version}.rc.#{run_number}"
 
     puts "Original version: #{original_version}"
     puts "Prerelease version: #{prerelease_version}"
@@ -259,10 +259,14 @@ namespace :release do
     File.write(version_file, modified_content)
 
     begin
-      # Build and publish
-      Rake::Task["build"].invoke
-      Rake::Task["release:publish"].invoke
-      puts "✓ Prerelease #{prerelease_version} published successfully!"
+      # Lint, build, and push directly — bypasses release:validate which is
+      # git-tag-centric and not applicable to prereleases.
+      Rake::Task[:lint].invoke
+      Rake::Task[:build].invoke
+      gem_files = FileList["braintrust-*.gem"]
+      raise "No gem file found after build" if gem_files.empty?
+      sh "gem push #{gem_files.first}"
+      puts "✓ Prerelease #{prerelease_version} published to RubyGems"
     ensure
       # Restore original version
       File.write(version_file, content)
