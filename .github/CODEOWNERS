@@ -1,0 +1,4 @@
+/lib/                   @braintrustdata/sdk-eng
+/*.gemspec              @braintrustdata/sdk-eng
+/.github/               @braintrustdata/sdk-eng
+/scripts/               @braintrustdata/sdk-eng
