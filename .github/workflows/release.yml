@@ -9,6 +9,11 @@ name: Release Ruby SDK
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — validate, notify, and build without pushing the gem or creating a tag"
+        type: boolean
+        default: false
 
 jobs:
   validate:
@@ -18,12 +23,12 @@ jobs:
       release_tag: ${{ steps.get-tag.outputs.tag }}
       sha: ${{ steps.get-tag.outputs.sha }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: main
           fetch-depth: 0
 
-      - uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: '3.4'
           bundler-cache: true
@@ -36,8 +41,12 @@ jobs:
           SHA=$(git log -1 --format="%H" -- lib/braintrust/version.rb)
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Error: Tag $TAG already exists — has the version been bumped?"
-            exit 1
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "Warning: Tag $TAG already exists — skipping in dry run"
+            else
+              echo "Error: Tag $TAG already exists — has the version been bumped?"
+              exit 1
+            fi
           fi
 
           echo "tag=$TAG" >> $GITHUB_OUTPUT
@@ -51,7 +60,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.validate.outputs.sha }}
           fetch-depth: 0
@@ -69,7 +78,7 @@ jobs:
           NOTES=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
             --method POST \
             --field tag_name="$TAG" \
-            --jq '.body' 2>/dev/null || echo "_No previous release found — initial release._")
+            --jq '.body' 2>/dev/null) || NOTES="_Release notes unavailable._"
 
           APPROVE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
@@ -79,45 +88,60 @@ jobs:
           echo "$NOTES" >> $GITHUB_STEP_SUMMARY
 
           # Slack message is intentionally brief — full details are one click away
+          DRY_RUN=${{ inputs.dry_run }}
+          if [ "$DRY_RUN" = "true" ]; then
+            TEXT=":test_tube: *braintrust-sdk-ruby $TAG* DRY RUN — awaiting approval. <$APPROVE_URL|View changes & approve>"
+          else
+            TEXT=":gem: *braintrust-sdk-ruby $TAG* is awaiting release approval. <$APPROVE_URL|View changes & approve>"
+          fi
+
           curl -s -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"channel\": \"$SLACK_CHANNEL\",
-              \"text\": \":gem: *braintrust-sdk-ruby $TAG* is awaiting release approval. <$APPROVE_URL|View changes & approve>\"
-            }"
+            -d "{\"channel\": \"$SLACK_CHANNEL\", \"text\": \"$TEXT\"}"
 
   publish:
     needs: [validate, notify]
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: rubygems-publish
+    environment: ${{ inputs.dry_run && 'rubygems-publish-dry-run' || 'rubygems-publish' }}
 
     permissions:
       contents: write
       id-token: write
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.validate.outputs.sha }}
           fetch-depth: 0
 
-      - uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: '3.4'
           bundler-cache: true
 
       - name: Create release tag
+        if: ${{ !inputs.dry_run }}
         run: git tag "$GITHUB_REF_NAME"
         env:
           GITHUB_REF_NAME: ${{ needs.validate.outputs.release_tag }}
 
       - name: Publish gem with attestation
+        if: ${{ !inputs.dry_run }}
         uses: rubygems/release-gem@6317d8d1f7e28c24d28f6eff169ea854948bd9f7 # v1.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REF_NAME: ${{ needs.validate.outputs.release_tag }}
+
+      - name: Dry run — lint and build only
+        if: ${{ inputs.dry_run }}
+        env:
+          GITHUB_REF_NAME: ${{ needs.validate.outputs.release_tag }}
+        run: |
+          bundle exec rake lint
+          bundle exec rake build
+          echo "DRY RUN: would push gem $GITHUB_REF_NAME to RubyGems and create tag"
 
       - name: Notify Slack on release
         env:
@@ -125,10 +149,13 @@ jobs:
           SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
           TAG: ${{ needs.validate.outputs.release_tag }}
         run: |
+          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            TEXT=":test_tube: *braintrust-sdk-ruby $TAG* DRY RUN complete — gem built, nothing pushed."
+          else
+            TEXT=":white_check_mark: *braintrust-sdk-ruby $TAG* has been published to RubyGems. <$RELEASE_URL|View release>"
+          fi
           curl -s -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"channel\": \"$SLACK_CHANNEL\",
-              \"text\": \":white_check_mark: *braintrust-sdk-ruby $TAG* has been published to RubyGems.\"
-            }"
+            -d "{\"channel\": \"$SLACK_CHANNEL\", \"text\": \"$TEXT\"}"
