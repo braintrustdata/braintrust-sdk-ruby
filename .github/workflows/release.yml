@@ -108,16 +108,16 @@ jobs:
           ruby-version: '3.4'
           bundler-cache: true
 
-      - name: Configure RubyGems credentials
-        uses: rubygems/configure-rubygems-credentials@a991f145d5e4a60c4b0a3ddb204f557dc1a4f985 # main
+      - name: Create release tag
+        run: git tag "$GITHUB_REF_NAME"
+        env:
+          GITHUB_REF_NAME: ${{ needs.validate.outputs.release_tag }}
 
-      - name: Publish gem
+      - name: Publish gem with attestation
+        uses: rubygems/release-gem@6317d8d1f7e28c24d28f6eff169ea854948bd9f7 # v1.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REF_NAME: ${{ needs.validate.outputs.release_tag }}
-        run: |
-          git tag "$GITHUB_REF_NAME"
-          bundle exec rake release
 
       - name: Notify Slack on release
         env:
