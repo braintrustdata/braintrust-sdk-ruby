@@ -199,11 +199,7 @@ end
 
 # Release tasks
 namespace :release do
-  task :validate do
-    sh "bash scripts/validate-release-tag.sh"
-  end
-
-  task publish: ["release:validate", :lint, :build] do
+  task publish: [:lint, :build] do
     gem_files = FileList["braintrust-*.gem"]
     if gem_files.empty?
       puts "Error: No gem file found. Build task should have created it."
@@ -213,70 +209,32 @@ namespace :release do
       puts "Found: #{gem_files.join(", ")}"
       exit 1
     end
-    sh "gem push #{gem_files.first}"
-    puts "✓ Gem pushed to RubyGems"
+    if ENV["DRY_RUN"] == "true"
+      puts "DRY RUN: would push #{gem_files.first} to RubyGems (skipped)"
+    else
+      sh "gem push #{gem_files.first}"
+      puts "✓ Gem pushed to RubyGems"
+    end
   end
 
-  task :changelog do
-    sh "bash scripts/generate-release-notes.sh > changelog.md"
-    puts "✓ Changelog generated: changelog.md"
-  end
-
-  task github: [:changelog] do
+  task :push_tag do
     require_relative "lib/braintrust/version"
     tag = "v#{Braintrust::VERSION}"
-
-    sh "gh release create #{tag} --title '#{tag}' --notes-file changelog.md"
-
-    # Get the repository URL
-    repo = `gh repo view --json nameWithOwner -q .nameWithOwner`.strip
-    release_url = "https://github.com/#{repo}/releases/tag/#{tag}"
-
-    puts "✓ GitHub release created: #{tag}"
-    puts "  #{release_url}"
-  end
-
-  task :prerelease do
-    # Get current version
-    require_relative "lib/braintrust/version"
-    original_version = Braintrust::VERSION
-
-    # Generate rc version with GitHub run number or timestamp
-    run_number = ENV["GITHUB_RUN_NUMBER"] || Time.now.to_i.to_s
-    prerelease_version = "#{original_version}.rc.#{run_number}"
-
-    puts "Original version: #{original_version}"
-    puts "Prerelease version: #{prerelease_version}"
-
-    # Temporarily modify version.rb
-    version_file = "lib/braintrust/version.rb"
-    content = File.read(version_file)
-    modified_content = content.gsub(
-      /VERSION = "#{Regexp.escape(original_version)}"/,
-      "VERSION = \"#{prerelease_version}\""
-    )
-
-    File.write(version_file, modified_content)
-
-    begin
-      # Lint, build, and push directly — bypasses release:validate which is
-      # git-tag-centric and not applicable to prereleases.
-      Rake::Task[:lint].invoke
-      Rake::Task[:build].invoke
-      gem_files = FileList["braintrust-*.gem"]
-      raise "No gem file found after build" if gem_files.empty?
-      sh "gem push #{gem_files.first}"
-      puts "✓ Prerelease #{prerelease_version} published to RubyGems"
-    ensure
-      # Restore original version
-      File.write(version_file, content)
-      puts "Restored original version.rb"
+    if ENV["DRY_RUN"] == "true"
+      puts "DRY RUN: would push tag #{tag} to origin (skipped)"
+    else
+      sh "git tag #{tag}"
+      sh "git push origin #{tag}"
+      puts "✓ Tag #{tag} pushed"
     end
   end
 end
 
-task release: ["release:publish", "release:github"] do
-  puts "✓ Release completed successfully!"
+# Called by rubygems/release-gem in the release workflow.
+# Follows Bundler convention: build, push gem, push tag.
+# GitHub release creation is handled separately by the workflow.
+task release: ["release:publish", "release:push_tag"] do
+  puts "✓ Release complete"
 end
 
 # Contrib tasks
