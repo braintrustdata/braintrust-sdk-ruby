@@ -1,71 +1,33 @@
 # frozen_string_literal: true
 
+require "json"
+
 module Braintrust
   module Internal
     # Resolves the Braintrust API key from explicit options, ENV, or the nearest
-    # .env.braintrust file without mutating the process environment.
+    # .braintrust.json file without mutating the process environment.
     class ApiKeyResolver
       ENV_KEY = "BRAINTRUST_API_KEY"
-      ENV_FILE = ".env.braintrust"
+      CONFIG_FILE = ".braintrust.json"
       SEARCH_PARENT_LIMIT = 64
-      ASSIGNMENT_REGEXP = /\A#{Regexp.escape(ENV_KEY)}\s*=\s*(.*)\z/o
 
-      attr_reader :immediate_api_key
+      def self.resolve(explicit_api_key: nil, start_dir: Dir.pwd)
+        return explicit_api_key unless explicit_api_key.nil?
 
-      def initialize(explicit_api_key: nil)
-        @mutex = Mutex.new
-        @resolved = false
-        @api_key = nil
-        @thread = nil
+        env_api_key = ENV[ENV_KEY]
+        return env_api_key if env_api_key && !env_api_key.strip.empty?
 
-        if !explicit_api_key.nil?
-          resolve_immediately(explicit_api_key)
-        else
-          env_api_key = ENV[ENV_KEY]
-          resolve_immediately(env_api_key) if env_api_key && !env_api_key.strip.empty?
-        end
-
-        @immediate_api_key = @api_key
-      end
-
-      def api_key
-        thread = start
-        thread&.join
-
-        @mutex.synchronize { @api_key }
-      end
-
-      def start
-        @mutex.synchronize do
-          return nil if @resolved
-          return @thread if @thread
-
-          search_start_dir = Dir.pwd
-          @thread = Thread.new(search_start_dir) do |start_dir|
-            key = self.class.find_file_api_key(start_dir)
-            @mutex.synchronize do
-              @api_key = key
-              @resolved = true
-            end
-          rescue
-            @mutex.synchronize do
-              @api_key = nil
-              @resolved = true
-            end
-          end
-          @thread.report_on_exception = false
-          @thread
-        end
+        find_file_api_key(start_dir)
       end
 
       def self.find_file_api_key(start_dir = Dir.pwd)
         dir = start_dir
 
         0.upto(SEARCH_PARENT_LIMIT) do
-          env_path = File.join(dir, ENV_FILE)
+          config_path = File.join(dir, CONFIG_FILE)
 
           begin
-            contents = File.read(env_path)
+            contents = File.read(config_path)
           rescue Errno::ENOENT, Errno::ENOTDIR
             # Missing candidates are not boundaries; keep walking upward.
           rescue
@@ -85,80 +47,16 @@ module Braintrust
       end
 
       def self.parse_api_key(contents)
-        value = nil
+        config = JSON.parse(contents)
+        return nil unless config.is_a?(Hash)
 
-        contents.each_line do |line|
-          found, parsed_value = parse_assignment(line)
-          value = parsed_value if found
-        end
-
-        (value && !value.strip.empty?) ? value : nil
-      rescue
+        value = config[ENV_KEY]
+        (value.is_a?(String) && !value.strip.empty?) ? value : nil
+      rescue JSON::ParserError, TypeError
         nil
       end
 
-      def self.parse_assignment(line)
-        stripped = line.delete_suffix("\n").delete_suffix("\r").lstrip
-        return [false, nil] if stripped.empty? || stripped.start_with?("#")
-
-        stripped = stripped.sub(/\Aexport\s+/, "")
-        match = stripped.match(ASSIGNMENT_REGEXP)
-        return [false, nil] unless match
-
-        [true, parse_value(match[1])]
-      end
-
-      def self.parse_value(raw_value)
-        value = raw_value.lstrip
-
-        case value[0]
-        when '"'
-          parse_double_quoted_value(value[1..])
-        when "'"
-          parse_single_quoted_value(value[1..])
-        else
-          value.sub(/\s+#.*\z/, "").strip
-        end
-      end
-
-      def self.parse_double_quoted_value(value)
-        parsed = +""
-        escaped = false
-
-        value.each_char do |char|
-          if escaped
-            parsed << case char
-            when "n" then "\n"
-            when "r" then "\r"
-            when "t" then "\t"
-            else char
-            end
-            escaped = false
-          elsif char == "\\"
-            escaped = true
-          elsif char == '"'
-            return parsed
-          else
-            parsed << char
-          end
-        end
-
-        parsed
-      end
-
-      def self.parse_single_quoted_value(value)
-        quote_index = value.index("'")
-        quote_index ? value[0...quote_index] : value
-      end
-
-      private_class_method :parse_assignment, :parse_value, :parse_double_quoted_value, :parse_single_quoted_value
-
-      private
-
-      def resolve_immediately(api_key)
-        @api_key = api_key
-        @resolved = true
-      end
+      private_class_method :find_file_api_key, :parse_api_key
     end
   end
 end

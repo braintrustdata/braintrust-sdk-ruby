@@ -11,7 +11,7 @@
 #   require "braintrust/setup"
 #
 # Environment variables:
-#   BRAINTRUST_API_KEY - Required for tracing to work; falls back to .env.braintrust
+#   BRAINTRUST_API_KEY - Required for tracing to work; falls back to .braintrust.json
 #   BRAINTRUST_AUTO_INSTRUMENT - Set to "false" to disable (default: true)
 #   BRAINTRUST_INSTRUMENT_ONLY - Comma-separated whitelist
 #   BRAINTRUST_INSTRUMENT_EXCEPT - Comma-separated blacklist

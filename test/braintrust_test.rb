@@ -71,12 +71,12 @@ class BraintrustTest < Minitest::Test
     assert_equal "my-project", state.default_project
   end
 
-  def test_init_uses_env_braintrust_api_key
+  def test_init_uses_braintrust_json_api_key
     ENV.delete("BRAINTRUST_API_KEY")
     original_cwd = Dir.pwd
 
     Dir.mktmpdir("braintrust-init-test") do |dir|
-      File.write(File.join(dir, ".env.braintrust"), "BRAINTRUST_API_KEY=test-api-key\n")
+      File.write(File.join(dir, ".braintrust.json"), JSON.generate("BRAINTRUST_API_KEY" => "test-api-key"))
       Dir.chdir(dir)
 
       state = Braintrust.init(set_global: false, exporter: @memory_exporter)
@@ -89,7 +89,7 @@ class BraintrustTest < Minitest::Test
     end
   end
 
-  def test_init_fails_without_api_key_or_env_braintrust
+  def test_init_fails_without_api_key_or_braintrust_json
     ENV.delete("BRAINTRUST_API_KEY")
     original_cwd = Dir.pwd
 
