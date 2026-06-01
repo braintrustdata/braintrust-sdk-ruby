@@ -5,10 +5,10 @@ module Braintrust
   # and allows overriding with explicit options
   class Config
     attr_reader :api_key, :org_name, :default_project, :app_url, :api_url,
-      :filter_ai_spans, :span_filter_funcs
+      :filter_ai_spans, :span_filter_funcs, :compress_otel_payload
 
     def initialize(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil,
-      filter_ai_spans: nil, span_filter_funcs: nil)
+      filter_ai_spans: nil, span_filter_funcs: nil, compress_otel_payload: true)
       @api_key = api_key
       @org_name = org_name
       @default_project = default_project
@@ -16,6 +16,7 @@ module Braintrust
       @api_url = api_url
       @filter_ai_spans = filter_ai_spans
       @span_filter_funcs = span_filter_funcs || []
+      @compress_otel_payload = compress_otel_payload
     end
 
     # Create a Config from environment variables, with option overrides
@@ -27,15 +28,23 @@ module Braintrust
     # @param api_url [String, nil] API URL (overrides BRAINTRUST_API_URL env var)
     # @param filter_ai_spans [Boolean, nil] Enable AI span filtering (overrides BRAINTRUST_OTEL_FILTER_AI_SPANS env var)
     # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
+    # @param compress_otel_payload [Boolean, nil] Gzip OTEL export payloads (overrides BRAINTRUST_COMPRESS_OTEL_PAYLOAD env var). Default: true
     # @return [Config] the created config
     def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil,
-      filter_ai_spans: nil, span_filter_funcs: nil)
+      filter_ai_spans: nil, span_filter_funcs: nil, compress_otel_payload: nil)
       # Parse filter_ai_spans from ENV if not explicitly provided
       env_filter_ai_spans = ENV["BRAINTRUST_OTEL_FILTER_AI_SPANS"]
       filter_ai_spans_value = if filter_ai_spans.nil?
         env_filter_ai_spans&.downcase == "true"
       else
         filter_ai_spans
+      end
+
+      # Gzip OTEL payloads by default; disable via env var if not explicitly provided
+      compress_otel_payload_value = if compress_otel_payload.nil?
+        parse_bool(ENV["BRAINTRUST_COMPRESS_OTEL_PAYLOAD"], default: true)
+      else
+        compress_otel_payload
       end
 
       new(
@@ -45,8 +54,17 @@ module Braintrust
         app_url: app_url || ENV["BRAINTRUST_APP_URL"] || "https://www.braintrust.dev",
         api_url: api_url || ENV["BRAINTRUST_API_URL"] || "https://api.braintrust.dev",
         filter_ai_spans: filter_ai_spans_value,
-        span_filter_funcs: span_filter_funcs
+        span_filter_funcs: span_filter_funcs,
+        compress_otel_payload: compress_otel_payload_value
       )
+    end
+
+    # Parse a boolean-ish env var value. Falsy values: "false", "0", "no", "off"
+    # (case-insensitive). nil/empty falls back to the default.
+    def self.parse_bool(value, default:)
+      return default if value.nil? || value.empty?
+
+      !%w[false 0 no off].include?(value.strip.downcase)
     end
   end
 end

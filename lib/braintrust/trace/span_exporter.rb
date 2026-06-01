@@ -17,8 +17,12 @@ module Braintrust
       SUCCESS = OpenTelemetry::SDK::Trace::Export::SUCCESS
       FAILURE = OpenTelemetry::SDK::Trace::Export::FAILURE
 
-      def initialize(endpoint:, api_key:)
-        super(endpoint: endpoint, headers: {"Authorization" => "Bearer #{api_key}"})
+      def initialize(endpoint:, api_key:, compress: true)
+        super(
+          endpoint: endpoint,
+          headers: {"Authorization" => "Bearer #{api_key}"},
+          compression: compress ? "gzip" : "none"
+        )
       end
 
       def export(span_data, timeout: nil)

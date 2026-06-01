@@ -6,7 +6,8 @@ BRAINTRUST_CONFIG_ENV_VALUES = {
   "BRAINTRUST_API_KEY" => ENV["BRAINTRUST_API_KEY"],
   "BRAINTRUST_ORG_NAME" => ENV["BRAINTRUST_ORG_NAME"],
   "BRAINTRUST_APP_URL" => ENV["BRAINTRUST_APP_URL"],
-  "BRAINTRUST_API_URL" => ENV["BRAINTRUST_API_URL"]
+  "BRAINTRUST_API_URL" => ENV["BRAINTRUST_API_URL"],
+  "BRAINTRUST_COMPRESS_OTEL_PAYLOAD" => ENV["BRAINTRUST_COMPRESS_OTEL_PAYLOAD"]
 }.freeze
 
 class Braintrust::ConfigTest < Minitest::Test
@@ -60,5 +61,38 @@ class Braintrust::ConfigTest < Minitest::Test
     config = Braintrust::Config.from_env
 
     assert_equal "https://custom.braintrust.dev", config.app_url
+  end
+
+  def test_compress_otel_payload_defaults_to_true
+    config = Braintrust::Config.from_env
+
+    assert_equal true, config.compress_otel_payload
+  end
+
+  def test_compress_otel_payload_disabled_by_env_var
+    %w[false 0 no off FALSE Off].each do |val|
+      ENV["BRAINTRUST_COMPRESS_OTEL_PAYLOAD"] = val
+
+      config = Braintrust::Config.from_env
+
+      assert_equal false, config.compress_otel_payload,
+        "expected #{val.inspect} to disable compression"
+    end
+  end
+
+  def test_compress_otel_payload_truthy_env_var
+    ENV["BRAINTRUST_COMPRESS_OTEL_PAYLOAD"] = "true"
+
+    config = Braintrust::Config.from_env
+
+    assert_equal true, config.compress_otel_payload
+  end
+
+  def test_compress_otel_payload_explicit_overrides_env_var
+    ENV["BRAINTRUST_COMPRESS_OTEL_PAYLOAD"] = "false"
+
+    config = Braintrust::Config.from_env(compress_otel_payload: true)
+
+    assert_equal true, config.compress_otel_payload
   end
 end
