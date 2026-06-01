@@ -74,7 +74,18 @@ class BtxTest < Minitest::Test
     result = with_cassette(spec) { executor.execute(spec) }
 
     # The in-memory OTel spans are converted to brainstore format in every mode.
-    converted = Braintrust::BTX::SpanConverter.to_brainstore_spans(result.otel_spans)
+    #
+    # Attachment handling differs by mode:
+    #   - live: the SDK attachment processor is OFF and the backend converts
+    #     data URIs to references after ingestion, so the converter replicates
+    #     that transform to match what the backend stores.
+    #   - replay: the SDK attachment processor runs in-process and is expected
+    #     to produce the references itself, so the converter must NOT transform.
+    #     This makes the attachment specs a genuine end-to-end check of the
+    #     processor — they fail if it is disabled or broken.
+    converted = Braintrust::BTX::SpanConverter.to_brainstore_spans(
+      result.otel_spans, transform_attachments: live
+    )
 
     if live
       run_spec_live(spec, result, state, converted)

@@ -30,11 +30,20 @@ module Braintrust
       # Convert a list of exported OTel SpanData into brainstore-format hashes.
       #
       # @param otel_spans [Array<OpenTelemetry::SDK::Trace::SpanData>]
+      # @param transform_attachments [Boolean] when true, replicate the backend's
+      #   data-URI -> braintrust_attachment transform on the input. This is the
+      #   behavior for live mode, where the SDK attachment processor is disabled
+      #   and the backend performs the conversion after ingestion.
+      #
+      #   In replay mode the SDK attachment processor runs in-process and is
+      #   expected to produce the references itself, so the converter must NOT
+      #   re-transform — otherwise it would mask a broken/disabled processor and
+      #   the attachment specs would pass even when the SDK did nothing.
       # @return [Array<Hash>] brainstore spans, in input order
-      def to_brainstore_spans(otel_spans)
+      def to_brainstore_spans(otel_spans, transform_attachments: true)
         otel_spans
           .select { |span| llm_instrumentation_span?(span) }
-          .map { |span| to_single_brainstore_span(span) }
+          .map { |span| to_single_brainstore_span(span, transform_attachments: transform_attachments) }
       end
 
       def llm_instrumentation_span?(span)
@@ -42,12 +51,13 @@ module Braintrust
         !attrs["braintrust.span_attributes"].nil?
       end
 
-      def to_single_brainstore_span(span)
+      def to_single_brainstore_span(span, transform_attachments: true)
         result = {}
         result["name"] = span.name
         result["metrics"] = parse_json_map(span, "braintrust.metrics")
         result["metadata"] = parse_json_map(span, "braintrust.metadata")
-        result["input"] = transform_input(parse_json_value(span, "braintrust.input_json"))
+        input = parse_json_value(span, "braintrust.input_json")
+        result["input"] = transform_attachments ? transform_input(input) : input
         result["output"] = parse_json_value(span, "braintrust.output_json")
 
         span_attrs = parse_json_map(span, "braintrust.span_attributes") || {}

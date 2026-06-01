@@ -5,6 +5,8 @@ require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
 require_relative "trace/span_exporter"
 require_relative "trace/span_filter"
+require_relative "trace/attachment_processor/processor"
+require_relative "trace/attachment_processor/uploader"
 require_relative "internal/env"
 require_relative "logger"
 
@@ -81,7 +83,7 @@ module Braintrust
       end
     end
 
-    def self.enable(tracer_provider, state: nil, exporter: nil, config: nil)
+    def self.enable(tracer_provider, state: nil, exporter: nil, config: nil, attachment_processor: :default)
       state ||= Braintrust.current_state
       raise Error, "No state available" unless state
 
@@ -104,8 +106,11 @@ module Braintrust
       # Build filters array from config
       filters = build_filters(config)
 
+      # Build the attachment processor (unless explicitly overridden / disabled)
+      attachment_processor = build_attachment_processor(state, config) if attachment_processor == :default
+
       # Wrap span processor in our custom span processor to add Braintrust attributes and filters
-      processor = SpanProcessor.new(span_processor, state, filters)
+      processor = SpanProcessor.new(span_processor, state, filters, attachment_processor: attachment_processor)
 
       # Register with tracer provider
       tracer_provider.add_span_processor(processor)
@@ -137,6 +142,24 @@ module Braintrust
       end
 
       filters
+    end
+
+    # Build the attachment processor for a given state/config, or nil when
+    # attachment auto-conversion is disabled.
+    # @param state [State]
+    # @param config [Config, nil]
+    # @return [AttachmentProcessor::Processor, nil]
+    def self.build_attachment_processor(state, config)
+      enabled = config.nil? || config.auto_convert_ai_attachments
+      return nil unless enabled
+
+      uploader = AttachmentProcessor::S3Uploader.new(
+        api_key: state.api_key,
+        api_url: state.api_url,
+        login_url: state.app_url,
+        org_id: (state.org_id if state.respond_to?(:org_id))
+      )
+      AttachmentProcessor::Processor.new(uploader: uploader, logger: Log)
     end
 
     # Generate a permalink URL for a span to view in the Braintrust UI
