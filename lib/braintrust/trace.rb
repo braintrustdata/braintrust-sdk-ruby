@@ -89,9 +89,11 @@ module Braintrust
       config ||= state.respond_to?(:config) ? state.config : nil
 
       # Create OTLP HTTP exporter unless override provided
+      compress = config.nil? || config.compress_otel_payload
       exporter ||= SpanExporter.new(
         endpoint: "#{state.api_url}/otel/v1/traces",
-        api_key: state.api_key
+        api_key: state.api_key,
+        compress: compress
       )
 
       # Use SimpleSpanProcessor for InMemorySpanExporter (testing), BatchSpanProcessor for production

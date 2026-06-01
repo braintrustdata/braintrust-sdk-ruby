@@ -163,6 +163,25 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
     assert_equal 0, exporter.calls.length
   end
 
+  def test_uses_gzip_compression_by_default
+    exporter = Braintrust::Trace::SpanExporter.new(
+      endpoint: "https://example.com/otel/v1/traces",
+      api_key: "test-key"
+    )
+
+    assert_equal "gzip", exporter.instance_variable_get(:@compression)
+  end
+
+  def test_compression_disabled_when_compress_false
+    exporter = Braintrust::Trace::SpanExporter.new(
+      endpoint: "https://example.com/otel/v1/traces",
+      api_key: "test-key",
+      compress: false
+    )
+
+    assert_equal "none", exporter.instance_variable_get(:@compression)
+  end
+
   def test_header_cleaned_up_even_on_error
     exporter = RecordingExporter.new
     exporter.define_singleton_method(:send_bytes) do |data, timeout:|
