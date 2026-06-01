@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   dependabot-alerts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Generate scoped token
@@ -31,11 +31,10 @@ jobs:
 
           if [ "$ALERTS" -gt 0 ]; then
             SECURITY_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/security/dependabot"
+            TEXT=":warning: *braintrust-sdk-ruby* has $ALERTS open Dependabot alert(s). <$SECURITY_URL|View alerts>"
             curl -s -X POST "https://slack.com/api/chat.postMessage" \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
               -H "Content-Type: application/json; charset=utf-8" \
-              -d "{
-                \"channel\": \"$SLACK_CHANNEL\",
-                \"text\": \":warning: *braintrust-sdk-ruby* has $ALERTS open Dependabot alert(s). <$SECURITY_URL|View alerts>\"
-              }"
+              -d "$(jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
+                '{channel: $channel, text: $text}')"
           fi
