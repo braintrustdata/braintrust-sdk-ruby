@@ -57,6 +57,13 @@ jobs:
           VERSION=$(ruby -r "./lib/braintrust/version.rb" -e "puts Braintrust::VERSION")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Validate SHA format
+        run: |
+          if ! echo "${{ inputs.sha }}" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "Error: sha must be a full 40-character commit SHA — branch names and short SHAs are not accepted."
+            exit 1
+          fi
+
       - name: Validate release
         id: validate-release
         run: |
@@ -136,6 +143,7 @@ jobs:
       - name: Post release summary
         env:
           TAG: ${{ needs.validate.outputs.release_tag }}
+          COMMIT_MSG: ${{ needs.validate.outputs.commit_message }}
         run: |
           NOTES=$(echo "${{ needs.prepare.outputs.notes }}" | base64 -d 2>/dev/null)
           if [ -z "$NOTES" ]; then NOTES="_Release notes unavailable._"; fi
@@ -161,7 +169,7 @@ jobs:
           fi
 
           echo "**SHA:** [${{ inputs.sha }}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/${{ inputs.sha }})" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ needs.validate.outputs.commit_message }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** $COMMIT_MSG" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** $BRANCH_LABEL" >> $GITHUB_STEP_SUMMARY
 
           PREV_TAG="${{ needs.validate.outputs.prev_tag }}"
@@ -178,6 +186,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
           TAG: ${{ needs.validate.outputs.release_tag }}
+          PR_LIST_RAW: ${{ needs.prepare.outputs.pr_list }}
         run: |
           APPROVE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
@@ -196,7 +205,7 @@ jobs:
             DIFF_PART=" · <$DIFF_URL|${PREV_TAG}...$TAG>"
           fi
 
-          PR_LIST=$(echo "${{ needs.prepare.outputs.pr_list }}" | tr $'\x1f' '\n' | sed '/^$/d')
+          PR_LIST=$(echo "$PR_LIST_RAW" | tr $'\x1f' '\n' | sed '/^$/d')
 
           TEXT=":ruby: *braintrust-sdk-ruby $TAG* awaiting approval"
 
@@ -283,6 +292,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
           TAG: ${{ needs.validate.outputs.release_tag }}
+          PR_LIST_RAW: ${{ needs.prepare.outputs.pr_list }}
         run: |
           RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
 
@@ -293,7 +303,7 @@ jobs:
             DIFF_PART="<$DIFF_URL|${PREV_TAG}...$TAG>  ·  "
           fi
 
-          PR_LIST=$(echo "${{ needs.prepare.outputs.pr_list }}" | tr $'\x1f' '\n' | sed '/^$/d')
+          PR_LIST=$(echo "$PR_LIST_RAW" | tr $'\x1f' '\n' | sed '/^$/d')
 
           RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
