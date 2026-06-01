@@ -6,7 +6,8 @@ BRAINTRUST_CONFIG_ENV_VALUES = {
   "BRAINTRUST_API_KEY" => ENV["BRAINTRUST_API_KEY"],
   "BRAINTRUST_ORG_NAME" => ENV["BRAINTRUST_ORG_NAME"],
   "BRAINTRUST_APP_URL" => ENV["BRAINTRUST_APP_URL"],
-  "BRAINTRUST_API_URL" => ENV["BRAINTRUST_API_URL"]
+  "BRAINTRUST_API_URL" => ENV["BRAINTRUST_API_URL"],
+  "BRAINTRUST_AUTO_CONVERT_AI_ATTACHMENTS" => ENV["BRAINTRUST_AUTO_CONVERT_AI_ATTACHMENTS"]
 }.freeze
 
 class Braintrust::ConfigTest < Minitest::Test
@@ -60,5 +61,25 @@ class Braintrust::ConfigTest < Minitest::Test
     config = Braintrust::Config.from_env
 
     assert_equal "https://custom.braintrust.dev", config.app_url
+  end
+
+  def test_auto_convert_ai_attachments_defaults_to_true
+    assert_equal true, Braintrust::Config.from_env.auto_convert_ai_attachments
+  end
+
+  def test_auto_convert_ai_attachments_disabled_via_env
+    ENV["BRAINTRUST_AUTO_CONVERT_AI_ATTACHMENTS"] = "false"
+    assert_equal false, Braintrust::Config.from_env.auto_convert_ai_attachments
+  end
+
+  def test_auto_convert_ai_attachments_explicit_overrides_env
+    ENV["BRAINTRUST_AUTO_CONVERT_AI_ATTACHMENTS"] = "false"
+    config = Braintrust::Config.from_env(auto_convert_ai_attachments: true)
+    assert_equal true, config.auto_convert_ai_attachments
+  end
+
+  def test_auto_convert_ai_attachments_truthy_env_keeps_enabled
+    ENV["BRAINTRUST_AUTO_CONVERT_AI_ATTACHMENTS"] = "true"
+    assert_equal true, Braintrust::Config.from_env.auto_convert_ai_attachments
   end
 end

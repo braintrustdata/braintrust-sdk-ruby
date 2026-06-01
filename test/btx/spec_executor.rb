@@ -49,7 +49,9 @@ module Braintrust
         tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
 
         simple_processor = OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
-        bt_processor = Braintrust::Trace::SpanProcessor.new(simple_processor, @state)
+        bt_processor = Braintrust::Trace::SpanProcessor.new(
+          simple_processor, @state, attachment_processor: attachment_processor
+        )
         tracer_provider.add_span_processor(bt_processor)
 
         # Live mode: also ship spans to the Braintrust backend via OTLP so they
@@ -82,6 +84,21 @@ module Braintrust
       end
 
       private
+
+      # In replay/record mode we exercise the SDK's attachment processor so BTX
+      # also validates attachment-conversion correctness against the same specs
+      # that define the backend behavior. A NoopUploader performs the reference
+      # rewriting without making real upload HTTP calls. In live mode we leave it
+      # nil and let the Braintrust backend perform the conversion (authoritative).
+      def attachment_processor
+        return nil if @live
+
+        require "braintrust/trace/attachment_processor/processor"
+        require "braintrust/trace/attachment_processor/uploader"
+        Braintrust::Trace::AttachmentProcessor::Processor.new(
+          uploader: Braintrust::Trace::AttachmentProcessor::NoopUploader.new
+        )
+      end
 
       def instrument!(provider)
         case provider
