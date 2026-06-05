@@ -4,6 +4,9 @@
 # Version is read from version.rb at that SHA; a version bump PR is always required before releasing.
 # Covers all release types: standard releases, backports, hotfixes, and release candidates.
 #
+# Generated from the canonical Ruby release template in braintrustdata/sdk-actions:
+# https://github.com/braintrustdata/sdk-actions/blob/97d3cfed930227e79b569f37cd577a5c80bc7049/.github/workflows/release-ruby.yml
+#
 
 name: Release Ruby SDK
 
@@ -19,6 +22,10 @@ on:
         description: "Commit SHA (of the version bump) to release"
         required: true
         type: string
+      prev_release:
+        description: "(Optional) Tag or SHA of previous release. Specify if previous tag in git history was not the previous release."
+        type: string
+        required: false
       dry_run:
         description: "Dry run: Build without tagging or publishing"
         type: boolean
@@ -26,75 +33,41 @@ on:
 
 jobs:
   validate:
-    # Generic except where marked LANGUAGE-SPECIFIC
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
     outputs:
-      release_tag: ${{ steps.validate-release.outputs.tag }}
+      release_tag: ${{ steps.validate-release.outputs.release_tag }}
       commit_message: ${{ steps.validate-release.outputs.commit_message }}
       branch: ${{ steps.validate-release.outputs.branch }}
       on_release_branch: ${{ steps.validate-release.outputs.on_release_branch }}
-      prev_tag: ${{ steps.validate-release.outputs.prev_tag }}
+      prev_release: ${{ steps.validate-release.outputs.prev_release }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.sha }}
           fetch-depth: 0
 
-      # LANGUAGE-SPECIFIC: replace with your language's setup action
       - name: Set up language runtime
         uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: '3.4'
           bundler-cache: true
 
-      # LANGUAGE-SPECIFIC: replace with your language's version read command
       - name: Read version
         id: read-version
         run: |
           VERSION=$(ruby -r "./lib/braintrust/version.rb" -e "puts Braintrust::VERSION")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Validate SHA format
-        run: |
-          if ! echo "${{ inputs.sha }}" | grep -qE '^[0-9a-f]{40}$'; then
-            echo "Error: sha must be a full 40-character commit SHA — branch names and short SHAs are not accepted."
-            exit 1
-          fi
-
       - name: Validate release
         id: validate-release
-        run: |
-          VERSION="${{ steps.read-version.outputs.version }}"
-          TAG="v${VERSION}"
-          COMMIT_MSG=$(git log -1 --format="%s" HEAD)
-          BRANCH=$(git branch -r --contains HEAD --format="%(refname:short)" | sed 's|origin/||' | head -1)
-
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            if [ "${{ inputs.dry_run }}" = "true" ]; then
-              echo "Warning: Tag $TAG already exists — skipping in dry run"
-            else
-              echo "Error: Tag $TAG already exists — has the version been bumped?"
-              exit 1
-            fi
-          fi
-
-          if [[ "$BRANCH" == "main" ]]; then
-            ON_RELEASE_BRANCH=true
-          else
-            ON_RELEASE_BRANCH=false
-          fi
-
-          PREV_TAG=$(git describe --tags --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || echo "")
-
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "on_release_branch=$ON_RELEASE_BRANCH" >> $GITHUB_OUTPUT
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-          echo "Ready to release $TAG @ ${{ inputs.sha }} ($COMMIT_MSG)"
+        uses: braintrustdata/sdk-actions/actions/release/validate@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          version: ${{ steps.read-version.outputs.version }}
+          sha: ${{ inputs.sha }}
+          dry_run: ${{ inputs.dry_run }}
 
   prepare:
     needs: validate
@@ -103,36 +76,16 @@ jobs:
     permissions:
       contents: write  # required for releases/generate-notes API
     outputs:
-      pr_list: ${{ steps.pr-list.outputs.pr_list }}
-      notes: ${{ steps.pr-list.outputs.notes }}
+      pr_list: ${{ steps.prepare.outputs.pr_list }}
+      notes: ${{ steps.prepare.outputs.notes }}
     steps:
-      - name: Fetch PR list and release notes
-        id: pr-list
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.validate.outputs.release_tag }}
-        run: |
-          PREV_TAG="${{ needs.validate.outputs.prev_tag }}"
-          BODY=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
-            --method POST \
-            --field tag_name="$TAG" \
-            --field target_commitish="${{ inputs.sha }}" \
-            ${PREV_TAG:+--field previous_tag_name="$PREV_TAG"} \
-            --jq '.body' 2>/dev/null || echo "")
-
-          PR_LIST=$(echo "$BODY" \
-            | grep "^\* " \
-            | grep -v "made their first contribution" \
-            | grep -v "Full Changelog" \
-            | head -10 \
-            | sed 's|^\* ||' \
-            | sed 's| by @[^ ]*||' \
-            | sed 's@ in \(https://[^ ]*/pull/\([0-9]*\)\)@ (<\1|#\2>)@' \
-            | sed 's/^/• /' \
-            | tr '\n' $'\x1f' || echo "")
-
-          echo "pr_list=$PR_LIST" >> $GITHUB_OUTPUT
-          echo "notes=$(echo "$BODY" | base64 -w 0)" >> $GITHUB_OUTPUT
+      - name: Prepare release
+        id: prepare
+        uses: braintrustdata/sdk-actions/actions/release/prepare@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          sha: ${{ inputs.sha }}
+          prev_release: ${{ inputs.prev_release || needs.validate.outputs.prev_release }}
 
   notify-pending:
     needs: [validate, prepare]
@@ -140,94 +93,21 @@ jobs:
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Post release summary
-        env:
-          TAG: ${{ needs.validate.outputs.release_tag }}
-          COMMIT_MSG: ${{ needs.validate.outputs.commit_message }}
-        run: |
-          NOTES=$(echo "${{ needs.prepare.outputs.notes }}" | base64 -d 2>/dev/null)
-          if [ -z "$NOTES" ]; then NOTES="_Release notes unavailable._"; fi
-
-          BRANCH_LABEL="[${{ needs.validate.outputs.branch }}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/${{ needs.validate.outputs.branch }})"
-          if [ "${{ needs.validate.outputs.on_release_branch }}" = "false" ]; then
-            BRANCH_LABEL="$BRANCH_LABEL ⚠️"
-          fi
-
-          echo "## braintrust-sdk-ruby $TAG" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            echo "> [!NOTE]" >> $GITHUB_STEP_SUMMARY
-            echo "> Dry run: Nothing will be tagged or published." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "${{ needs.validate.outputs.on_release_branch }}" = "false" ]; then
-            echo "> [!WARNING]" >> $GITHUB_STEP_SUMMARY
-            echo "> Release SHA is not on a release branch (expected: main). Is this intentional?" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "**SHA:** [${{ inputs.sha }}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/${{ inputs.sha }})" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** $COMMIT_MSG" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** $BRANCH_LABEL" >> $GITHUB_STEP_SUMMARY
-
-          PREV_TAG="${{ needs.validate.outputs.prev_tag }}"
-          if [ -n "$PREV_TAG" ]; then
-            DIFF_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/${PREV_TAG}...${{ inputs.sha }}"
-            echo "**Diff:** [${PREV_TAG}...$TAG]($DIFF_URL)" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "$NOTES" >> $GITHUB_STEP_SUMMARY
-
-      - name: Notify Slack
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
-          TAG: ${{ needs.validate.outputs.release_tag }}
-          PR_LIST_RAW: ${{ needs.prepare.outputs.pr_list }}
-        run: |
-          APPROVE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
-          BRANCH_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/${{ needs.validate.outputs.branch }}"
-          BRANCH_LINK="<$BRANCH_URL|${{ needs.validate.outputs.branch }}>"
-          if [ "${{ needs.validate.outputs.on_release_branch }}" = "false" ]; then
-            BRANCH_INFO="> ⚠️ NOT on release branch: $BRANCH_LINK"
-          else
-            BRANCH_INFO="$BRANCH_LINK"
-          fi
-
-          PREV_TAG="${{ needs.validate.outputs.prev_tag }}"
-          DIFF_PART=""
-          if [ -n "$PREV_TAG" ]; then
-            DIFF_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/${PREV_TAG}...${{ inputs.sha }}"
-            DIFF_PART=" · <$DIFF_URL|${PREV_TAG}...$TAG>"
-          fi
-
-          PR_LIST=$(echo "$PR_LIST_RAW" | tr $'\x1f' '\n' | sed '/^$/d')
-
-          TEXT=":ruby: *braintrust-sdk-ruby $TAG* awaiting approval"
-
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            TEXT="$TEXT\n> :information_source: _Dry run: nothing will be tagged or published._"
-          fi
-
-          TEXT="$TEXT\n${BRANCH_INFO}${DIFF_PART}"
-
-          if [ -n "$PR_LIST" ]; then
-            TEXT="$TEXT\n$PR_LIST"
-          fi
-
-          TEXT="$TEXT\n<$APPROVE_URL|View changes & approve>"
-
-          # jq --arg passes strings literally, so \n must be real newlines before encoding
-          TEXT=$(printf '%b' "$TEXT")
-          curl -s -X POST "https://slack.com/api/chat.postMessage" \
-            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-            -H "Content-Type: application/json; charset=utf-8" \
-            -d "$(jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
-              '{channel: $channel, text: $text}')"
+      - name: Notify release pending
+        uses: braintrustdata/sdk-actions/actions/release/notify-pending@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          sha: ${{ inputs.sha }}
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          prev_release: ${{ needs.validate.outputs.prev_release }}
+          branch: ${{ needs.validate.outputs.branch }}
+          on_release_branch: ${{ needs.validate.outputs.on_release_branch }}
+          commit_message: ${{ needs.validate.outputs.commit_message }}
+          pr_list: ${{ needs.prepare.outputs.pr_list }}
+          notes: ${{ needs.prepare.outputs.notes }}
+          dry_run: ${{ inputs.dry_run }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_channel: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          emoji: ':ruby:'
 
   publish:
     needs: [validate, prepare, notify-pending]
@@ -245,19 +125,12 @@ jobs:
           ref: ${{ inputs.sha }}
           fetch-depth: 0
 
-      # LANGUAGE-SPECIFIC: replace with your language's setup action
       - name: Set up language runtime
         uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           ruby-version: '3.4'
           bundler-cache: true
 
-      # LANGUAGE-SPECIFIC: replace with your language's publish command.
-      # Runs `bundle exec rake release` which: lints, builds, pushes gem to
-      # RubyGems with SLSA attestation, and pushes the git tag to GitHub.
-      # In dry run, gem push and tag push are skipped via DRY_RUN env var
-      # in the Rakefile — rubygems/release-gem itself has no dry run mode.
-      # await-release is disabled in dry run since no gem is pushed.
       - name: Publish package with attestation
         uses: rubygems/release-gem@6317d8d1f7e28c24d28f6eff169ea854948bd9f7 # v1.2.0
         with:
@@ -269,74 +142,22 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
 
       - name: Create GitHub release
-        if: ${{ !inputs.dry_run }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.validate.outputs.release_tag }}
-        run: |
-          echo "${{ needs.prepare.outputs.notes }}" | base64 -d 2>/dev/null > /tmp/release-notes.md
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes-file /tmp/release-notes.md \
-            --target "${{ inputs.sha }}"
+        uses: braintrustdata/sdk-actions/actions/release/create-github-release@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          sha: ${{ inputs.sha }}
+          notes: ${{ needs.prepare.outputs.notes }}
+          dry_run: ${{ inputs.dry_run }}
 
-      - name: Release notes preview
-        if: ${{ inputs.dry_run }}
-        run: |
-          echo "DRY RUN: would create GitHub release ${{ needs.validate.outputs.release_tag }}"
-          echo "--- Release notes preview ---"
-          echo "${{ needs.prepare.outputs.notes }}" | base64 -d 2>/dev/null || echo "(unavailable)"
-
-      - name: Notify Slack on release
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
-          TAG: ${{ needs.validate.outputs.release_tag }}
-          PR_LIST_RAW: ${{ needs.prepare.outputs.pr_list }}
-        run: |
-          RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
-
-          PREV_TAG="${{ needs.validate.outputs.prev_tag }}"
-          DIFF_PART=""
-          if [ -n "$PREV_TAG" ]; then
-            DIFF_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/${PREV_TAG}...$TAG"
-            DIFF_PART="<$DIFF_URL|${PREV_TAG}...$TAG>  ·  "
-          fi
-
-          PR_LIST=$(echo "$PR_LIST_RAW" | tr $'\x1f' '\n' | sed '/^$/d')
-
-          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            TEXT=":white_check_mark: *braintrust-sdk-ruby $TAG* complete"
-          else
-            TEXT=":white_check_mark: *braintrust-sdk-ruby $TAG* published to RubyGems"
-          fi
-
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            TEXT="$TEXT\n> :information_source: _Dry run: gem built, nothing tagged or published._"
-          fi
-
-          BRANCH_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/${{ needs.validate.outputs.branch }}"
-          BRANCH_LINK="<$BRANCH_URL|${{ needs.validate.outputs.branch }}>"
-          if [ "${{ needs.validate.outputs.on_release_branch }}" = "false" ]; then
-            TEXT="$TEXT\n> ⚠️ NOT on release branch: $BRANCH_LINK"
-          fi
-
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            TEXT="$TEXT\n${DIFF_PART}<$RUN_URL|View dry run>"
-          else
-            TEXT="$TEXT\n${DIFF_PART}<$RELEASE_URL|View release>"
-          fi
-
-          if [ -n "$PR_LIST" ]; then
-            TEXT="$TEXT\n$PR_LIST"
-          fi
-
-          # jq --arg passes strings literally, so \n must be real newlines before encoding
-          TEXT=$(printf '%b' "$TEXT")
-          curl -s -X POST "https://slack.com/api/chat.postMessage" \
-            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
-            -H "Content-Type: application/json; charset=utf-8" \
-            -d "$(jq -n --arg channel "$SLACK_CHANNEL" --arg text "$TEXT" \
-              '{channel: $channel, text: $text}')"
+      - name: Notify release complete
+        uses: braintrustdata/sdk-actions/actions/release/notify-published@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          prev_release: ${{ needs.validate.outputs.prev_release }}
+          branch: ${{ needs.validate.outputs.branch }}
+          on_release_branch: ${{ needs.validate.outputs.on_release_branch }}
+          pr_list: ${{ needs.prepare.outputs.pr_list }}
+          dry_run: ${{ inputs.dry_run }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_channel: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          emoji: ':white_check_mark:'
