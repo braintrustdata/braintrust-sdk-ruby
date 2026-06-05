@@ -39,7 +39,7 @@ module Braintrust
 
           request = Net::HTTP::Post.new(uri)
           request["Content-Type"] = "application/json"
-          request["Authorization"] = "Bearer #{@state.require_api_key}"
+          request["Authorization"] = "Bearer #{@state.api_key!}"
           request.body = JSON.dump(payload)
 
           response = Braintrust::Internal::Http.with_redirects(uri, request)
@@ -59,7 +59,7 @@ module Braintrust
           uri = URI("#{@state.api_url}/v1/experiment/#{id}")
 
           request = Net::HTTP::Delete.new(uri)
-          request["Authorization"] = "Bearer #{@state.require_api_key}"
+          request["Authorization"] = "Bearer #{@state.api_key!}"
 
           response = Braintrust::Internal::Http.with_redirects(uri, request)
 

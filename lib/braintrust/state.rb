@@ -103,10 +103,9 @@ module Braintrust
       end
     end
 
-    def require_api_key
-      key = @api_key
-      raise MissingAPIKeyError, "api_key is required" if key.nil? || key.empty?
-      key
+    def api_key!
+      raise MissingAPIKeyError, "api_key is required" if @api_key.nil? || @api_key.empty?
+      @api_key
     end
 
     # Thread-safe global state getter
@@ -129,7 +128,7 @@ module Braintrust
       @login_mutex.synchronize do
         # Return early if already logged in
         return self if @logged_in
-        api_key = require_api_key
+        api_key = api_key!
 
         result = API::Internal::Auth.login(
           api_key: api_key,
@@ -202,7 +201,7 @@ module Braintrust
     # Raises ArgumentError if state is invalid
     # @return [self]
     def validate
-      require_api_key
+      api_key!
       raise ArgumentError, "api_url is required" if @api_url.nil? || @api_url.empty?
       raise ArgumentError, "app_url is required" if @app_url.nil? || @app_url.empty?
 

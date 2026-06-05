@@ -239,7 +239,7 @@ module Braintrust
           raise ArgumentError, "Unsupported HTTP method: #{method}"
         end
 
-        request["Authorization"] = "Bearer #{@state.require_api_key}"
+        request["Authorization"] = "Bearer #{@state.api_key!}"
 
         # Execute request with timing
         start_time = Time.now
