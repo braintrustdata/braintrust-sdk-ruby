@@ -1,0 +1,163 @@
+#
+# Release workflow for the Ruby SDK.
+# Triggered manually via GitHub Actions UI — requires an explicit commit SHA.
+# Version is read from version.rb at that SHA; a version bump PR is always required before releasing.
+# Covers all release types: standard releases, backports, hotfixes, and release candidates.
+#
+# Generated from the canonical Ruby release template in braintrustdata/sdk-actions:
+# https://github.com/braintrustdata/sdk-actions/blob/97d3cfed930227e79b569f37cd577a5c80bc7049/.github/workflows/release-ruby.yml
+#
+
+name: Release Ruby SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      _instructions:
+        description: "⚠️ Before starting: Merge a version bump PR to the target branch. The version is read from the SHA: it cannot be overridden."
+        type: string
+        default: "I have merged a version bump PR"
+        required: false
+      sha:
+        description: "Commit SHA (of the version bump) to release"
+        required: true
+        type: string
+      prev_release:
+        description: "(Optional) Tag or SHA of previous release. Specify if previous tag in git history was not the previous release."
+        type: string
+        required: false
+      dry_run:
+        description: "Dry run: Build without tagging or publishing"
+        type: boolean
+        default: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      release_tag: ${{ steps.validate-release.outputs.release_tag }}
+      commit_message: ${{ steps.validate-release.outputs.commit_message }}
+      branch: ${{ steps.validate-release.outputs.branch }}
+      on_release_branch: ${{ steps.validate-release.outputs.on_release_branch }}
+      prev_release: ${{ steps.validate-release.outputs.prev_release }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+
+      - name: Set up language runtime
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      - name: Read version
+        id: read-version
+        run: |
+          VERSION=$(ruby -r "./lib/braintrust/version.rb" -e "puts Braintrust::VERSION")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate release
+        id: validate-release
+        uses: braintrustdata/sdk-actions/actions/release/validate@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          version: ${{ steps.read-version.outputs.version }}
+          sha: ${{ inputs.sha }}
+          dry_run: ${{ inputs.dry_run }}
+
+  prepare:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write  # required for releases/generate-notes API
+    outputs:
+      pr_list: ${{ steps.prepare.outputs.pr_list }}
+      notes: ${{ steps.prepare.outputs.notes }}
+    steps:
+      - name: Prepare release
+        id: prepare
+        uses: braintrustdata/sdk-actions/actions/release/prepare@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          sha: ${{ inputs.sha }}
+          prev_release: ${{ inputs.prev_release || needs.validate.outputs.prev_release }}
+
+  notify-pending:
+    needs: [validate, prepare]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Notify release pending
+        uses: braintrustdata/sdk-actions/actions/release/notify-pending@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          sha: ${{ inputs.sha }}
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          prev_release: ${{ needs.validate.outputs.prev_release }}
+          branch: ${{ needs.validate.outputs.branch }}
+          on_release_branch: ${{ needs.validate.outputs.on_release_branch }}
+          commit_message: ${{ needs.validate.outputs.commit_message }}
+          pr_list: ${{ needs.prepare.outputs.pr_list }}
+          notes: ${{ needs.prepare.outputs.notes }}
+          dry_run: ${{ inputs.dry_run }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_channel: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          emoji: ':ruby:'
+
+  publish:
+    needs: [validate, prepare, notify-pending]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ${{ inputs.dry_run && 'rubygems-publish-dry-run' || 'rubygems-publish' }}
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+
+      - name: Set up language runtime
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+
+      - name: Publish package with attestation
+        uses: rubygems/release-gem@6317d8d1f7e28c24d28f6eff169ea854948bd9f7 # v1.2.0
+        with:
+          await-release: ${{ inputs.dry_run && 'false' || 'true' }}
+          setup-trusted-publisher: ${{ inputs.dry_run && 'false' || 'true' }}
+          attestations: ${{ inputs.dry_run && 'false' || 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+
+      - name: Create GitHub release
+        uses: braintrustdata/sdk-actions/actions/release/create-github-release@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          sha: ${{ inputs.sha }}
+          notes: ${{ needs.prepare.outputs.notes }}
+          dry_run: ${{ inputs.dry_run }}
+
+      - name: Notify release complete
+        uses: braintrustdata/sdk-actions/actions/release/notify-published@97d3cfed930227e79b569f37cd577a5c80bc7049
+        with:
+          release_tag: ${{ needs.validate.outputs.release_tag }}
+          prev_release: ${{ needs.validate.outputs.prev_release }}
+          branch: ${{ needs.validate.outputs.branch }}
+          on_release_branch: ${{ needs.validate.outputs.on_release_branch }}
+          pr_list: ${{ needs.prepare.outputs.pr_list }}
+          dry_run: ${{ inputs.dry_run }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_channel: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          emoji: ':white_check_mark:'

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    braintrust (0.3.2)
+    braintrust (0.4.0)
       logger (>= 1.0)
       openssl (>= 3.3.1, < 5.0)
       opentelemetry-exporter-otlp (~> 0.28)
@@ -50,7 +50,7 @@ GEM
       minitest (>= 5.0)
       ruby-progressbar
     minitest-stub-const (0.6)
-    openssl (3.3.2)
+    openssl (4.0.0)
     opentelemetry-api (1.7.0)
     opentelemetry-common (0.23.0)
       opentelemetry-api (~> 1.0)
@@ -142,6 +142,7 @@ DEPENDENCIES
   minitest (~> 5.0)
   minitest-reporters (~> 1.6)
   minitest-stub-const (~> 0.6)
+  openssl (= 4.0.0)
   rake (~> 13.0)
   simplecov (~> 0.22)
   standard (~> 1.0)
@@ -150,4 +151,4 @@ DEPENDENCIES
   yard (~> 0.9)
 
 BUNDLED WITH
-  4.0.8
+   4.0.8
