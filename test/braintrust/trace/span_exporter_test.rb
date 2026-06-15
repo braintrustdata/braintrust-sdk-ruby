@@ -30,10 +30,10 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
   class RecordingExporter < Braintrust::Trace::SpanExporter
     attr_reader :calls
 
-    def initialize
+    def initialize(api_key: "test-key")
       @calls = []
       # Initialize headers directly — skip super to avoid HTTP setup
-      @headers = {"Authorization" => "Bearer test-key"}
+      @headers = {"Authorization" => "Bearer #{api_key}"}
       @shutdown = false
     end
 
@@ -100,6 +100,14 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
     assert_equal SUCCESS, result
     assert_equal 1, exporter.calls.length
     refute exporter.calls[0][:headers].key?("x-bt-parent")
+  end
+
+  def test_requires_api_key
+    error = assert_raises(Braintrust::State::MissingAPIKeyError) do
+      Braintrust::Trace::SpanExporter.new(endpoint: "https://api.example.test/otel/v1/traces", api_key: nil)
+    end
+
+    assert_match(/api_key is required/, error.message)
   end
 
   def test_mixed_nil_and_non_nil_parents

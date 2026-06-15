@@ -63,7 +63,7 @@ module Braintrust
 
           request = Net::HTTP::Post.new(uri)
           request["Content-Type"] = "application/json"
-          request["Authorization"] = "Bearer #{@state.api_key}"
+          request["Authorization"] = "Bearer #{@state.api_key!}"
           request["Accept"] = "application/x-jsonlines"
           request.body = JSON.dump(payload)
 

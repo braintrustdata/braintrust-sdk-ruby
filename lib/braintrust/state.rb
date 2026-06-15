@@ -6,6 +6,8 @@ module Braintrust
   # State object that holds Braintrust configuration
   # Thread-safe global state management
   class State
+    class MissingAPIKeyError < ArgumentError; end
+
     attr_reader :api_key, :org_name, :org_id, :default_project, :app_url, :api_url, :proxy_url, :logged_in, :config
 
     @mutex = Mutex.new
@@ -66,7 +68,7 @@ module Braintrust
     def initialize(api_key: nil, org_name: nil, org_id: nil, default_project: nil, app_url: nil, api_url: nil, proxy_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, config: nil, exporter: nil)
       # Instance-level mutex for thread-safe login
       @login_mutex = Mutex.new
-      raise ArgumentError, "api_key is required" if api_key.nil? || api_key.empty?
+      raise MissingAPIKeyError, "api_key is required" if api_key.nil? || api_key.empty?
 
       @api_key = api_key
       @org_name = org_name
@@ -101,6 +103,11 @@ module Braintrust
       end
     end
 
+    def api_key!
+      raise MissingAPIKeyError, "api_key is required" if @api_key.nil? || @api_key.empty?
+      @api_key
+    end
+
     # Thread-safe global state getter
     def self.global
       @mutex.synchronize { @global_state }
@@ -121,9 +128,10 @@ module Braintrust
       @login_mutex.synchronize do
         # Return early if already logged in
         return self if @logged_in
+        api_key = api_key!
 
         result = API::Internal::Auth.login(
-          api_key: @api_key,
+          api_key: api_key,
           app_url: @app_url,
           org_name: @org_name
         )
@@ -167,6 +175,9 @@ module Braintrust
           login
           Log.debug("Background login succeeded")
           break
+        rescue MissingAPIKeyError => e
+          Log.debug("Background login skipped: #{e.message}")
+          break
         rescue => e
           retry_count += 1
           delay = [0.001 * 2**(retry_count - 1), max_delay].min
@@ -190,7 +201,7 @@ module Braintrust
     # Raises ArgumentError if state is invalid
     # @return [self]
     def validate
-      raise ArgumentError, "api_key is required" if @api_key.nil? || @api_key.empty?
+      api_key!
       raise ArgumentError, "api_url is required" if @api_url.nil? || @api_url.empty?
       raise ArgumentError, "app_url is required" if @app_url.nil? || @app_url.empty?
 

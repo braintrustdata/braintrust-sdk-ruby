@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "opentelemetry/exporter/otlp"
+require_relative "../state"
 
 module Braintrust
   module Trace
@@ -18,6 +19,8 @@ module Braintrust
       FAILURE = OpenTelemetry::SDK::Trace::Export::FAILURE
 
       def initialize(endpoint:, api_key:)
+        raise State::MissingAPIKeyError, "api_key is required" if api_key.nil? || api_key.empty?
+
         super(endpoint: endpoint, headers: {"Authorization" => "Bearer #{api_key}"})
       end
 

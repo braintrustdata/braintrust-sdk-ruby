@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "internal/api_key_resolver"
+
 module Braintrust
   # Configuration object that reads from environment variables
   # and allows overriding with explicit options
@@ -39,7 +41,7 @@ module Braintrust
       end
 
       new(
-        api_key: api_key || ((ENV["BRAINTRUST_API_KEY"] && ENV["BRAINTRUST_API_KEY"].empty?) ? nil : ENV["BRAINTRUST_API_KEY"]),
+        api_key: Internal::ApiKeyResolver.resolve(explicit_api_key: api_key),
         org_name: org_name || ENV["BRAINTRUST_ORG_NAME"],
         default_project: default_project || ENV["BRAINTRUST_DEFAULT_PROJECT"],
         app_url: app_url || ENV["BRAINTRUST_APP_URL"] || "https://www.braintrust.dev",
