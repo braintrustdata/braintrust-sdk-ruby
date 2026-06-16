@@ -67,7 +67,12 @@ end
 
 desc "Build the gem"
 task build: [:clean] do
+  # Output to pkg/ (Bundler convention). rubygems/release-gem awaits pkg/*.gem
+  # after pushing, so the gem must land there — not the repo root.
+  require_relative "lib/braintrust/version"
   sh "gem build braintrust.gemspec"
+  mkdir_p "pkg"
+  mv "braintrust-#{Braintrust::VERSION}.gem", "pkg/"
 end
 
 desc "Generate YARD documentation"
@@ -200,7 +205,7 @@ end
 # Release tasks
 namespace :release do
   task publish: [:lint, :build] do
-    gem_files = FileList["braintrust-*.gem"]
+    gem_files = FileList["pkg/braintrust-*.gem"]
     if gem_files.empty?
       puts "Error: No gem file found. Build task should have created it."
       exit 1
