@@ -5,7 +5,38 @@ require "rake/testtask"
 desc "Run tests (optionally with seed: rake test[12345])"
 task :test, [:seed] do |t, args|
   seed_opt = args[:seed] ? " -- --seed=#{args[:seed]}" : ""
-  sh "ruby -Ilib:test -e \"Dir.glob('test/**/*_test.rb').each { |f| require_relative f }\"#{seed_opt}"
+  # Exclude the BTX cross-language spec suite — it requires provider gems and
+  # is run separately via `rake test:btx` (under the contrib appraisal).
+  sh "ruby -Ilib:test -e \"Dir.glob('test/**/*_test.rb').reject { |f| f.start_with?('test/btx/') }.each { |f| require_relative f }\"#{seed_opt}"
+end
+
+namespace :test do
+  # BTX: cross-language LLM-span spec suite.
+  #
+  # Requires the openai + anthropic gems, so it runs under the `contrib`
+  # appraisal. Use `rake test:btx` while already inside a gemfile that has the
+  # provider gems (e.g. `bundle exec appraisal contrib rake test:btx`), or
+  # `rake test:btx:ci` which selects the contrib appraisal for you.
+  namespace :btx do
+    desc "Fetch the pinned braintrust-spec into the local cache (idempotent)"
+    task :fetch_spec do
+      # Run the fetch in a clean process before WebMock is loaded so the GitHub
+      # download is not blocked by the test suite's HTTP stubbing.
+      sh "ruby -Itest/btx -e \"require 'spec_fetcher'; puts Braintrust::BTX::SpecFetcher.spec_root\""
+    end
+
+    desc "Run the BTX suite under the contrib appraisal (used by `rake ci`)"
+    task :ci do
+      # Ensure the contrib gemfile (openai + anthropic) is installed, then run.
+      sh "bundle exec appraisal contrib bundle install --quiet"
+      sh "bundle exec appraisal contrib rake test:btx"
+    end
+  end
+
+  desc "Run the BTX cross-language LLM-span spec suite (run under the contrib appraisal)"
+  task btx: :"btx:fetch_spec" do
+    sh "ruby -Ilib:test -e \"require_relative 'test/btx/btx_test.rb'\""
+  end
 end
 
 desc "Run Standard linter"
@@ -96,8 +127,8 @@ task coverage: :test do
   end
 end
 
-desc "Verify CI (lint + test all appraisal scenarios)"
-task ci: [:lint, :"test:appraisal"]
+desc "Verify CI (lint + test all appraisal scenarios + btx spec suite)"
+task ci: [:lint, :"test:appraisal", :"test:btx:ci"]
 
 task default: :ci
 
