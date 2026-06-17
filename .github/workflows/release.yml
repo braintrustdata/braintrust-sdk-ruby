@@ -5,7 +5,7 @@
 # Covers all release types: standard releases, backports, hotfixes, and release candidates.
 #
 # Generated from the canonical Ruby release template in braintrustdata/sdk-actions:
-# https://github.com/braintrustdata/sdk-actions/blob/97d3cfed930227e79b569f37cd577a5c80bc7049/.github/workflows/release-ruby.yml
+# https://github.com/braintrustdata/sdk-actions/blob/e055cc17a5317e10ea94c8328cf79dcdaeda6f7f/.github/workflows/release-ruby.yml
 #
 
 name: Release Ruby SDK
@@ -44,28 +44,12 @@ jobs:
       on_release_branch: ${{ steps.validate-release.outputs.on_release_branch }}
       prev_release: ${{ steps.validate-release.outputs.prev_release }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ inputs.sha }}
-          fetch-depth: 0
-
-      - name: Set up language runtime
-        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
-        with:
-          ruby-version: '4.0'
-          bundler-cache: true
-
-      - name: Read version
-        id: read-version
-        run: |
-          VERSION=$(ruby -r "./lib/braintrust/version.rb" -e "puts Braintrust::VERSION")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Validate release
         id: validate-release
-        uses: braintrustdata/sdk-actions/actions/release/validate@97d3cfed930227e79b569f37cd577a5c80bc7049
+        uses: braintrustdata/sdk-actions/actions/release/lang/ruby/validate@e055cc17a5317e10ea94c8328cf79dcdaeda6f7f
         with:
-          version: ${{ steps.read-version.outputs.version }}
+          version_file: lib/braintrust/version.rb
+          version_module: Braintrust
           sha: ${{ inputs.sha }}
           dry_run: ${{ inputs.dry_run }}
 
@@ -81,7 +65,7 @@ jobs:
     steps:
       - name: Prepare release
         id: prepare
-        uses: braintrustdata/sdk-actions/actions/release/prepare@97d3cfed930227e79b569f37cd577a5c80bc7049
+        uses: braintrustdata/sdk-actions/actions/release/prepare@e055cc17a5317e10ea94c8328cf79dcdaeda6f7f
         with:
           release_tag: ${{ needs.validate.outputs.release_tag }}
           sha: ${{ inputs.sha }}
@@ -94,7 +78,7 @@ jobs:
     permissions: {}
     steps:
       - name: Notify release pending
-        uses: braintrustdata/sdk-actions/actions/release/notify-pending@97d3cfed930227e79b569f37cd577a5c80bc7049
+        uses: braintrustdata/sdk-actions/actions/release/notify-pending@e055cc17a5317e10ea94c8328cf79dcdaeda6f7f
         with:
           sha: ${{ inputs.sha }}
           release_tag: ${{ needs.validate.outputs.release_tag }}
@@ -107,6 +91,7 @@ jobs:
           dry_run: ${{ inputs.dry_run }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           slack_channel: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
+          slack_mention: '@sdk-eng'
           emoji: ':ruby:'
 
   publish:
@@ -120,44 +105,19 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Publish gem
+        uses: braintrustdata/sdk-actions/actions/release/lang/ruby/publish@e055cc17a5317e10ea94c8328cf79dcdaeda6f7f
         with:
-          ref: ${{ inputs.sha }}
-          fetch-depth: 0
-
-      - name: Set up language runtime
-        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
-        with:
-          ruby-version: '4.0'
-          bundler-cache: true
-
-      - name: Publish package with attestation
-        uses: rubygems/release-gem@052cc82692552de3ef2b81fd670e41d13cba8092 # v1.4.0
-        with:
-          await-release: ${{ inputs.dry_run && 'false' || 'true' }}
-          setup-trusted-publisher: ${{ inputs.dry_run && 'false' || 'true' }}
-          attestations: ${{ inputs.dry_run && 'false' || 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DRY_RUN: ${{ inputs.dry_run }}
-
-      - name: Create GitHub release
-        uses: braintrustdata/sdk-actions/actions/release/create-github-release@97d3cfed930227e79b569f37cd577a5c80bc7049
-        with:
-          release_tag: ${{ needs.validate.outputs.release_tag }}
           sha: ${{ inputs.sha }}
-          notes: ${{ needs.prepare.outputs.notes }}
-          dry_run: ${{ inputs.dry_run }}
-
-      - name: Notify release complete
-        uses: braintrustdata/sdk-actions/actions/release/notify-published@97d3cfed930227e79b569f37cd577a5c80bc7049
-        with:
           release_tag: ${{ needs.validate.outputs.release_tag }}
+          dry_run: ${{ inputs.dry_run }}
+          notes: ${{ needs.prepare.outputs.notes }}
           prev_release: ${{ needs.validate.outputs.prev_release }}
           branch: ${{ needs.validate.outputs.branch }}
           on_release_branch: ${{ needs.validate.outputs.on_release_branch }}
           pr_list: ${{ needs.prepare.outputs.pr_list }}
-          dry_run: ${{ inputs.dry_run }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           slack_channel: ${{ vars.SLACK_SDK_RELEASE_CHANNEL }}
-          emoji: ':white_check_mark:'
+          # slack_mention: '@sdk-eng'
+          # failure_slack_mention: '@sdk-eng'
+          gem_name: braintrust
