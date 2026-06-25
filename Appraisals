@@ -26,6 +26,10 @@ OPTIONAL_GEMS = {
     "1.8" => {constraint: "~> 1.8.0", deps: {}},
     "1.9" => {constraint: "~> 1.9.0", deps: {}},
     "latest" => {constraint: ">= 1.9", deps: {}}
+  },
+  "llm.rb" => {
+    "4.11" => {constraint: "~> 4.11.0", deps: {}},
+    "latest" => {constraint: ">= 4.11", deps: {}}
   }
 }
 

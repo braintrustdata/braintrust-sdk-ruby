@@ -197,9 +197,11 @@ require_relative "contrib/openai/integration"
 require_relative "contrib/ruby_openai/integration"
 require_relative "contrib/ruby_llm/integration"
 require_relative "contrib/anthropic/integration"
+require_relative "contrib/llm_rb/integration"
 
 # Register integrations
 Braintrust::Contrib::OpenAI::Integration.register!
 Braintrust::Contrib::RubyOpenAI::Integration.register!
 Braintrust::Contrib::RubyLLM::Integration.register!
 Braintrust::Contrib::Anthropic::Integration.register!
+Braintrust::Contrib::LlmRb::Integration.register!
