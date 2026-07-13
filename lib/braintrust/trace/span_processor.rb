@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require "json"
 require "opentelemetry/sdk"
+require_relative "../version"
 
 module Braintrust
   module Trace
@@ -10,6 +12,9 @@ module Braintrust
       PARENT_ATTR_KEY = "braintrust.parent"
       ORG_ATTR_KEY = "braintrust.org"
       APP_URL_ATTR_KEY = "braintrust.app_url"
+      CONTEXT_JSON_ATTR_KEY = "braintrust.context_json"
+      ENVIRONMENT_TYPE_ATTR_KEY = "braintrust.environment.type"
+      ENVIRONMENT_NAME_ATTR_KEY = "braintrust.environment.name"
 
       def initialize(wrapped_processor, state, filters = [])
         @wrapped = wrapped_processor
@@ -18,6 +23,8 @@ module Braintrust
       end
 
       def on_start(span, parent_context)
+        add_span_origin(span)
+
         # Add default parent if span doesn't already have one
         has_parent = span.respond_to?(:attributes) && span.attributes&.key?(PARENT_ATTR_KEY)
 
@@ -52,6 +59,42 @@ module Braintrust
       end
 
       private
+
+      def add_span_origin(span)
+        context = parse_context_json(span.respond_to?(:attributes) ? span.attributes&.[](CONTEXT_JSON_ATTR_KEY) : nil)
+        span_origin = context["span_origin"].is_a?(Hash) ? context["span_origin"] : {}
+        span_origin["name"] ||= "braintrust.sdk.ruby"
+        span_origin["version"] ||= Braintrust::VERSION
+        span_origin["instrumentation"] ||= {"name" => instrumentation_name(span)}
+        if @state.config&.environment && !span_origin.key?("environment")
+          environment = {"type" => @state.config.environment[:type]}
+          environment["name"] = @state.config.environment[:name] if @state.config.environment[:name]
+          span_origin["environment"] = environment
+        end
+        context["span_origin"] = span_origin
+        span.set_attribute(CONTEXT_JSON_ATTR_KEY, JSON.generate(context))
+
+        return unless @state.config&.environment
+
+        span.set_attribute(ENVIRONMENT_TYPE_ATTR_KEY, @state.config.environment[:type])
+        span.set_attribute(ENVIRONMENT_NAME_ATTR_KEY, @state.config.environment[:name]) if @state.config.environment[:name]
+      end
+
+      def parse_context_json(raw)
+        return {} unless raw.is_a?(String) && !raw.strip.empty?
+
+        parsed = JSON.parse(raw)
+        parsed.is_a?(Hash) ? parsed : {}
+      rescue JSON::ParserError
+        {}
+      end
+
+      def instrumentation_name(span)
+        return span.instrumentation_scope.name if span.respond_to?(:instrumentation_scope) && span.instrumentation_scope&.respond_to?(:name)
+        return span.instrumentation_library.name if span.respond_to?(:instrumentation_library) && span.instrumentation_library&.respond_to?(:name)
+
+        "braintrust-ruby"
+      end
 
       def default_parent
         # If default_project is set, format it as "project_name:value"

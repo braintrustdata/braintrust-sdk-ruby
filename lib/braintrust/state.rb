@@ -25,8 +25,9 @@ module Braintrust
     # @param filter_ai_spans [Boolean, nil] Enable AI span filtering
     # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
     # @param exporter [Exporter, nil] Optional exporter override (for testing)
+    # @param environment [Hash, nil] Span-origin environment override
     # @return [State] the created state
-    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil)
+    def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, exporter: nil, environment: nil)
       require_relative "config"
       config = Config.from_env(
         api_key: api_key,
@@ -35,7 +36,8 @@ module Braintrust
         app_url: app_url,
         api_url: api_url,
         filter_ai_spans: filter_ai_spans,
-        span_filter_funcs: span_filter_funcs
+        span_filter_funcs: span_filter_funcs,
+        environment: environment
       )
       new(
         api_key: config.api_key,
