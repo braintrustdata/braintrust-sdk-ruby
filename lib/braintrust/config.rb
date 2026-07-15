@@ -58,8 +58,8 @@ module Braintrust
       return normalize_environment(explicit) if explicit
 
       env_type = env_value("BRAINTRUST_ENVIRONMENT_TYPE")
-      if env_type && !env_type.empty?
-        env_name = env_value("BRAINTRUST_ENVIRONMENT_NAME")
+      env_name = env_value("BRAINTRUST_ENVIRONMENT_NAME")
+      if (env_type && !env_type.empty?) || (env_name && !env_name.empty?)
         return {type: env_type, name: env_name}.compact
       end
 

@@ -99,6 +99,19 @@ class Braintrust::ConfigTest < Minitest::Test
     end
   end
 
+  def test_explicit_environment_name_without_type_is_preserved
+    with_env(
+      "CI" => nil,
+      "GITHUB_ACTIONS" => nil,
+      "BRAINTRUST_ENVIRONMENT_TYPE" => nil,
+      "BRAINTRUST_ENVIRONMENT_NAME" => "staging"
+    ) do
+      config = Braintrust::Config.from_env
+
+      assert_equal({name: "staging"}, config.environment)
+    end
+  end
+
   def test_aws_execution_env_classifies_lambda_when_lambda_specific
     with_env(
       "CI" => nil,
