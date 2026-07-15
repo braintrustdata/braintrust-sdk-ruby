@@ -97,6 +97,28 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
     wrapped.verify
   end
 
+  def test_span_origin_merges_with_context_json_set_after_start
+    wrapped = Minitest::Mock.new
+    wrapped.expect(:on_start, nil, [Object, Object])
+    wrapped.expect(:on_finish, nil, [Object])
+
+    processor = Braintrust::Trace::SpanProcessor.new(wrapped, @state)
+
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+    tracer = tracer_provider.tracer("test")
+    span = tracer.start_span("test-span")
+
+    processor.on_start(span, OpenTelemetry::Context.empty)
+    span.set_attribute("braintrust.context_json", JSON.generate({"metadata" => {"source" => "late-attribute"}}))
+    processor.on_finish(span)
+
+    context = JSON.parse(span.attributes["braintrust.context_json"])
+    assert_equal "late-attribute", context.dig("metadata", "source")
+    assert_equal "braintrust.sdk.ruby", context.dig("span_origin", "name")
+
+    wrapped.verify
+  end
+
   def test_span_processor_enables_permalink_generation
     # This test verifies that spans processed by SpanProcessor have all attributes needed for permalinks
     # Create a mock wrapped processor
