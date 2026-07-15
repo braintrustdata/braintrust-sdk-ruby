@@ -42,7 +42,7 @@ module Braintrust
 
       # Called when a span ends - apply filters before forwarding
       def on_finish(span)
-        add_span_origin(span)
+        span = span_with_origin(span)
 
         # Only forward span if it passes filters
         @wrapped.on_finish(span) if should_forward_span?(span)
@@ -60,8 +60,37 @@ module Braintrust
 
       private
 
-      def add_span_origin(span)
-        context = parse_context_json(span.respond_to?(:attributes) ? span.attributes&.[](CONTEXT_JSON_ATTR_KEY) : nil)
+      class FinishedSpanWithAttributes
+        def initialize(span, attributes)
+          @span = span
+          @attributes = attributes.freeze
+        end
+
+        attr_reader :attributes
+
+        def to_span_data
+          span_data = @span.to_span_data.dup
+          span_data.attributes = @attributes
+          span_data.total_recorded_attributes = @attributes.length
+          span_data
+        end
+
+        def respond_to_missing?(name, include_private = false)
+          @span.respond_to?(name, include_private) || super
+        end
+
+        def method_missing(name, *args, &block)
+          return @span.public_send(name, *args, &block) if @span.respond_to?(name)
+
+          super
+        end
+      end
+
+      private_constant :FinishedSpanWithAttributes
+
+      def span_with_origin(span)
+        attributes = span.respond_to?(:attributes) ? (span.attributes || {}).dup : {}
+        context = parse_context_json(attributes[CONTEXT_JSON_ATTR_KEY])
         span_origin = context["span_origin"].is_a?(Hash) ? context["span_origin"] : {}
         span_origin["name"] ||= "braintrust.sdk.ruby"
         span_origin["version"] ||= Braintrust::VERSION
@@ -72,12 +101,14 @@ module Braintrust
           span_origin["environment"] = environment
         end
         context["span_origin"] = span_origin
-        span.set_attribute(CONTEXT_JSON_ATTR_KEY, JSON.generate(context))
+        attributes[CONTEXT_JSON_ATTR_KEY] = JSON.generate(context)
 
-        return unless @state.config&.environment
+        if @state.config&.environment
+          attributes[ENVIRONMENT_TYPE_ATTR_KEY] = @state.config.environment[:type]
+          attributes[ENVIRONMENT_NAME_ATTR_KEY] = @state.config.environment[:name] if @state.config.environment[:name]
+        end
 
-        span.set_attribute(ENVIRONMENT_TYPE_ATTR_KEY, @state.config.environment[:type])
-        span.set_attribute(ENVIRONMENT_NAME_ATTR_KEY, @state.config.environment[:name]) if @state.config.environment[:name]
+        FinishedSpanWithAttributes.new(span, attributes)
       end
 
       def parse_context_json(raw)
