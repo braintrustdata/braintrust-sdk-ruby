@@ -17,9 +17,7 @@ module Braintrust
         "braintrust.parent",
         "braintrust.org",
         "braintrust.app_url",
-        "braintrust.context_json",
-        "braintrust.environment.type",
-        "braintrust.environment.name"
+        "braintrust.context_json"
       ].freeze
 
       # Prefixes that indicate an AI-related span
