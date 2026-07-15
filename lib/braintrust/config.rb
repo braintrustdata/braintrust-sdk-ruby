@@ -60,7 +60,7 @@ module Braintrust
       env_type = env_value("BRAINTRUST_ENVIRONMENT_TYPE")
       if env_type && !env_type.empty?
         env_name = env_value("BRAINTRUST_ENVIRONMENT_NAME")
-        return { type: env_type, name: env_name }.compact
+        return {type: env_type, name: env_name}.compact
       end
 
       {
@@ -75,9 +75,9 @@ module Braintrust
         "TRAVIS" => "travis",
         "BITBUCKET_BUILD_NUMBER" => "bitbucket"
       }.each do |key, name|
-        return { type: "ci", name: name } if process_env_value(key)
+        return {type: "ci", name: name} if process_env_value(key)
       end
-      return { type: "ci", name: "ci" } if process_env_value("CI")
+      return {type: "ci", name: "ci"} if process_env_value("CI")
 
       {
         "VERCEL" => "vercel",
@@ -94,7 +94,7 @@ module Braintrust
         "RAILWAY_ENVIRONMENT" => "railway",
         "RENDER_SERVICE_NAME" => "render"
       }.each do |key, name|
-        return { type: "server", name: name } if process_env_value(key)
+        return {type: "server", name: name} if process_env_value(key)
       end
 
       deployment_mode_environment(process_env_value("RAILS_ENV")) ||
@@ -104,15 +104,15 @@ module Braintrust
     def self.normalize_environment(environment)
       type = environment[:type] || environment["type"]
       name = environment[:name] || environment["name"]
-      { type: type, name: name }.compact
+      {type: type, name: name}.compact
     end
 
     def self.deployment_mode_environment(value)
       return nil if value.nil? || value.empty?
 
       normalized = value.downcase
-      return { type: "server", name: normalized } if ["production", "staging"].include?(normalized)
-      return { type: "local", name: normalized } if ["development", "local"].include?(normalized)
+      return {type: "server", name: normalized} if ["production", "staging"].include?(normalized)
+      return {type: "local", name: normalized} if ["development", "local"].include?(normalized)
 
       nil
     end
