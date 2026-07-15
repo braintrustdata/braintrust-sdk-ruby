@@ -98,9 +98,16 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
   end
 
   def test_span_origin_merges_with_context_json_set_after_start
-    wrapped = Minitest::Mock.new
-    wrapped.expect(:on_start, nil, [Object, Object])
-    wrapped.expect(:on_finish, nil, [Object])
+    wrapped = Class.new do
+      attr_reader :finished_span
+
+      def on_start(_span, _parent_context)
+      end
+
+      def on_finish(span)
+        @finished_span = span
+      end
+    end.new
 
     processor = Braintrust::Trace::SpanProcessor.new(wrapped, @state)
 
@@ -112,11 +119,9 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
     span.set_attribute("braintrust.context_json", JSON.generate({"metadata" => {"source" => "late-attribute"}}))
     processor.on_finish(span)
 
-    context = JSON.parse(span.attributes["braintrust.context_json"])
+    context = JSON.parse(wrapped.finished_span.attributes["braintrust.context_json"])
     assert_equal "late-attribute", context.dig("metadata", "source")
     assert_equal "braintrust.sdk.ruby", context.dig("span_origin", "name")
-
-    wrapped.verify
   end
 
   def test_span_processor_enables_permalink_generation
