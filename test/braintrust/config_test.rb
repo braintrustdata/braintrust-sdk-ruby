@@ -49,6 +49,22 @@ class Braintrust::ConfigTest < Minitest::Test
     assert_equal "https://api.braintrust.dev", config.api_url
   end
 
+  def test_environment_helpers_are_private_class_methods
+    assert_includes Braintrust::Config.methods, :from_env
+
+    [
+      :detect_environment,
+      :normalize_environment,
+      :deployment_mode_environment,
+      :env_value,
+      :process_env_value,
+      :read_braintrust_env_file_value
+    ].each do |helper|
+      refute_includes Braintrust::Config.methods, helper
+      assert_includes Braintrust::Config.private_methods, helper
+    end
+  end
+
   def test_passed_options_override_env_vars
     ENV["BRAINTRUST_API_KEY"] = "env-key"
     ENV["BRAINTRUST_ORG_NAME"] = "env-org"

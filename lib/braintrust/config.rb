@@ -154,5 +154,8 @@ module Braintrust
     rescue
       nil
     end
+
+    private_class_method :detect_environment, :normalize_environment, :deployment_mode_environment,
+      :env_value, :process_env_value, :read_braintrust_env_file_value
   end
 end
