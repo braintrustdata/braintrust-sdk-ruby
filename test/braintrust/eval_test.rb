@@ -358,13 +358,14 @@ class Braintrust::EvalTest < Minitest::Test
       assert eval_span.attributes["braintrust.parent"]
       assert_match(/experiment_id:[0-9a-f-]{36}/, eval_span.attributes["braintrust.parent"])
       input_json = JSON.parse(eval_span.attributes["braintrust.input_json"])
-      assert_equal({"input" => "hello"}, input_json)
+      assert_equal "hello", input_json
       output_json = JSON.parse(eval_span.attributes["braintrust.output_json"])
-      assert_equal({"output" => "HELLO"}, output_json)
+      assert_equal "HELLO", output_json
 
       # Verify task span
       assert task_span.attributes["braintrust.span_attributes"]
       assert_includes task_span.attributes["braintrust.span_attributes"], "task"
+      assert_equal "HELLO", JSON.parse(task_span.attributes["braintrust.expected_json"])
 
       # Verify score span has scorer-specific attributes
       assert score_span.attributes["braintrust.scores"]

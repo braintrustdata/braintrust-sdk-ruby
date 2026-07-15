@@ -91,8 +91,8 @@ module Braintrust
           # Set attributes known before task execution
           eval_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(eval_span, "braintrust.span_attributes", build_span_attributes("eval"))
-          set_json_attr(eval_span, "braintrust.input_json", {input: kase.input})
-          set_json_attr(eval_span, "braintrust.expected", kase.expected) if kase.expected
+          set_json_attr(eval_span, "braintrust.input_json", kase.input)
+          set_json_attr(eval_span, "braintrust.expected_json", kase.expected) unless kase.expected.nil?
           set_json_attr(eval_span, "braintrust.metadata", kase.metadata) if kase.metadata
           eval_span.set_attribute("braintrust.tags", kase.tags) if kase.tags
           eval_span.set_attribute("braintrust.origin", kase.origin) if kase.origin
@@ -103,7 +103,6 @@ module Braintrust
           rescue => e
             # Error already recorded on task span, set eval span status
             eval_span.status = OpenTelemetry::Trace::Status.error(e.message)
-            set_json_attr(eval_span, "braintrust.output_json", {output: nil})
             errors << "Task failed for input '#{kase.input}': #{e.message}"
             report_progress(eval_span, kase, error: e.message)
             next
@@ -134,7 +133,7 @@ module Braintrust
           end
 
           # Set output after task completes
-          set_json_attr(eval_span, "braintrust.output_json", {output: kase.output})
+          set_json_attr(eval_span, "braintrust.output_json", kase.output)
 
           report_progress(eval_span, kase, data: kase.output)
         end
@@ -151,6 +150,7 @@ module Braintrust
           task_span.set_attribute("braintrust.parent", eval_context.parent_span_attr) if eval_context.parent_span_attr
           set_json_attr(task_span, "braintrust.span_attributes", build_span_attributes("task"))
           set_json_attr(task_span, "braintrust.input_json", kase.input)
+          set_json_attr(task_span, "braintrust.expected_json", kase.expected) unless kase.expected.nil?
 
           begin
             output = eval_context.task.call(
