@@ -79,23 +79,8 @@ module Braintrust
       end
       return {type: "ci", name: "ci"} if process_env_value("CI")
 
-      {
-        "VERCEL" => "vercel",
-        "NETLIFY" => "netlify",
-        "AWS_LAMBDA_FUNCTION_NAME" => "aws_lambda",
-        "AWS_EXECUTION_ENV" => "aws_lambda",
-        "K_SERVICE" => "cloud_run",
-        "FUNCTION_TARGET" => "gcp_functions",
-        "KUBERNETES_SERVICE_HOST" => "kubernetes",
-        "ECS_CONTAINER_METADATA_URI" => "ecs",
-        "ECS_CONTAINER_METADATA_URI_V4" => "ecs",
-        "DYNO" => "heroku",
-        "FLY_APP_NAME" => "fly",
-        "RAILWAY_ENVIRONMENT" => "railway",
-        "RENDER_SERVICE_NAME" => "render"
-      }.each do |key, name|
-        return {type: "server", name: name} if process_env_value(key)
-      end
+      server_name = detect_server_environment_name
+      return {type: "server", name: server_name} if server_name
 
       deployment_mode_environment(process_env_value("RAILS_ENV")) ||
         deployment_mode_environment(process_env_value("RACK_ENV"))
@@ -114,6 +99,31 @@ module Braintrust
       return {type: "server", name: normalized} if ["production", "staging"].include?(normalized)
       return {type: "local", name: normalized} if ["development", "local"].include?(normalized)
 
+      nil
+    end
+
+    def self.detect_server_environment_name
+      {"VERCEL" => "vercel", "NETLIFY" => "netlify"}.each do |key, name|
+        return name if process_env_value(key)
+      end
+      return "ecs" if process_env_value("ECS_CONTAINER_METADATA_URI") || process_env_value("ECS_CONTAINER_METADATA_URI_V4")
+
+      aws_execution_env = process_env_value("AWS_EXECUTION_ENV")
+      return "ecs" if aws_execution_env&.start_with?("AWS_ECS_")
+      return "aws_lambda" if aws_execution_env&.start_with?("AWS_Lambda_")
+      return "aws_lambda" if process_env_value("AWS_LAMBDA_FUNCTION_NAME")
+
+      {
+        "K_SERVICE" => "cloud_run",
+        "FUNCTION_TARGET" => "gcp_functions",
+        "KUBERNETES_SERVICE_HOST" => "kubernetes",
+        "DYNO" => "heroku",
+        "FLY_APP_NAME" => "fly",
+        "RAILWAY_ENVIRONMENT" => "railway",
+        "RENDER_SERVICE_NAME" => "render"
+      }.each do |key, name|
+        return name if process_env_value(key)
+      end
       nil
     end
 
@@ -156,6 +166,7 @@ module Braintrust
     end
 
     private_class_method :detect_environment, :normalize_environment, :deployment_mode_environment,
-      :env_value, :process_env_value, :read_braintrust_env_file_value
+      :detect_server_environment_name, :env_value, :process_env_value,
+      :read_braintrust_env_file_value
   end
 end

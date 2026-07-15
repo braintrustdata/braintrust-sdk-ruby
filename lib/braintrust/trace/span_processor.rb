@@ -23,8 +23,6 @@ module Braintrust
       end
 
       def on_start(span, parent_context)
-        add_span_origin(span)
-
         # Add default parent if span doesn't already have one
         has_parent = span.respond_to?(:attributes) && span.attributes&.key?(PARENT_ATTR_KEY)
 
@@ -44,6 +42,8 @@ module Braintrust
 
       # Called when a span ends - apply filters before forwarding
       def on_finish(span)
+        add_span_origin(span)
+
         # Only forward span if it passes filters
         @wrapped.on_finish(span) if should_forward_span?(span)
       end
