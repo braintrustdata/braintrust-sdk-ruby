@@ -13,8 +13,6 @@ module Braintrust
       ORG_ATTR_KEY = "braintrust.org"
       APP_URL_ATTR_KEY = "braintrust.app_url"
       CONTEXT_JSON_ATTR_KEY = "braintrust.context_json"
-      ENVIRONMENT_TYPE_ATTR_KEY = "braintrust.environment.type"
-      ENVIRONMENT_NAME_ATTR_KEY = "braintrust.environment.name"
 
       def initialize(wrapped_processor, state, filters = [])
         @wrapped = wrapped_processor
@@ -102,11 +100,6 @@ module Braintrust
         end
         context["span_origin"] = span_origin
         attributes[CONTEXT_JSON_ATTR_KEY] = JSON.generate(context)
-
-        if @state.config&.environment
-          attributes[ENVIRONMENT_TYPE_ATTR_KEY] = @state.config.environment[:type]
-          attributes[ENVIRONMENT_NAME_ATTR_KEY] = @state.config.environment[:name] if @state.config.environment[:name]
-        end
 
         FinishedSpanWithAttributes.new(span, attributes)
       end

@@ -122,6 +122,8 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
     context = JSON.parse(wrapped.finished_span.attributes["braintrust.context_json"])
     assert_equal "late-attribute", context.dig("metadata", "source")
     assert_equal "braintrust.sdk.ruby", context.dig("span_origin", "name")
+    refute_includes wrapped.finished_span.attributes, "braintrust.environment.type"
+    refute_includes wrapped.finished_span.attributes, "braintrust.environment.name"
   end
 
   def test_span_processor_enables_permalink_generation
