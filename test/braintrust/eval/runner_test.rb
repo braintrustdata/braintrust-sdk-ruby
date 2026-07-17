@@ -531,7 +531,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal "greeting", metadata["category"]
   end
 
-  def test_runner_eval_span_input_json_wrapped
+  def test_runner_eval_span_input_json_is_raw_value
     rig = setup_otel_test_rig
 
     context = Braintrust::Eval::Context.build(
@@ -550,7 +550,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
     input_json = JSON.parse(eval_span.attributes["braintrust.input_json"])
 
-    assert_equal({"input" => "hello"}, input_json)
+    assert_equal "hello", input_json
   end
 
   def test_runner_eval_span_tags_as_array
@@ -576,7 +576,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     assert_equal ["fast", "regression"], tags
   end
 
-  def test_runner_eval_span_output_json_null_on_task_error
+  def test_runner_eval_span_omits_output_json_on_task_error
     rig = setup_otel_test_rig
 
     context = Braintrust::Eval::Context.build(
@@ -593,12 +593,11 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     Braintrust::Eval::Runner.new(context).run
 
     eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
-    output_json = JSON.parse(eval_span.attributes["braintrust.output_json"])
 
-    assert_equal({"output" => nil}, output_json)
+    assert_nil eval_span.attributes["braintrust.output_json"]
   end
 
-  def test_runner_eval_span_output_json_wrapped
+  def test_runner_eval_span_output_json_is_raw_value
     rig = setup_otel_test_rig
 
     context = Braintrust::Eval::Context.build(
@@ -617,7 +616,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     eval_span = rig.exporter.finished_spans.find { |s| s.name == "eval" }
     output_json = JSON.parse(eval_span.attributes["braintrust.output_json"])
 
-    assert_equal({"output" => "HELLO"}, output_json)
+    assert_equal "HELLO", output_json
   end
 
   def test_runner_eval_spans_are_independent_roots
@@ -695,6 +694,7 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
 
     assert_equal 1, task_spans.length
     assert_equal "experiment_id:exp-123", task_spans[0].attributes["braintrust.parent"]
+    assert_equal "HELLO", JSON.parse(task_spans[0].attributes["braintrust.expected_json"])
   end
 
   def test_runner_run_creates_per_scorer_spans
