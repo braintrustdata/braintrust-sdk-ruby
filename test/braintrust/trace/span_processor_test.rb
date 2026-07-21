@@ -99,13 +99,14 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
 
   def test_span_origin_merges_with_context_json_set_after_start
     wrapped = Class.new do
-      attr_reader :finished_span
+      attr_reader :finished_span_data
 
       def on_start(_span, _parent_context)
       end
 
       def on_finish(span)
         @finished_span = span
+        @finished_span_data = span.to_span_data
       end
     end.new
 
@@ -119,11 +120,69 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
     span.set_attribute("braintrust.context_json", JSON.generate({"metadata" => {"source" => "late-attribute"}}))
     processor.on_finish(span)
 
-    context = JSON.parse(wrapped.finished_span.attributes["braintrust.context_json"])
+    context = JSON.parse(wrapped.finished_span_data.attributes["braintrust.context_json"])
     assert_equal "late-attribute", context.dig("metadata", "source")
     assert_equal "braintrust.sdk.ruby", context.dig("span_origin", "name")
-    refute_includes wrapped.finished_span.attributes, "braintrust.environment.type"
-    refute_includes wrapped.finished_span.attributes, "braintrust.environment.name"
+    refute_includes wrapped.finished_span_data.attributes, "braintrust.environment.type"
+    refute_includes wrapped.finished_span_data.attributes, "braintrust.environment.name"
+  end
+
+  def test_span_processor_forwards_original_span_without_wrapper
+    wrapped = Class.new do
+      attr_reader :finished_span
+
+      def on_start(_span, _parent_context)
+      end
+
+      def on_finish(span)
+        @finished_span = span
+      end
+    end.new
+
+    processor = Braintrust::Trace::SpanProcessor.new(wrapped, @state)
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+    tracer = tracer_provider.tracer("test")
+    span = tracer.start_span("test-span")
+
+    processor.on_start(span, OpenTelemetry::Context.empty)
+    processor.on_finish(span)
+
+    assert_same span, wrapped.finished_span
+  end
+
+  def test_span_origin_preserves_existing_values_and_environment
+    wrapped = Class.new do
+      attr_reader :finished_span_data
+
+      def on_start(_span, _parent_context)
+      end
+
+      def on_finish(span)
+        @finished_span_data = span.to_span_data
+      end
+    end.new
+
+    processor = Braintrust::Trace::SpanProcessor.new(wrapped, @state)
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+    tracer = tracer_provider.tracer("test")
+    span = tracer.start_span("test-span")
+    span.set_attribute(
+      "braintrust.context_json",
+      JSON.generate(
+        "span_origin" => {
+          "name" => "custom.name",
+          "environment" => {"type" => "server", "name" => "custom"}
+        }
+      )
+    )
+
+    processor.on_start(span, OpenTelemetry::Context.empty)
+    processor.on_finish(span)
+
+    context = JSON.parse(wrapped.finished_span_data.attributes["braintrust.context_json"])
+    assert_equal "custom.name", context.dig("span_origin", "name")
+    assert_equal({"type" => "server", "name" => "custom"}, context.dig("span_origin", "environment"))
+    assert_equal Braintrust::VERSION, context.dig("span_origin", "version")
   end
 
   def test_span_processor_enables_permalink_generation

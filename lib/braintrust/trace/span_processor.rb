@@ -1,18 +1,19 @@
 # frozen_string_literal: true
 
-require "json"
 require "opentelemetry/sdk"
-require_relative "../version"
+require_relative "span_origin"
 
 module Braintrust
   module Trace
+    SpanOrigin.install!
+
     # Custom span processor that adds Braintrust-specific attributes to spans
     # and optionally filters spans based on custom filter functions.
     class SpanProcessor
       PARENT_ATTR_KEY = "braintrust.parent"
       ORG_ATTR_KEY = "braintrust.org"
       APP_URL_ATTR_KEY = "braintrust.app_url"
-      CONTEXT_JSON_ATTR_KEY = "braintrust.context_json"
+      CONTEXT_JSON_ATTR_KEY = SpanOrigin::CONTEXT_JSON_ATTR_KEY
 
       def initialize(wrapped_processor, state, filters = [])
         @wrapped = wrapped_processor
@@ -33,6 +34,7 @@ module Braintrust
         # Always add org and app_url
         span.set_attribute(ORG_ATTR_KEY, @state.org_name) if @state.org_name
         span.set_attribute(APP_URL_ATTR_KEY, @state.app_url) if @state.app_url
+        span.instance_variable_set(SpanOrigin::ENVIRONMENT_IVAR, span_origin_environment)
 
         # Delegate to wrapped processor
         @wrapped.on_start(span, parent_context)
@@ -40,8 +42,6 @@ module Braintrust
 
       # Called when a span ends - apply filters before forwarding
       def on_finish(span)
-        span = span_with_origin(span)
-
         # Only forward span if it passes filters
         @wrapped.on_finish(span) if should_forward_span?(span)
       end
@@ -58,68 +58,6 @@ module Braintrust
 
       private
 
-      class FinishedSpanWithAttributes
-        def initialize(span, attributes)
-          @span = span
-          @attributes = attributes.freeze
-        end
-
-        attr_reader :attributes
-
-        def to_span_data
-          span_data = @span.to_span_data.dup
-          span_data.attributes = @attributes
-          span_data.total_recorded_attributes = @attributes.length
-          span_data
-        end
-
-        def respond_to_missing?(name, include_private = false)
-          @span.respond_to?(name, include_private) || super
-        end
-
-        def method_missing(name, *args, &block)
-          return @span.public_send(name, *args, &block) if @span.respond_to?(name)
-
-          super
-        end
-      end
-
-      private_constant :FinishedSpanWithAttributes
-
-      def span_with_origin(span)
-        attributes = span.respond_to?(:attributes) ? (span.attributes || {}).dup : {}
-        context = parse_context_json(attributes[CONTEXT_JSON_ATTR_KEY])
-        span_origin = context["span_origin"].is_a?(Hash) ? context["span_origin"] : {}
-        span_origin["name"] ||= "braintrust.sdk.ruby"
-        span_origin["version"] ||= Braintrust::VERSION
-        span_origin["instrumentation"] ||= {"name" => instrumentation_name(span)}
-        if @state.config&.environment && !span_origin.key?("environment")
-          environment = {"type" => @state.config.environment[:type]}
-          environment["name"] = @state.config.environment[:name] if @state.config.environment[:name]
-          span_origin["environment"] = environment
-        end
-        context["span_origin"] = span_origin
-        attributes[CONTEXT_JSON_ATTR_KEY] = JSON.generate(context)
-
-        FinishedSpanWithAttributes.new(span, attributes)
-      end
-
-      def parse_context_json(raw)
-        return {} unless raw.is_a?(String) && !raw.strip.empty?
-
-        parsed = JSON.parse(raw)
-        parsed.is_a?(Hash) ? parsed : {}
-      rescue JSON::ParserError
-        {}
-      end
-
-      def instrumentation_name(span)
-        return span.instrumentation_scope.name if span.respond_to?(:instrumentation_scope) && span.instrumentation_scope&.respond_to?(:name)
-        return span.instrumentation_library.name if span.respond_to?(:instrumentation_library) && span.instrumentation_library&.respond_to?(:name)
-
-        "braintrust-ruby"
-      end
-
       def default_parent
         # If default_project is set, format it as "project_name:value"
         # The default_project should be a plain project name (e.g., "my-project")
@@ -129,6 +67,13 @@ module Braintrust
         else
           "project_name:ruby-sdk-default-project"
         end
+      end
+
+      def span_origin_environment
+        environment = @state.config&.environment
+        return nil unless environment
+
+        {"type" => environment[:type], "name" => environment[:name]}.compact
       end
 
       # Get parent attribute from parent span in context
@@ -150,9 +95,11 @@ module Braintrust
         # If no filters, keep everything
         return true if @filters.empty?
 
+        span_data = span.respond_to?(:to_span_data) ? span.to_span_data : span
+
         # Apply filters in order - first non-zero result wins
         @filters.each do |filter|
-          result = filter.call(span)
+          result = filter.call(span_data)
           return true if result > 0  # Keep span
           return false if result < 0 # Drop span
           # result == 0: no influence, continue to next filter

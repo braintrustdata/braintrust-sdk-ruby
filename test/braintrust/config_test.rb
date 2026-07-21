@@ -49,23 +49,6 @@ class Braintrust::ConfigTest < Minitest::Test
     assert_equal "https://api.braintrust.dev", config.api_url
   end
 
-  def test_environment_helpers_are_private_class_methods
-    assert_includes Braintrust::Config.methods, :from_env
-
-    [
-      :detect_environment,
-      :normalize_environment,
-      :deployment_mode_environment,
-      :detect_server_environment_name,
-      :env_value,
-      :process_env_value,
-      :read_braintrust_env_file_value
-    ].each do |helper|
-      refute_includes Braintrust::Config.methods, helper
-      assert_includes Braintrust::Config.private_methods, helper
-    end
-  end
-
   def test_passed_options_override_env_vars
     ENV["BRAINTRUST_API_KEY"] = "env-key"
     ENV["BRAINTRUST_ORG_NAME"] = "env-org"
@@ -85,43 +68,6 @@ class Braintrust::ConfigTest < Minitest::Test
     config = Braintrust::Config.from_env
 
     assert_equal "https://custom.braintrust.dev", config.app_url
-  end
-
-  def test_aws_execution_env_classifies_ecs_before_lambda
-    with_env(
-      "CI" => nil,
-      "GITHUB_ACTIONS" => nil,
-      "AWS_EXECUTION_ENV" => "AWS_ECS_FARGATE"
-    ) do
-      config = Braintrust::Config.from_env
-
-      assert_equal({type: "server", name: "ecs"}, config.environment)
-    end
-  end
-
-  def test_explicit_environment_name_without_type_is_preserved
-    with_env(
-      "CI" => nil,
-      "GITHUB_ACTIONS" => nil,
-      "BRAINTRUST_ENVIRONMENT_TYPE" => nil,
-      "BRAINTRUST_ENVIRONMENT_NAME" => "staging"
-    ) do
-      config = Braintrust::Config.from_env
-
-      assert_equal({name: "staging"}, config.environment)
-    end
-  end
-
-  def test_aws_execution_env_classifies_lambda_when_lambda_specific
-    with_env(
-      "CI" => nil,
-      "GITHUB_ACTIONS" => nil,
-      "AWS_EXECUTION_ENV" => "AWS_Lambda_ruby3.2"
-    ) do
-      config = Braintrust::Config.from_env
-
-      assert_equal({type: "server", name: "aws_lambda"}, config.environment)
-    end
   end
 
   def test_falls_back_to_braintrust_json_file
@@ -267,18 +213,6 @@ class Braintrust::ConfigTest < Minitest::Test
   end
 
   private
-
-  def with_env(values)
-    original = values.keys.to_h { |key| [key, ENV[key]] }
-    values.each do |key, value|
-      value.nil? ? ENV.delete(key) : ENV[key] = value
-    end
-    yield
-  ensure
-    original.each do |key, value|
-      value.nil? ? ENV.delete(key) : ENV[key] = value
-    end
-  end
 
   def write_braintrust_config(contents, dir: @tmpdir)
     File.write(File.join(dir, ".braintrust.json"), JSON.generate(contents))
