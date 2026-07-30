@@ -1,3 +1,5 @@
+[![Braintrust](./braintrust-logo.svg)](https://www.braintrust.dev/)
+
 # Braintrust Ruby SDK
 
 [![Gem Version](https://img.shields.io/gem/v/braintrust.svg)](https://rubygems.org/gems/braintrust)
