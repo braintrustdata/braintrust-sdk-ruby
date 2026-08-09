@@ -52,9 +52,8 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify braintrust.output_json contains response as message array
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
-      assert output[0]["content"].is_a?(Array)
+      assert_equal "assistant", output["role"]
+      assert output["content"].is_a?(Array)
 
       # Verify braintrust.metadata contains request and response metadata
       assert span.attributes.key?("braintrust.metadata")
@@ -148,24 +147,23 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify span name
       assert_equal "anthropic.messages.create", span.name
 
-      # Verify braintrust.input_json has system prompt prepended
+      # Verify braintrust.input_json has system prompt appended last
       assert span.attributes.key?("braintrust.input_json")
       input = JSON.parse(span.attributes["braintrust.input_json"])
       assert_equal 2, input.length
 
-      # First message should be system
-      assert_equal "system", input[0]["role"]
-      assert_equal "You are a helpful assistant that always responds briefly.", input[0]["content"]
+      # First message should be the user message
+      assert_equal "user", input[0]["role"]
+      assert_equal "Say hello", input[0]["content"]
 
-      # Second message should be user
-      assert_equal "user", input[1]["role"]
-      assert_equal "Say hello", input[1]["content"]
+      # System prompt appended last
+      assert_equal "system", input[1]["role"]
+      assert_equal "You are a helpful assistant that always responds briefly.", input[1]["content"]
 
       # Verify output
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
     end
   end
 
@@ -218,12 +216,11 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify output contains tool_use content blocks
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
-      assert output[0]["content"].is_a?(Array)
+      assert_equal "assistant", output["role"]
+      assert output["content"].is_a?(Array)
 
       # Check that we captured tool_use block
-      content = output[0]["content"]
+      content = output["content"]
       tool_use_block = content.find { |block| block["type"] == "tool_use" }
       assert tool_use_block, "Should have tool_use content block"
       assert_equal "get_weather", tool_use_block["name"]
@@ -262,7 +259,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Single span created during consumption
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # Verify input captured on span
       assert span.attributes.key?("braintrust.input_json")
@@ -309,20 +306,19 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Single span created during consumption
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # CRITICAL: Verify output was aggregated
       assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length, "Should have one output message"
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
 
       # The output content should not be empty!
-      assert output[0]["content"].is_a?(Array), "Output content should be an array"
-      refute_empty output[0]["content"], "Output content should not be empty"
+      assert output["content"].is_a?(Array), "Output content should be an array"
+      refute_empty output["content"], "Output content should not be empty"
 
       # Should have aggregated the text content
-      text_block = output[0]["content"].find { |b| b["type"] == "text" }
+      text_block = output["content"].find { |b| b["type"] == "text" }
       assert text_block, "Should have a text content block"
       assert text_block["text"], "Text block should have text"
       refute_empty text_block["text"], "Text should not be empty"
@@ -400,8 +396,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify output
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
     end
   end
 
@@ -453,12 +448,11 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify output includes thinking blocks
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
-      assert output[0]["content"].is_a?(Array)
+      assert_equal "assistant", output["role"]
+      assert output["content"].is_a?(Array)
 
       # Check that thinking blocks are captured
-      output_thinking = output[0]["content"].select { |b| b["type"] == "thinking" }
+      output_thinking = output["content"].select { |b| b["type"] == "thinking" }
       assert output_thinking.length > 0, "Should capture thinking blocks in output"
     end
   end
@@ -510,8 +504,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify output
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
     end
   end
 
@@ -558,8 +551,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify output
       assert span.attributes.key?("braintrust.output_json")
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
     end
   end
 
@@ -715,16 +707,15 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Single span created during consumption
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # CRITICAL: Verify output was aggregated
       assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length, "Should have one output message"
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
 
       # Should have aggregated the text content
-      text_block = output[0]["content"].find { |b| b["type"] == "text" }
+      text_block = output["content"].find { |b| b["type"] == "text" }
       assert text_block, "Should have a text content block"
       assert text_block["text"], "Text block should have text"
       refute_empty text_block["text"], "Text should not be empty"
@@ -778,16 +769,15 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Single span created during consumption
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # CRITICAL: Verify output was aggregated
       assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length, "Should have one output message"
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
 
       # Should have aggregated the text content
-      text_block = output[0]["content"].find { |b| b["type"] == "text" }
+      text_block = output["content"].find { |b| b["type"] == "text" }
       assert text_block, "Should have a text content block"
       assert_equal accumulated_text, text_block["text"], "Aggregated text should match accumulated text"
 
@@ -833,16 +823,15 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Single span created during consumption
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # CRITICAL: Verify output was aggregated
       assert span.attributes.key?("braintrust.output_json"), "Should have output_json attribute"
       output = JSON.parse(span.attributes["braintrust.output_json"])
-      assert_equal 1, output.length, "Should have one output message"
-      assert_equal "assistant", output[0]["role"]
+      assert_equal "assistant", output["role"]
 
       # Should have content
-      refute_empty output[0]["content"], "Output content should not be empty"
+      refute_empty output["content"], "Output content should not be empty"
 
       # CRITICAL: Verify metrics were captured
       assert span.attributes.key?("braintrust.metrics"), "Should have metrics attribute"
@@ -882,7 +871,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Single span created on close
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # Verify input was captured on span
       assert span.attributes.key?("braintrust.input_json")
