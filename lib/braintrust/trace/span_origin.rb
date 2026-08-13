@@ -2,25 +2,47 @@
 
 require "json"
 require_relative "../version"
+require_relative "../internal/env"
 
 module Braintrust
   module Trace
+    # Span origin provenance decoration.
+    #
+    # This is a *behavior*, not a type. Prepend it onto any exporter whose
+    # +export(span_data, timeout:)+ it can +super+ into, and every exported
+    # SpanData gains a +braintrust.context_json+ attribute carrying span origin
+    # (SDK name/version, instrumentation scope, environment).
+    #
+    # Because it only ever touches the SpanData copies handed to *this*
+    # exporter, the enrichment is invisible to any other exporter sharing the
+    # same tracer provider - there is no global patch and nothing leaks onto a
+    # customer's other OTel traces.
     module SpanOrigin
       CONTEXT_JSON_ATTR_KEY = "braintrust.context_json"
-      ENVIRONMENT_IVAR = :@braintrust_span_origin_environment
 
-      def self.install!
-        span_class = OpenTelemetry::SDK::Trace::Span
-        span_class.prepend(self) unless span_class < self
+      # Exporter behavior: enrich each SpanData with span origin before export.
+      # @param span_data [Array<OpenTelemetry::SDK::Trace::SpanData>]
+      # @return [Integer] export result from the wrapped exporter
+      def export(span_data, timeout: nil)
+        # Environment is process-global and stable; read it once per batch
+        # rather than once per span. It is cheap (ENV reads only).
+        environment = Internal::Env.detect_environment
+        enriched = span_data.map { |sd| SpanOrigin.enrich(sd, environment: environment) }
+        super(enriched, timeout: timeout)
       end
 
-      def to_span_data
-        span_data = super
+      # Enrich a single SpanData with span origin provenance.
+      # Mutates the SpanData in place (replacing its frozen attributes hash with
+      # a new frozen hash - it never mutates the shared hash) and returns it.
+      # @param span_data [OpenTelemetry::SDK::Trace::SpanData]
+      # @param environment [Hash, nil] process environment ({type:, name:}) or nil
+      # @return [OpenTelemetry::SDK::Trace::SpanData]
+      def self.enrich(span_data, environment:)
         attributes = span_data.attributes || {}
-        enriched_attributes = SpanOrigin.attributes_with_origin(
+        enriched_attributes = attributes_with_origin(
           attributes,
-          instrumentation_name: SpanOrigin.instrumentation_name(self),
-          environment: instance_variable_get(ENVIRONMENT_IVAR)
+          instrumentation_name: instrumentation_name(span_data),
+          environment: environment
         )
 
         return span_data if enriched_attributes.equal?(attributes)

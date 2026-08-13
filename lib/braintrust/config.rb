@@ -8,10 +8,10 @@ module Braintrust
   # and allows overriding with explicit options
   class Config
     attr_reader :api_key, :org_name, :default_project, :app_url, :api_url,
-      :filter_ai_spans, :span_filter_funcs, :environment
+      :filter_ai_spans, :span_filter_funcs
 
     def initialize(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil,
-      filter_ai_spans: nil, span_filter_funcs: nil, environment: nil)
+      filter_ai_spans: nil, span_filter_funcs: nil)
       @api_key = api_key
       @org_name = org_name
       @default_project = default_project
@@ -19,7 +19,6 @@ module Braintrust
       @api_url = api_url
       @filter_ai_spans = filter_ai_spans
       @span_filter_funcs = span_filter_funcs || []
-      @environment = environment
     end
 
     # Create a Config from environment variables, with option overrides
@@ -49,8 +48,7 @@ module Braintrust
         app_url: app_url || ENV["BRAINTRUST_APP_URL"] || "https://www.braintrust.dev",
         api_url: api_url || ENV["BRAINTRUST_API_URL"] || "https://api.braintrust.dev",
         filter_ai_spans: filter_ai_spans_value,
-        span_filter_funcs: span_filter_funcs,
-        environment: Internal::Env.detect_environment
+        span_filter_funcs: span_filter_funcs
       )
     end
   end

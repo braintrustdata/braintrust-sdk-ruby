@@ -11,8 +11,7 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
     @state = get_unit_test_state
   end
 
-  # Build a minimal SpanData-like struct for testing
-  SpanStub = Struct.new(:name, :attributes, keyword_init: true)
+  SpanStub = Struct.new(:name, :attributes, :total_recorded_attributes, keyword_init: true)
 
   def make_span(name, parent: nil)
     attrs = {}

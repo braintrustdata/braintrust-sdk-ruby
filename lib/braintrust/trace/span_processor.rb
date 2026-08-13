@@ -1,19 +1,15 @@
 # frozen_string_literal: true
 
 require "opentelemetry/sdk"
-require_relative "span_origin"
 
 module Braintrust
   module Trace
-    SpanOrigin.install!
-
     # Custom span processor that adds Braintrust-specific attributes to spans
     # and optionally filters spans based on custom filter functions.
     class SpanProcessor
       PARENT_ATTR_KEY = "braintrust.parent"
       ORG_ATTR_KEY = "braintrust.org"
       APP_URL_ATTR_KEY = "braintrust.app_url"
-      CONTEXT_JSON_ATTR_KEY = SpanOrigin::CONTEXT_JSON_ATTR_KEY
 
       def initialize(wrapped_processor, state, filters = [])
         @wrapped = wrapped_processor
@@ -34,7 +30,6 @@ module Braintrust
         # Always add org and app_url
         span.set_attribute(ORG_ATTR_KEY, @state.org_name) if @state.org_name
         span.set_attribute(APP_URL_ATTR_KEY, @state.app_url) if @state.app_url
-        span.instance_variable_set(SpanOrigin::ENVIRONMENT_IVAR, span_origin_environment)
 
         # Delegate to wrapped processor
         @wrapped.on_start(span, parent_context)
@@ -67,13 +62,6 @@ module Braintrust
         else
           "project_name:ruby-sdk-default-project"
         end
-      end
-
-      def span_origin_environment
-        environment = @state.config&.environment
-        return nil unless environment
-
-        {"type" => environment[:type], "name" => environment[:name]}.compact
       end
 
       # Get parent attribute from parent span in context

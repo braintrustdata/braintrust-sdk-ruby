@@ -2,16 +2,20 @@
 
 require "opentelemetry/exporter/otlp"
 require_relative "../state"
+require_relative "span_origin"
 
 module Braintrust
   module Trace
-    # Custom OTLP exporter that groups spans by braintrust.parent attribute
-    # and sets the x-bt-parent HTTP header per group. This is required for
-    # the Braintrust OTLP backend to route spans to the correct experiment/project.
+    # Custom OTLP exporter for the Braintrust backend. On export it:
+    # - stamps span origin provenance onto each SpanData (via the prepended SpanOrigin behavior)
+    # - groups spans by braintrust.parent and sets the x-bt-parent header per group,
+    #   so the backend routes them to the correct experiment/project
     #
     # Thread safety: BatchSpanProcessor serializes export() calls via its
     # @export_mutex, so @headers mutation here is safe.
     class SpanExporter < OpenTelemetry::Exporter::OTLP::Exporter
+      prepend SpanOrigin
+
       PARENT_ATTR_KEY = SpanProcessor::PARENT_ATTR_KEY
       PARENT_HEADER = "x-bt-parent"
 
