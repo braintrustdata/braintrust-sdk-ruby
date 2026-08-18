@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "internal/api_key_resolver"
+require_relative "internal/env"
 
 module Braintrust
   # Configuration object that reads from environment variables

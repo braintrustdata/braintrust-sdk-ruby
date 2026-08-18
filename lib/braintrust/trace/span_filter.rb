@@ -16,7 +16,8 @@ module Braintrust
       SYSTEM_ATTRIBUTES = [
         "braintrust.parent",
         "braintrust.org",
-        "braintrust.app_url"
+        "braintrust.app_url",
+        "braintrust.context_json"
       ].freeze
 
       # Prefixes that indicate an AI-related span

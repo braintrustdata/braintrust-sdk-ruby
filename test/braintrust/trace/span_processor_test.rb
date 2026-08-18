@@ -97,6 +97,29 @@ class Braintrust::Trace::SpanProcessorTest < Minitest::Test
     wrapped.verify
   end
 
+  def test_span_processor_forwards_original_span_without_wrapper
+    wrapped = Class.new do
+      attr_reader :finished_span
+
+      def on_start(_span, _parent_context)
+      end
+
+      def on_finish(span)
+        @finished_span = span
+      end
+    end.new
+
+    processor = Braintrust::Trace::SpanProcessor.new(wrapped, @state)
+    tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
+    tracer = tracer_provider.tracer("test")
+    span = tracer.start_span("test-span")
+
+    processor.on_start(span, OpenTelemetry::Context.empty)
+    processor.on_finish(span)
+
+    assert_same span, wrapped.finished_span
+  end
+
   def test_span_processor_enables_permalink_generation
     # This test verifies that spans processed by SpanProcessor have all attributes needed for permalinks
     # Create a mock wrapped processor

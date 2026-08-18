@@ -83,9 +83,11 @@ module Braintrust
         # If no filters, keep everything
         return true if @filters.empty?
 
+        span_data = span.respond_to?(:to_span_data) ? span.to_span_data : span
+
         # Apply filters in order - first non-zero result wins
         @filters.each do |filter|
-          result = filter.call(span)
+          result = filter.call(span_data)
           return true if result > 0  # Keep span
           return false if result < 0 # Drop span
           # result == 0: no influence, continue to next filter

@@ -1,4 +1,5 @@
 require_relative "braintrust_helper"
+require_relative "in_memory_exporter"
 
 module Test
   module Support
@@ -15,7 +16,7 @@ module Test
       def setup_otel_test_rig(**state_options)
         require "opentelemetry/sdk"
 
-        exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
+        exporter = Test::Support::InMemoryExporter.new
         tracer_provider = OpenTelemetry::SDK::Trace::TracerProvider.new
         state = get_unit_test_state(**state_options)
 
