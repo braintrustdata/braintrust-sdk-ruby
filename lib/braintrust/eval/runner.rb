@@ -30,6 +30,8 @@ module Braintrust
         # Mutexes for thread-safe result collection
         @score_mutex = Mutex.new
         @classification_mutex = Mutex.new
+
+        @needs_trace = (eval_context.scorers + eval_context.classifiers).any? { |c| callable_wants_trace?(c) }
       end
 
       # Run evaluation and return Result
@@ -108,9 +110,13 @@ module Braintrust
             next
           end
 
-          # Flush spans so they're queryable via BTQL, then build trace
-          eval_context.tracer_provider.force_flush if eval_context.tracer_provider.respond_to?(:force_flush)
-          kase.trace = build_trace(eval_span)
+          # Flush spans so they're queryable via BTQL, then build trace — only when a
+          # scorer/classifier actually declared `trace:`, since the synchronous flush
+          # is a real per-case network wait (see #210).
+          if @needs_trace
+            eval_context.tracer_provider.force_flush if eval_context.tracer_provider.respond_to?(:force_flush)
+            kase.trace = build_trace(eval_span)
+          end
 
           # Run scorers
           begin
@@ -227,6 +233,17 @@ module Braintrust
           record_span_error(score_span, e, "ScorerError")
           raise
         end
+      end
+
+      # Whether a callable's declared parameters include `trace:`, or accept
+      # arbitrary kwargs (**kwargs) and so might use it. KeywordFilter already
+      # relies on #call_parameters for this same introspection.
+      # @param callable [Scorer, Classifier] a scorer or classifier instance
+      # @return [Boolean]
+      def callable_wants_trace?(callable)
+        return true unless callable.respond_to?(:call_parameters)
+
+        callable.call_parameters.any? { |type, name| name == :trace || type == :keyrest }
       end
 
       # Build a lazy Trace for a case, backed by BTQL.
