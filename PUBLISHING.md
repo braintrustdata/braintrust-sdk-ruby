@@ -71,14 +71,18 @@ Then run the test app with the newly published gem:
 From an `sdk-actions` checkout:
 
 ```bash
-ruby bin/workflow compare  /path/to/braintrust-sdk-ruby/.github/workflows/release.yml   # preview the delta
-ruby bin/workflow update   /path/to/braintrust-sdk-ruby/.github/workflows/release.yml   # apply it
-ruby bin/workflow validate /path/to/braintrust-sdk-ruby/.github/workflows/release.yml   # schema-check
+WF=/path/to/braintrust-sdk-ruby/.github/workflows/release.yml
+REF=$(git rev-parse origin/main)                  # resolve it: --ref origin/main is not expanded
+ruby bin/workflow compare  --ref "$REF" "$WF"     # preview the upstream delta
+ruby bin/workflow update   --ref "$REF" "$WF"     # apply it, keeping local edits
+ruby bin/workflow validate "$WF"                  # schema-check
 ```
 
-`update` 3-way merges the upstream delta and bumps the pinned ref, keeping local edits. Then:
+Pass `--ref` explicitly — `compare` defaults to the ref already recorded in the file, which shows local drift rather than upstream changes.
 
-1. Check `git diff` — a major-version jump in the actions' `# sdk-actions:` header means breaking changes, so read the upstream changelog before merging.
+`update` 3-way merges the upstream delta and bumps the pinned ref. Then:
+
+1. Read `git diff`. The four `uses:` pins are the only trace of changes *inside* the actions, so also skim upstream's log between the old and new ref for behavior changes; a major-version jump in the `version` field of the provenance header means breaking changes.
 2. Run `bash scripts/ensure-pinned-actions.sh` (CI enforces this too).
 3. Open a PR and verify with a **Dry run** before the next real release.
 
