@@ -67,8 +67,9 @@ end
 
 desc "Build the gem"
 task build: [:clean] do
-  # Output to pkg/ (Bundler convention). rubygems/release-gem awaits pkg/*.gem
-  # after pushing, so the gem must land there — not the repo root.
+  # Output to pkg/ (Bundler convention). The release workflow's build-and-ship step
+  # globs pkg/*.gem and requires exactly one match, so the gem must land there —
+  # not the repo root.
   require_relative "lib/braintrust/version"
   sh "gem build braintrust.gemspec"
   mkdir_p "pkg"
@@ -200,46 +201,6 @@ namespace :test do
       Rake::Task["test"].invoke
     end
   end
-end
-
-# Release tasks
-namespace :release do
-  task publish: [:lint, :build] do
-    gem_files = FileList["pkg/braintrust-*.gem"]
-    if gem_files.empty?
-      puts "Error: No gem file found. Build task should have created it."
-      exit 1
-    elsif gem_files.length > 1
-      puts "Error: Multiple gem files found. Clean task should have removed them."
-      puts "Found: #{gem_files.join(", ")}"
-      exit 1
-    end
-    if ENV["DRY_RUN"] == "true"
-      puts "DRY RUN: would push #{gem_files.first} to RubyGems (skipped)"
-    else
-      sh "gem push #{gem_files.first}"
-      puts "✓ Gem pushed to RubyGems"
-    end
-  end
-
-  task :push_tag do
-    require_relative "lib/braintrust/version"
-    tag = "v#{Braintrust::VERSION}"
-    if ENV["DRY_RUN"] == "true"
-      puts "DRY RUN: would push tag #{tag} to origin (skipped)"
-    else
-      sh "git tag #{tag}"
-      sh "git push origin #{tag}"
-      puts "✓ Tag #{tag} pushed"
-    end
-  end
-end
-
-# Called by rubygems/release-gem in the release workflow.
-# Follows Bundler convention: build, push gem, push tag.
-# GitHub release creation is handled separately by the workflow.
-task release: ["release:publish", "release:push_tag"] do
-  puts "✓ Release complete"
 end
 
 # Contrib tasks
