@@ -1301,6 +1301,58 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     end
   end
 
+  def test_force_flush_skipped_when_no_scorer_wants_trace
+    rig = setup_otel_test_rig
+    flush_calls = 0
+    rig.tracer_provider.stub(:force_flush, -> { flush_calls += 1 }) do
+      scorer = Braintrust::Scorer.new("simple") { |output:, expected:| (output == expected) ? 1.0 : 0.0 }
+
+      context = Braintrust::Eval::Context.build(
+        task: ->(input:) { input.upcase },
+        scorers: [scorer],
+        cases: [{input: "hello", expected: "HELLO"}, {input: "world", expected: "WORLD"}],
+        experiment_id: "exp-123",
+        experiment_name: "test-experiment",
+        project_id: "proj-456",
+        project_name: "test-project",
+        state: rig.state,
+        tracer_provider: rig.tracer_provider
+      )
+      runner = Braintrust::Eval::Runner.new(context)
+      result = runner.run
+
+      assert result.success?
+    end
+
+    assert_equal 0, flush_calls
+  end
+
+  def test_force_flush_still_happens_when_a_scorer_wants_trace
+    rig = setup_otel_test_rig
+    flush_calls = 0
+    rig.tracer_provider.stub(:force_flush, -> { flush_calls += 1 }) do
+      scorer = Braintrust::Scorer.new("trace_reader") { |output:, trace:| 1.0 }
+
+      context = Braintrust::Eval::Context.build(
+        task: ->(input:) { input.upcase },
+        scorers: [scorer],
+        cases: [{input: "hello"}, {input: "world"}],
+        experiment_id: "exp-123",
+        experiment_name: "test-experiment",
+        project_id: "proj-456",
+        project_name: "test-project",
+        state: rig.state,
+        tracer_provider: rig.tracer_provider
+      )
+      runner = Braintrust::Eval::Runner.new(context)
+      result = runner.run
+
+      assert result.success?
+    end
+
+    assert_equal 2, flush_calls
+  end
+
   # ============================================
   # Runner#run tests - structured scorer returns
   # ============================================
