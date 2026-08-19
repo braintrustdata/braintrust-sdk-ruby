@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    braintrust (0.4.0)
+    braintrust (0.4.1)
       logger (>= 1.0)
       openssl (>= 3.3.1, < 5.0)
       opentelemetry-exporter-otlp (~> 0.28)
@@ -151,4 +151,4 @@ DEPENDENCIES
   yard (~> 0.9)
 
 BUNDLED WITH
-   4.0.8
+  4.0.8
