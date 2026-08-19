@@ -1,0 +1,233 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"messages":[{"role":"user","content":[{"type":"text","text":"Hello"}]}],"model":"gpt-4.1"}'
+    headers:
+      User-Agent:
+      - llm.rb v4.11.0
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      Transfer-Encoding:
+      - chunked
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 06 Apr 2026 14:42:49 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cf-Ray:
+      - 9e818fac1ad5725b-CMH
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Access-Control-Expose-Headers:
+      - X-Request-ID
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '571'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      X-Openai-Proxy-Wasm:
+      - v0.1
+      X-Ratelimit-Limit-Requests:
+      - '10000'
+      X-Ratelimit-Limit-Tokens:
+      - '30000000'
+      X-Ratelimit-Remaining-Requests:
+      - '9999'
+      X-Ratelimit-Remaining-Tokens:
+      - '29999996'
+      X-Ratelimit-Reset-Requests:
+      - 6ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      X-Request-Id:
+      - req_6492da2b8a9c451fa125d54363b2face
+      Set-Cookie:
+      - __cf_bm=ckT_76wYC4uBSf6xOgKgHN5OozxWjqbHQqcwlbidFjs-1775486568.340096-1.0.1.1-uvjPuBCgMmYtovE9ibMmkEdjXezwduySN1oT2CL2C0KzSYbfPr9qrZ2F3n8xBRsd4D0HaleeIFJ2ZtWFeFJ8mnhUNNk3ON_lOQUdkioY.dTYciD2bVWMO716rThcIXai;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Mon, 06 Apr 2026
+        15:12:49 GMT
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |
+        {
+          "id": "chatcmpl-DRfS4lpSqxLALYUXhAGGgDCAgqkkp",
+          "object": "chat.completion",
+          "created": 1775486568,
+          "model": "gpt-4.1-2025-04-14",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Hello! How can I help you today?",
+                "refusal": null,
+                "annotations": []
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 8,
+            "completion_tokens": 9,
+            "total_tokens": 17,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": "fp_15eef0a82c"
+        }
+  recorded_at: Mon, 06 Apr 2026 14:42:49 GMT
+- request:
+    method: post
+    uri: https://api.openai.com/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"messages":[{"role":"user","content":[{"type":"text","text":"Hello"}]},{"role":"assistant","content":[{"type":"text","text":"Hello!
+        How can I help you today?"}]},{"role":"user","content":[{"type":"text","text":"What
+        is 2+2?"}]}],"model":"gpt-4.1"}'
+    headers:
+      User-Agent:
+      - llm.rb v4.11.0
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      Transfer-Encoding:
+      - chunked
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 06 Apr 2026 14:42:49 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cf-Ray:
+      - 9e818fb0792bcf7f-CMH
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Access-Control-Expose-Headers:
+      - X-Request-ID
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '623'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      X-Openai-Proxy-Wasm:
+      - v0.1
+      X-Ratelimit-Limit-Requests:
+      - '10000'
+      X-Ratelimit-Limit-Tokens:
+      - '30000000'
+      X-Ratelimit-Remaining-Requests:
+      - '9999'
+      X-Ratelimit-Remaining-Tokens:
+      - '29999983'
+      X-Ratelimit-Reset-Requests:
+      - 6ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      X-Request-Id:
+      - req_4b914bd2eb8f469083919be04d449722
+      Set-Cookie:
+      - __cf_bm=pgSrJEY0MENcnAseVwcANxsnrWBnEsVsbDjLp8zC2W0-1775486569.0400677-1.0.1.1-bngLZ9x2VKgP6truHOZNB8iDK40kV2lVDZgw3ac.Jc0IACWhH8Pl5bpxNkNCz6mZIGn3kr8Bqi36bPF7vS3YqCMMrL2e.j2pWaiS7gEF.eq7SnZ0U6.om2ypK_EF8F3p;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Mon, 06 Apr 2026
+        15:12:49 GMT
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |
+        {
+          "id": "chatcmpl-DRfS5WcOW78aGtv0zoiueODSNUDK1",
+          "object": "chat.completion",
+          "created": 1775486569,
+          "model": "gpt-4.1-2025-04-14",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "2 + 2 = 4",
+                "refusal": null,
+                "annotations": []
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 32,
+            "completion_tokens": 7,
+            "total_tokens": 39,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": "fp_15eef0a82c"
+        }
+  recorded_at: Mon, 06 Apr 2026 14:42:49 GMT
+recorded_with: VCR 6.4.0
