@@ -201,7 +201,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
       # Single span created during consumption
       span = rig.drain_one
 
-      assert_equal "anthropic.messages.create", span.name
+      assert_equal "anthropic.messages.stream", span.name
 
       # Verify input captured on span
       assert span.attributes.key?("braintrust.input_json")
