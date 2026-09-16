@@ -90,7 +90,7 @@ class Braintrust::DatasetTest < Minitest::Test
   # Origin generation tests
   # ============================================
 
-  def test_build_origin_creates_valid_json
+  def test_build_origin_creates_pointer
     state = mock_state
     dataset = Braintrust::Dataset.new(id: "dataset-123", state: state)
 
@@ -105,11 +105,10 @@ class Braintrust::DatasetTest < Minitest::Test
     origin = dataset.send(:build_origin, raw_record, "dataset-123")
 
     assert origin
-    parsed = JSON.parse(origin)
-    assert_equal "dataset", parsed["object_type"]
-    assert_equal "dataset-123", parsed["object_id"]
-    assert_equal "record-456", parsed["id"]
-    assert_equal "1000196022104685824", parsed["_xact_id"]
+    assert_equal "dataset", origin["object_type"]
+    assert_equal "dataset-123", origin["object_id"]
+    assert_equal "record-456", origin["id"]
+    assert_equal "1000196022104685824", origin["_xact_id"]
   end
 
   def test_build_origin_uses_fallback_dataset_id
@@ -124,8 +123,7 @@ class Braintrust::DatasetTest < Minitest::Test
 
     origin = dataset.send(:build_origin, raw_record, "fallback-id")
 
-    parsed = JSON.parse(origin)
-    assert_equal "fallback-id", parsed["object_id"]
+    assert_equal "fallback-id", origin["object_id"]
   end
 
   def test_build_origin_returns_nil_when_missing_required_fields
@@ -177,7 +175,7 @@ class Braintrust::DatasetTest < Minitest::Test
       assert record[:origin], "Record should have origin"
 
       # Verify origin structure
-      origin = JSON.parse(record[:origin])
+      origin = record[:origin]
       assert_equal "dataset", origin["object_type"]
     end
   end

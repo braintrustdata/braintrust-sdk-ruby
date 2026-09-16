@@ -336,7 +336,7 @@ module Braintrust
         # Use pinned version if available, otherwise compute from max(_xact_id)
         version = dataset_obj.version
         version ||= cases
-          .filter_map { |c| c[:origin] && JSON.parse(c[:origin])["_xact_id"] }
+          .filter_map { |c| c[:origin]&.dig("_xact_id") }
           .max
 
         {cases: cases, dataset_id: dataset_obj.id, dataset_version: version}

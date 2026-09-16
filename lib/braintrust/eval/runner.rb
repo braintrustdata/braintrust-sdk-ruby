@@ -95,7 +95,7 @@ module Braintrust
           set_json_attr(eval_span, "braintrust.expected_json", kase.expected) unless kase.expected.nil?
           set_json_attr(eval_span, "braintrust.metadata", kase.metadata) if kase.metadata
           eval_span.set_attribute("braintrust.tags", kase.tags) if kase.tags
-          eval_span.set_attribute("braintrust.origin", kase.origin) if kase.origin
+          set_json_attr(eval_span, "braintrust.origin", kase.origin) if kase.origin
 
           # Run task
           begin
@@ -275,9 +275,7 @@ module Braintrust
       def report_progress(eval_span, kase, **fields)
         return unless eval_context.on_progress
         progress = {"id" => eval_span.context.hex_span_id}.merge(fields.transform_keys(&:to_s))
-        if kase.origin
-          progress["origin"] = kase.origin.is_a?(String) ? JSON.parse(kase.origin) : kase.origin
-        end
+        progress["origin"] = kase.origin if kase.origin
         eval_context.on_progress.call(progress)
       rescue => e
         Braintrust.logger.warn("on_progress callback error: #{e.message}")

@@ -2,12 +2,19 @@
 
 require "json"
 
+require_relative "../../eval/case"
+
 module Braintrust
   module Server
     module Services
       # Framework-agnostic service for running evaluations and streaming SSE results.
       # Must be long-lived (not per-request) to preserve the @state_cache across requests.
       class Eval
+        # Row fields this SDK understands, derived from the Case contract so that
+        # adding a field there carries it through here. Anything else on an
+        # inbound row is a field this version has no code for, and is ignored.
+        CASE_FIELDS = Braintrust::Eval::Case.members.map(&:to_s).freeze
+
         def initialize(evaluators)
           @evaluators = evaluators
           @state_mutex = Mutex.new
@@ -177,9 +184,10 @@ module Braintrust
         # Returns [cases, dataset] where exactly one is non-nil.
         def resolve_data_source(data)
           if data.key?("data")
-            cases = data["data"].map do |d|
-              {input: d["input"], expected: d["expected"]}
-            end
+            # Rows arrive inline from the Playground carrying tags, metadata and
+            # an origin pointer back to the row they came from. Carry them all:
+            # the Playground matches streamed results to its grid by origin.
+            cases = data["data"].map { |row| row.slice(*CASE_FIELDS).transform_keys(&:to_sym) }
             [cases, nil]
           elsif data.key?("dataset_id")
             [nil, Braintrust::Dataset::ID.new(id: data["dataset_id"])]

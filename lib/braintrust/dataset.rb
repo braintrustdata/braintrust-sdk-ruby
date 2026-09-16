@@ -166,14 +166,14 @@ module Braintrust
       record
     end
 
-    # Build origin JSON for tracing/linking
+    # Build origin pointer for tracing/linking
     # @param raw [Hash] Raw record from API
     # @param dataset_id [String] Dataset ID (fallback if not in record)
-    # @return [String, nil] JSON-serialized origin, or nil if record lacks required fields
+    # @return [Hash, nil] Origin pointer, or nil if record lacks required fields
     def build_origin(raw, dataset_id)
       return nil unless raw["id"] && raw["_xact_id"]
 
-      Internal::Origin.to_json(
+      Internal::Origin.build(
         object_type: "dataset",
         object_id: raw["dataset_id"] || dataset_id,
         id: raw["id"],

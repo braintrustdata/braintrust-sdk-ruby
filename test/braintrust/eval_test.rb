@@ -805,6 +805,39 @@ class Braintrust::EvalTest < Minitest::Test
     assert_nil eval_span.attributes["braintrust.origin"]
   end
 
+  # Origin pointers travel as Hashes and are serialized once, here, at the span
+  # boundary. Handing OpenTelemetry a Hash does not raise: it logs and drops the
+  # attribute, so the dataset link would be lost silently.
+  def test_runner_serializes_hash_origin_onto_eval_span
+    rig = setup_otel_test_rig
+    origin = {
+      "object_type" => "dataset",
+      "object_id" => "ds-abc",
+      "id" => "row-1",
+      "_xact_id" => "1000196022104685824"
+    }
+
+    task = ->(input:) { input.upcase }
+    scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
+
+    run_test_eval(
+      experiment_id: "test-exp-123",
+      experiment_name: "test-hash-origin",
+      project_id: "test-proj-123",
+      project_name: "test-project",
+      cases: [{input: "hello", expected: "HELLO", origin: origin}],
+      task: task,
+      scorers: [scorer],
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+
+    eval_span = rig.drain.find { |s| s.name == "eval" }
+
+    assert eval_span, "Expected eval span"
+    assert_equal origin, JSON.parse(eval_span.attributes["braintrust.origin"])
+  end
+
   # Integration test: verify real API dataset records result in correct origin on spans
   # Note: Dataset is not deleted after test - relies on idempotent create (same pattern as other dataset tests)
   def test_eval_with_remote_dataset_sets_origin_from_api_response
