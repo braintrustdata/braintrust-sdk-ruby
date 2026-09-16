@@ -1,3 +1,5 @@
+require "json"
+
 module Test
   module Support
     module FixtureHelper
@@ -20,6 +22,14 @@ module Test
       # @yield [Tempfile] the temporary PNG file
       def with_png_file(data: PNG_DATA, filename: "test_image", extension: ".png", &block)
         with_tmp_file(data: data, filename: filename, extension: extension, binary: true, &block)
+      end
+
+      # Load a JSON fixture from test/fixtures.
+      # @param name [String] path under test/fixtures, without the .json extension
+      # @return [Hash, Array] the parsed fixture
+      def load_json_fixture(name)
+        path = File.expand_path("../fixtures/#{name}.json", __dir__)
+        JSON.parse(File.read(path))
       end
 
       # Create a temporary file and yield to the block

@@ -89,6 +89,72 @@ module Braintrust
           assert_equal({name: "my-dataset", project: "my-project"}, result[:dataset])
         end
 
+        # --- validate: inline Playground rows ---
+
+        # The request body a Playground actually posts, captured from a live
+        # remote eval run. Rows arrive detached from their dataset and carry an
+        # origin pointer back to it, which the Playground uses to match streamed
+        # results to its grid rows.
+        def playground_rows
+          load_json_fixture("playground/eval_request_inline").dig("data", "data")
+        end
+
+        def test_validate_preserves_origin_from_inline_rows
+          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => playground_rows}
+          })
+
+          kase = result[:cases].first
+          assert_equal "Grilled chicken breast", kase[:input]
+          assert_equal "protein", kase[:expected]
+          assert_equal playground_rows.first["origin"]["id"], kase[:origin]["id"]
+          assert_equal "dataset", kase[:origin]["object_type"]
+          assert_equal playground_rows.first["origin"]["object_id"], kase[:origin]["object_id"]
+        end
+
+        def test_validate_preserves_tags_and_metadata_from_inline_rows
+          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => [
+              playground_rows.first.merge("tags" => ["smoke"], "metadata" => {"source" => "playground"})
+            ]}
+          })
+
+          kase = result[:cases].first
+          assert_equal ["smoke"], kase[:tags]
+          assert_equal({"source" => "playground"}, kase[:metadata])
+        end
+
+        # Real rows carry id, _xact_id, created and upsert_id, none of which this
+        # SDK models. They must be ignored rather than raising or being mistaken
+        # for Case fields, so that a new protocol field cannot break the runner.
+        def test_validate_ignores_unrecognized_inline_row_fields
+          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => [playground_rows.first.merge("some_future_field" => "x")]}
+          })
+
+          kase = result[:cases].first
+          assert_equal "Grilled chicken breast", kase[:input]
+          assert_equal %i[input expected metadata origin].sort, kase.keys.sort
+          refute kase.key?(:upsert_id)
+          refute kase.key?(:some_future_field)
+        end
+
+        def test_validate_handles_inline_rows_without_origin
+          @evaluators["test-eval"] = test_evaluator(task: ->(input) { input })
+          result = service.validate({
+            "name" => "test-eval",
+            "data" => {"data" => [{"input" => "x"}]}
+          })
+
+          assert_equal({input: "x"}, result[:cases].first)
+        end
+
         # --- stream ---
 
         def test_stream_emits_progress_and_done_events
@@ -105,6 +171,31 @@ module Braintrust
           progress = events.select { |e| e[:event] == "progress" }
           assert_equal 4, progress.length # 2 per case: json_delta + done
           assert_equal "done", events.last[:event]
+        end
+
+        # The Playground matches streamed results to its grid rows by origin.
+        # Without it, results arrive unmatched and the UI spins forever.
+        def test_stream_emits_origin_on_every_progress_event
+          @evaluators["upcase-eval"] = test_evaluator(
+            task: ->(input) { input.to_s.upcase }, scorers: [noop_scorer]
+          )
+          s = service
+          validated = s.validate({
+            "name" => "upcase-eval",
+            "data" => {"data" => playground_rows},
+            "experiment_name" => "exp"
+          })
+
+          events = collect_streamed_events(s, validated)
+          progress = events.select { |e| e[:event] == "progress" }.map { |e| JSON.parse(e[:data]) }
+
+          expected_origins = playground_rows.map { |row| row["origin"] }
+          refute_empty progress
+          progress.each do |p|
+            assert_includes expected_origins, p["origin"], "progress event missing or wrong origin"
+          end
+          assert_equal expected_origins.length, progress.map { |p| p["origin"] }.uniq.length,
+            "every row should be represented in the progress stream"
         end
 
         def test_stream_emits_summary_with_scores

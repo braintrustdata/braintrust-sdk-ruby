@@ -69,6 +69,29 @@ module Braintrust
           assert_equal "HELLO", JSON.parse(data["data"])
         end
 
+        # End-to-end over the real HTTP path, driven by the request body a
+        # Playground actually posts (captured from a live remote eval run).
+        # Every progress event must echo the origin its row arrived with, or the
+        # Playground cannot match results to its grid rows and spins forever.
+        def test_progress_events_echo_origin_from_captured_playground_request
+          body = load_json_fixture("playground/eval_request_inline")
+          @evaluators[body["name"]] = test_evaluator(
+            task: ->(input:) { input.to_s.upcase }, scorers: [noop_scorer]
+          )
+
+          post_json "/eval", body
+
+          assert_equal 200, last_response.status
+          events = parse_sse_events(last_response.body)
+          progress = events.select { |e| e[:event] == "progress" }.map { |e| JSON.parse(e[:data]) }
+
+          expected_origins = body.dig("data", "data").map { |row| row["origin"] }
+          refute_empty progress
+          progress.each do |p|
+            assert_includes expected_origins, p["origin"], "progress event missing or wrong origin"
+          end
+        end
+
         def test_summary_event_contains_scores
           scorer = Braintrust::Scorer.new("exact") { |expected:, output:| (output == expected) ? 1.0 : 0.0 }
           @evaluators["scored-eval"] = test_evaluator(

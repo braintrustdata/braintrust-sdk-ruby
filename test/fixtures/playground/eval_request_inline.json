@@ -1,0 +1,52 @@
+{
+  "name": "food-classifier",
+  "parameters": {},
+  "data": {
+    "data": [
+      {
+        "expected": "protein",
+        "input": "Grilled chicken breast",
+        "metadata": null,
+        "id": "35e83320-06d2-47c9-8c30-731db7cef92a",
+        "_xact_id": "1000197637647737942",
+        "created": "1785970989574",
+        "origin": {
+          "object_type": "dataset",
+          "object_id": "c2fc45d0-85bc-441c-9b81-be613a864e67",
+          "id": "35e83320-06d2-47c9-8c30-731db7cef92a",
+          "_xact_id": "1000197637647737942",
+          "created": "1785970989574"
+        },
+        "upsert_id": "0a1a7065-a191-44d2-9df5-9c58fa15e951"
+      },
+      {
+        "expected": "vegetable",
+        "input": "Romaine lettuce",
+        "metadata": null,
+        "id": "2d91c914-b83c-44a0-a5de-6a59b4449047",
+        "_xact_id": "1000197637647737942",
+        "created": "1785970989575",
+        "origin": {
+          "object_type": "dataset",
+          "object_id": "c2fc45d0-85bc-441c-9b81-be613a864e67",
+          "id": "2d91c914-b83c-44a0-a5de-6a59b4449047",
+          "_xact_id": "1000197637647737942",
+          "created": "1785970989575"
+        },
+        "upsert_id": "54a9408e-8937-429a-adab-cc5eb033c0e8"
+      }
+    ]
+  },
+  "scores": [],
+  "project_id": "fc70fc0f-fd38-4890-bb9f-9de80132f5de",
+  "parent": {
+    "object_type": "playground_logs",
+    "object_id": "56b0678a-5c0a-44c3-b100-232bd4aa9673",
+    "propagated_event": {
+      "span_attributes": {
+        "generation": "0cd4601a-f36a-4951-b4a7-94f9743d8920"
+      }
+    }
+  },
+  "stream": true
+}

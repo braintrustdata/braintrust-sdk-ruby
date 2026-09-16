@@ -4,8 +4,8 @@ require "test_helper"
 require "braintrust/internal/origin"
 
 class Braintrust::Internal::OriginTest < Minitest::Test
-  def test_to_json_serializes_all_fields
-    result = Braintrust::Internal::Origin.to_json(
+  def test_build_includes_all_fields
+    origin = Braintrust::Internal::Origin.build(
       object_type: "dataset",
       object_id: "dataset-123",
       id: "record-456",
@@ -13,17 +13,15 @@ class Braintrust::Internal::OriginTest < Minitest::Test
       created: "2025-10-24T15:29:18.118Z"
     )
 
-    parsed = JSON.parse(result)
-
-    assert_equal "dataset", parsed["object_type"]
-    assert_equal "dataset-123", parsed["object_id"]
-    assert_equal "record-456", parsed["id"]
-    assert_equal "1000196022104685824", parsed["_xact_id"]
-    assert_equal "2025-10-24T15:29:18.118Z", parsed["created"]
+    assert_equal "dataset", origin["object_type"]
+    assert_equal "dataset-123", origin["object_id"]
+    assert_equal "record-456", origin["id"]
+    assert_equal "1000196022104685824", origin["_xact_id"]
+    assert_equal "2025-10-24T15:29:18.118Z", origin["created"]
   end
 
-  def test_to_json_handles_nil_created
-    result = Braintrust::Internal::Origin.to_json(
+  def test_build_handles_nil_created
+    origin = Braintrust::Internal::Origin.build(
       object_type: "dataset",
       object_id: "dataset-123",
       id: "record-456",
@@ -31,17 +29,14 @@ class Braintrust::Internal::OriginTest < Minitest::Test
       created: nil
     )
 
-    parsed = JSON.parse(result)
-
-    assert_equal "dataset", parsed["object_type"]
-    assert_equal "dataset-123", parsed["object_id"]
-    assert_equal "record-456", parsed["id"]
-    assert_equal "1000196022104685824", parsed["_xact_id"]
-    assert_nil parsed["created"]
+    assert_nil origin["created"]
+    assert_equal "record-456", origin["id"]
   end
 
-  def test_to_json_returns_valid_json_string
-    result = Braintrust::Internal::Origin.to_json(
+  # Pointers we build must be shaped like the ones the Playground sends, so both
+  # sources flow through the SDK identically.
+  def test_build_uses_string_keys_matching_the_wire_format
+    origin = Braintrust::Internal::Origin.build(
       object_type: "dataset",
       object_id: "abc-123",
       id: "def-456",
@@ -49,13 +44,12 @@ class Braintrust::Internal::OriginTest < Minitest::Test
       created: "2025-01-01T00:00:00Z"
     )
 
-    assert_instance_of String, result
-    # Should not raise
-    JSON.parse(result)
+    assert_instance_of Hash, origin
+    assert_equal %w[object_type object_id id _xact_id created].sort, origin.keys.sort
   end
 
-  def test_to_json_with_playground_logs_type
-    result = Braintrust::Internal::Origin.to_json(
+  def test_build_with_playground_logs_type
+    origin = Braintrust::Internal::Origin.build(
       object_type: "playground_logs",
       object_id: "playground-123",
       id: "log-456",
@@ -63,7 +57,6 @@ class Braintrust::Internal::OriginTest < Minitest::Test
       created: "2025-01-01T00:00:00Z"
     )
 
-    parsed = JSON.parse(result)
-    assert_equal "playground_logs", parsed["object_type"]
+    assert_equal "playground_logs", origin["object_type"]
   end
 end
