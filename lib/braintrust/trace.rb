@@ -88,10 +88,16 @@ module Braintrust
       # Get config from state if available
       config ||= state.respond_to?(:config) ? state.config : nil
 
+      # Customizers only run in SpanExporter; refuse to silently skip them (e.g. redaction).
+      if exporter && config&.span_customizers&.any?
+        raise ArgumentError, "span_customizers are not supported with a custom exporter"
+      end
+
       # Create OTLP HTTP exporter unless override provided
       exporter ||= SpanExporter.new(
         endpoint: "#{state.api_url}/otel/v1/traces",
-        api_key: state.api_key
+        api_key: state.api_key,
+        span_customizers: config&.span_customizers
       )
 
       # Use SimpleSpanProcessor for InMemorySpanExporter (testing), BatchSpanProcessor for production

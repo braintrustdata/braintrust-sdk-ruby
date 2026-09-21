@@ -20,6 +20,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
   - [Supported providers](#supported-providers)
   - [Manually applying instrumentation](#manually-applying-instrumentation)
   - [Creating custom spans](#creating-custom-spans)
+  - [Span customizers](#span-customizers)
   - [Attachments](#attachments)
   - [Viewing traces](#viewing-traces)
 - [Evals](#evals)
@@ -120,6 +121,7 @@ Braintrust.init
 | `filter_ai_spans` | `ENV['BRAINTRUST_OTEL_FILTER_AI_SPANS']` | Only export AI-related spans                                                |
 | `org_name`        | `ENV['BRAINTRUST_ORG_NAME']`             | Organization name                                                           |
 | `set_global`      | `true`                                   | Set as global state. Set to `false` for isolated instances                  |
+| `span_customizers` | `[]`                                   | Ordered objects with optional synchronous export hooks (see [Span customizers](#span-customizers)) |
 
 **Example with options:**
 
@@ -191,6 +193,40 @@ tracer.in_span("process-request") do |span|
   response = client.chat.completions.create(...)
 end
 ```
+
+### Span customizers
+
+Register customizers before creating spans to redact or transform outgoing telemetry:
+
+```ruby
+require "braintrust"
+
+class RedactContent < Braintrust::SpanCustomizer
+  def on_span_export(span)
+    %w[braintrust.input_json braintrust.output_json].each do |key|
+      span.attributes[key] = JSON.generate("[redacted]") if span.attributes.key?(key)
+    end
+    span
+  end
+end
+
+Braintrust.init(
+  default_project: "my-project",
+  span_customizers: [RedactContent.new]
+)
+```
+
+`Braintrust::SpanCustomizer` is an extensible base class with a no-op `on_span_export`. Any object may be registered; an omitted hook is also a no-op. `Braintrust::Config.new` / `.from_env`, `Braintrust::State.from_env`, and a directly constructed `Braintrust::Trace::SpanExporter` also accept `span_customizers:`. Registration is programmatic, not environment-based. Configuration and exporters retain frozen copies of the ordered list, not copies of the customizer objects.
+
+Hooks run synchronously in registration order, each receiving a view of its predecessor's result. The argument is a `Braintrust::Trace::SpanExportData` facade over completed OpenTelemetry span data, after Braintrust origin metadata is added but before destination grouping or OTLP serialization. Hooks apply to **all completed spans reaching the Braintrust exporter**, including manual, evaluation, and instrumented spans that pass any configured span filters. An unrelated exporter supplied through `exporter:` is not wrapped with these hooks.
+
+Mutate and return the facade directly, or return a replacement `OpenTelemetry::SDK::Trace::SpanData`; replacement is not an implicit merge. The facade exposes span field readers and writers, except for identity writers, and `to_span_data` provides the underlying OpenTelemetry representation when constructing a replacement. The exporter provides a writable attributes hash, so assigning or deleting attribute entries does not change another exporter's hash. There is no deep copy: nested strings, arrays, events, links, and resources may still be shared with application code or other exporters. Prefer assigning replacement attribute values over mutating existing values in place. OTel resource objects retain their normal API; replace resources with `OpenTelemetry::SDK::Resources::Resource.create(...)` when changing resource attributes. Added attributes, events, and links have their recorded counts adjusted to prevent negative OTLP dropped counts.
+
+Always return valid, serializable span data, never `nil` to drop a span. The facade exposes `trace_id`, `span_id`, and `parent_span_id` as read-only, frozen strings and does not expose indexed assignment (`[]=`). Preserve these IDs in replacements too; the exporter checks them after every hook. You may change `braintrust.parent` to route the result to another project or experiment. Existing destination/header behavior otherwise remains unchanged.
+
+Customization is **fail-closed for the whole batch**: an exception, invalid return, changed protected ID, or serialization failure returns an export failure and sends none of that batch. The SDK logs the failure without falling back to unredacted originals. Mutations made before a failure are not rolled back.
+
+Keep hooks fast and avoid blocking I/O; they may run on a background export thread. OTLP transport retries reuse the already customized bytes. Submitting the same span data through `export` again invokes the hooks again on its current state, including prior mutations, so do not assume one invocation per logical span. Without customizers, the existing export path is unchanged.
 
 ### Attachments
 
@@ -567,7 +603,7 @@ The dev server requires the `rack` gem and a Rack-compatible web server.
 | [Passenger](https://www.phusionpassenger.com/) | 6.x               |                                      |
 | [WEBrick](https://github.com/ruby/webrick)     | Not supported     | Does not support server-sent events. |
 
-See examples: [server/eval.ru](./examples/server/eval.ru), 
+See examples: [server/eval.ru](./examples/server/eval.ru),
 
 ## Documentation
 
