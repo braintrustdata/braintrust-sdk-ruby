@@ -8,8 +8,8 @@ module Test
     # behaviors as the production SpanExporter - currently span origin decoration
     # (SpanOrigin), prepended below.
     #
-    # Both this and SpanExporter prepend the *same* SpanOrigin module, so the
-    # behavior under test cannot drift between the production and test exporters.
+    # Both this prepend and the production SpanExporter call SpanOrigin.enrich_batch,
+    # so origin enrichment is shared between the production and test exporters.
     # Tests can therefore assert on origin-decorated SpanData without any network
     # calls or a real OTLP exporter.
     class InMemoryExporter < OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter
