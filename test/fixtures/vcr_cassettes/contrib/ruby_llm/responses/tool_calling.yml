@@ -1,0 +1,395 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","input":[{"role":"user","content":"What''s the
+        weather like in San Francisco?"}],"stream":false,"store":false,"include":["reasoning.encrypted_content"],"tools":[{"type":"function","name":"weather_test","description":"Get
+        the current weather for a location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The
+        city and state, e.g. San Francisco, CA"},"unit":{"type":"string","description":"Temperature
+        unit (celsius or fahrenheit)"}},"required":["location","unit"]},"strict":false}]}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.4
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Tue, 22 Sep 2026 18:44:45 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cf-Ray:
+      - a3f3766e293f89da-CMH
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      - CF-Ray
+      - X-Request-ID
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '1701'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999710'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      X-Request-Id:
+      - req_ce6b3919a39c444f9932a6e9d3c42481
+      Set-Cookie:
+      - __cf_bm=NIZ2bxvMi_sUIWnr5FwS306i8qPgRFiDz502T_q7cJA-1790102683.868785-1.0.1.1-DSdQDmI.aNe.3sUyu9Ug_CFSNVO6iCdYlCAvi8XTJ7WtT4JhzhOngcbnnHd_XsGTU.2kEjNOezUk9.NRQfIkjf57z5RoDQm0tpD97t6bbrX4E1ABjUgEeDXA2ZWJEqHW;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Tue,
+        22 Sep 2026 19:14:45 GMT
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_090caa56d5ac08be016ab2cc9bf85487d29205a93172706409",
+          "object": "response",
+          "created_at": 1790102684,
+          "status": "completed",
+          "access_programs": null,
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "completed_at": 1790102685,
+          "error": null,
+          "frequency_penalty": 0.0,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "moderation": null,
+          "output": [
+            {
+              "id": "fc_090caa56d5ac08be016ab2cc9d7aac87d28006b1291cd5222b",
+              "type": "function_call",
+              "status": "completed",
+              "arguments": "{\"location\":\"San Francisco, CA\",\"unit\":\"celsius\"}",
+              "call_id": "call_jsU5nzNJky4Dc8x97edOrzfs",
+              "name": "weather_test"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "presence_penalty": 0.0,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": "in_memory",
+          "reasoning": {
+            "context": null,
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": false,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tool_usage": {
+            "image_gen": {
+              "input_tokens": 0,
+              "input_tokens_details": {
+                "image_tokens": 0,
+                "text_tokens": 0
+              },
+              "output_tokens": 0,
+              "output_tokens_details": {
+                "image_tokens": 0,
+                "text_tokens": 0
+              },
+              "total_tokens": 0
+            },
+            "web_search": {
+              "num_requests": 0
+            }
+          },
+          "tools": [
+            {
+              "type": "function",
+              "description": "Get the current weather for a location",
+              "name": "weather_test",
+              "output_schema": null,
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "description": "Temperature unit (celsius or fahrenheit)"
+                  }
+                },
+                "required": [
+                  "location",
+                  "unit"
+                ]
+              },
+              "strict": false
+            }
+          ],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 74,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 23,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 97
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Tue, 22 Sep 2026 18:44:45 GMT
+- request:
+    method: post
+    uri: https://api.openai.com/v1/responses
+    body:
+      encoding: UTF-8
+      string: '{"model":"gpt-4o-mini","input":[{"role":"user","content":"What''s the
+        weather like in San Francisco?"},{"type":"function_call","call_id":"call_jsU5nzNJky4Dc8x97edOrzfs","name":"weather_test","arguments":"{\"location\":\"San
+        Francisco, CA\",\"unit\":\"celsius\"}"},{"type":"function_call_output","call_id":"call_jsU5nzNJky4Dc8x97edOrzfs","output":"{\"location\":\"San
+        Francisco, CA\",\"temperature\":72,\"unit\":\"celsius\",\"conditions\":\"sunny\"}"}],"stream":false,"store":false,"include":["reasoning.encrypted_content"],"tools":[{"type":"function","name":"weather_test","description":"Get
+        the current weather for a location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The
+        city and state, e.g. San Francisco, CA"},"unit":{"type":"string","description":"Temperature
+        unit (celsius or fahrenheit)"}},"required":["location","unit"]},"strict":false}]}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.4
+      Authorization:
+      - Bearer <OPENAI_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Tue, 22 Sep 2026 18:44:47 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cf-Ray:
+      - a3f37679bdab07b2-CMH
+      Cf-Cache-Status:
+      - DYNAMIC
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      Access-Control-Expose-Headers:
+      - CF-Ray
+      - CF-Ray
+      - X-Request-ID
+      Openai-Organization:
+      - braintrust-data
+      Openai-Processing-Ms:
+      - '2079'
+      Openai-Project:
+      - proj_vsCSXafhhByzWOThMrJcZiw9
+      Openai-Version:
+      - '2020-10-01'
+      X-Ratelimit-Limit-Requests:
+      - '30000'
+      X-Ratelimit-Limit-Tokens:
+      - '150000000'
+      X-Ratelimit-Remaining-Requests:
+      - '29999'
+      X-Ratelimit-Remaining-Tokens:
+      - '149999660'
+      X-Ratelimit-Reset-Requests:
+      - 2ms
+      X-Ratelimit-Reset-Tokens:
+      - 0s
+      X-Request-Id:
+      - req_99252bd369074093922bccefba651b5e
+      Set-Cookie:
+      - __cf_bm=cVICidGTgaad3MmQwd9QI.gUTjmO_qiXJ51_o6RUP8Q-1790102685.7204123-1.0.1.1-_zM36sKYFXWqO3o1yV3_ZyS.U9KWUF3rc._GlgkVez6K4L07Mf1u71cWWYpQm2vdgR._Rj7RkDKiOMeFj1e36eAucwwnYqy5LEenLusb8cVYaqSEh56LRa7HgOlb0a6L;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Tue,
+        22 Sep 2026 19:14:47 GMT
+      Alt-Svc:
+      - h3=":443"; ma=86400
+    body:
+      encoding: ASCII-8BIT
+      string: |-
+        {
+          "id": "resp_05cdbed1ff989cfe016ab2cc9dd95c87d2ae50bbd3f1fc7e0e",
+          "object": "response",
+          "created_at": 1790102685,
+          "status": "completed",
+          "access_programs": null,
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "completed_at": 1790102687,
+          "error": null,
+          "frequency_penalty": 0.0,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "moderation": null,
+          "output": [
+            {
+              "id": "msg_05cdbed1ff989cfe016ab2cc9f939487d28582fa8417e30738",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "The weather in San Francisco is currently 22\u00b0C (72\u00b0F) and sunny."
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "presence_penalty": 0.0,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": "in_memory",
+          "reasoning": {
+            "context": null,
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": false,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tool_usage": {
+            "image_gen": {
+              "input_tokens": 0,
+              "input_tokens_details": {
+                "image_tokens": 0,
+                "text_tokens": 0
+              },
+              "output_tokens": 0,
+              "output_tokens_details": {
+                "image_tokens": 0,
+                "text_tokens": 0
+              },
+              "total_tokens": 0
+            },
+            "web_search": {
+              "num_requests": 0
+            }
+          },
+          "tools": [
+            {
+              "type": "function",
+              "description": "Get the current weather for a location",
+              "name": "weather_test",
+              "output_schema": null,
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "description": "Temperature unit (celsius or fahrenheit)"
+                  }
+                },
+                "required": [
+                  "location",
+                  "unit"
+                ]
+              },
+              "strict": false
+            }
+          ],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 124,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 19,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 143
+          },
+          "user": null,
+          "metadata": {}
+        }
+  recorded_at: Tue, 22 Sep 2026 18:44:47 GMT
+recorded_with: VCR 6.4.0

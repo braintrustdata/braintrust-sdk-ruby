@@ -16,7 +16,7 @@ gem "webmock", "~> 3.0"
 gem "yard", "~> 0.9"
 gem "openai", ">= 0.34"
 gem "anthropic", ">= 1.11"
-gem "ruby_llm", ">= 1.9"
+gem "ruby_llm", ">= 2.0"
 gem "base64"
 gem "cgi"
 

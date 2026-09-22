@@ -25,7 +25,8 @@ OPTIONAL_GEMS = {
   "ruby_llm" => {
     "1.8" => {constraint: "~> 1.8.0", deps: {}},
     "1.9" => {constraint: "~> 1.9.0", deps: {}},
-    "latest" => {constraint: ">= 1.9", deps: {}}
+    "2.0" => {constraint: "~> 2.0.0", deps: {}},
+    "latest" => {constraint: ">= 2.0", deps: {}}
   }
 }
 
@@ -68,7 +69,7 @@ end
 appraise "contrib" do
   gem "openai", ">= 0.34"
   gem "anthropic", ">= 1.11"
-  gem "ruby_llm", ">= 1.9"
+  gem "ruby_llm", ">= 2.0"
   gem "base64" # needed for openai gem on Ruby 3.4+
   gem "cgi" # needed for openai/anthropic gems on Ruby 4.0+
 end
@@ -77,7 +78,7 @@ end
 appraise "server" do
   gem "openai", ">= 0.34"
   gem "anthropic", ">= 1.11"
-  gem "ruby_llm", ">= 1.9"
+  gem "ruby_llm", ">= 2.0"
   gem "base64" # needed for openai gem on Ruby 3.4+
   gem "cgi" # needed for openai/anthropic gems on Ruby 4.0+
   gem "rack", "~> 3.0"

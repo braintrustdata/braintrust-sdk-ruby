@@ -186,17 +186,17 @@ module Braintrust
                     ::RubyLLM::Providers::OpenAI::Tools.tool_for(tool)
                   elsif defined?(::RubyLLM::Providers::Anthropic) && provider.is_a?(::RubyLLM::Providers::Anthropic)
                     ::RubyLLM::Providers::Anthropic::Tools.tool_for(tool)
-                  elsif tool.respond_to?(:params_schema) && tool.params_schema
+                  elsif tool_params_schema(tool)
                     build_basic_tool_schema(tool)
                   else
                     build_minimal_tool_schema(tool)
                   end
                 rescue NameError, ArgumentError => e
                   Braintrust::Log.debug("Failed to extract tool schema using provider-specific method: #{e.class.name}: #{e.message}")
-                  tool_schema = (tool.respond_to?(:params_schema) && tool.params_schema) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
+                  tool_schema = tool_params_schema(tool) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
                 end
               else
-                tool_schema = (tool.respond_to?(:params_schema) && tool.params_schema) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
+                tool_schema = tool_params_schema(tool) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
               end
 
               # Strip RubyLLM-specific fields to match native OpenAI format
@@ -217,6 +217,19 @@ module Braintrust
               tool_schema
             end
 
+            # A tool's JSON Schema, across ruby_llm versions.
+            # 1.x exposes it as params_schema; 2.0 renamed it to parameters_schema.
+            # @param tool [Object] the RubyLLM tool
+            # @return [Hash, nil] the schema, or nil when the tool declares none
+            def tool_params_schema(tool)
+              %i[params_schema parameters_schema].each do |name|
+                next unless tool.respond_to?(name)
+                schema = tool.public_send(name)
+                return schema if schema
+              end
+              nil
+            end
+
             # Build a basic tool schema with parameters
             def build_basic_tool_schema(tool)
               {
@@ -224,7 +237,7 @@ module Braintrust
                 "function" => {
                   "name" => tool.name.to_s,
                   "description" => tool.description,
-                  "parameters" => tool.params_schema
+                  "parameters" => tool_params_schema(tool)
                 }
               }
             end
@@ -255,10 +268,11 @@ module Braintrust
               # Handle content
               if msg.respond_to?(:content) && msg.content
                 raw_content = msg.content
+                attachments = extract_attachments(msg)
 
-                # Check if content is a Content object with attachments (issue #71)
-                formatted["content"] = if raw_content.respond_to?(:text) && raw_content.respond_to?(:attachments) && raw_content.attachments&.any?
-                  format_multipart_content(raw_content)
+                # Include attachments alongside the text when present (issue #71)
+                formatted["content"] = if attachments.any?
+                  format_multipart_content(content_text(raw_content), attachments)
                 else
                   format_simple_content(raw_content, msg.role.to_s)
                 end
@@ -278,17 +292,43 @@ module Braintrust
               formatted
             end
 
+            # Collect a message's attachments.
+            #
+            # ruby_llm 1.x wraps text and attachments in a Content object hanging off
+            # the message; 2.0 removed Content, leaving content a plain String and
+            # exposing attachments on the message itself. Support both.
+            #
+            # @param msg [Object] the RubyLLM message
+            # @return [Array] the message's attachments, empty when there are none
+            def extract_attachments(msg)
+              content = msg.content if msg.respond_to?(:content)
+              if content.respond_to?(:attachments)
+                from_content = Array(content.attachments)
+                return from_content if from_content.any?
+              end
+
+              msg.respond_to?(:attachments) ? Array(msg.attachments) : []
+            end
+
+            # Extract the plain text of a message's content.
+            # @param raw_content [Object] String, or a 1.x Content object
+            # @return [Object] the text
+            def content_text(raw_content)
+              raw_content.respond_to?(:text) ? raw_content.text : raw_content
+            end
+
             # Format multipart content with text and attachments
-            # @param content_obj [Object] Content object with text and attachments
+            # @param text [Object] the message text
+            # @param attachments [Array] the message's attachments
             # @return [Array<Hash>] array of content parts
-            def format_multipart_content(content_obj)
+            def format_multipart_content(text, attachments)
               content_parts = []
 
               # Add text part
-              content_parts << {"type" => "text", "text" => content_obj.text} if content_obj.text
+              content_parts << {"type" => "text", "text" => text} if text
 
               # Add attachment parts (convert to Braintrust format)
-              content_obj.attachments.each do |attachment|
+              attachments.each do |attachment|
                 content_parts << format_attachment_for_input(attachment)
               end
 
