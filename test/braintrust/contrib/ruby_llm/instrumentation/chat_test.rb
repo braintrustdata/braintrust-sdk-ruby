@@ -69,8 +69,14 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     tool_class = Class.new(RubyLLM::Tool) do
       description "Get the current weather for a location"
 
-      param :location, type: :string, desc: "The city and state, e.g. San Francisco, CA"
-      param :unit, type: :string, desc: "Temperature unit (celsius or fahrenheit)"
+      # ruby_llm 2.0 renamed the `param ..., desc:` DSL to `parameter ..., description:`.
+      if respond_to?(:parameter)
+        parameter :location, type: :string, description: "The city and state, e.g. San Francisco, CA"
+        parameter :unit, type: :string, description: "Temperature unit (celsius or fahrenheit)"
+      else
+        param :location, type: :string, desc: "The city and state, e.g. San Francisco, CA"
+        param :unit, type: :string, desc: "Temperature unit (celsius or fahrenheit)"
+      end
 
       def execute(location:, unit: "fahrenheit")
         {location: location, temperature: 72, unit: unit, conditions: "sunny"}
@@ -82,6 +88,30 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     end
   end
 
+  # Builds a user message carrying an attachment, across ruby_llm versions.
+  # 1.x wraps text + attachments in a RubyLLM::Content object; 2.0 removed
+  # Content and attaches directly to the message.
+  def user_message_with_attachment(text, path)
+    if defined?(::RubyLLM::Content)
+      content = ::RubyLLM::Content.new(text)
+      content.add_attachment(path)
+      ::RubyLLM::Message.new(role: :user, content: content)
+    else
+      ::RubyLLM::Message.new(role: :user, content: text, attachments: [path])
+    end
+  end
+
+  # Appends a user message carrying an attachment to a chat, across versions.
+  def add_user_message_with_attachment(chat, text, path)
+    if defined?(::RubyLLM::Content)
+      content = ::RubyLLM::Content.new(text)
+      content.add_attachment(path)
+      chat.add_message(role: :user, content: content)
+    else
+      chat.add_message(::RubyLLM::Message.new(role: :user, content: text, attachments: [path]))
+    end
+  end
+
   def setup
     skip_unless_ruby_llm!
   end
@@ -89,12 +119,10 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
   # --- #complete (non-streaming) ---
 
   def test_complete_creates_span_with_correct_attributes
-    VCR.use_cassette("contrib/ruby_llm/basic_chat") do
+    VCR.use_cassette(ruby_llm_cassette("basic_chat")) do
       rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+      configure_ruby_llm_for_vcr
 
       chat = RubyLLM.chat(model: "gpt-4o-mini")
       Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
@@ -142,12 +170,10 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
   # --- #complete (streaming) ---
 
   def test_streaming_complete_creates_span
-    VCR.use_cassette("contrib/ruby_llm/streaming_chat") do
+    VCR.use_cassette(ruby_llm_cassette("streaming_chat")) do
       rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+      configure_ruby_llm_for_vcr
 
       chat = RubyLLM.chat(model: "gpt-4o-mini")
       Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
@@ -198,16 +224,15 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     skip "Tool calling test requires ruby_llm >= 1.9" unless self.class.supports_tool_calling?
 
     with_weather_test_tool do |tool_class|
-      VCR.use_cassette("contrib/ruby_llm/tool_calling") do
+      VCR.use_cassette(ruby_llm_cassette("tool_calling")) do
         rig = setup_otel_test_rig
 
-        RubyLLM.configure do |config|
-          config.openai_api_key = get_openai_key
-        end
+        configure_ruby_llm_for_vcr
 
         chat = RubyLLM.chat(model: "gpt-4o-mini")
         Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
-        chat.with_tool(tool_class)
+        # with_tools is present in both 1.x and 2.0; 2.0 dropped the singular with_tool.
+        chat.with_tools(tool_class)
 
         response = chat.ask("What's the weather like in San Francisco?")
 
@@ -268,12 +293,10 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
   # --- Direct complete() ---
 
   def test_direct_complete_creates_span
-    VCR.use_cassette("contrib/ruby_llm/direct_complete") do
+    VCR.use_cassette(ruby_llm_cassette("direct_complete")) do
       rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+      configure_ruby_llm_for_vcr
 
       chat = RubyLLM.chat(model: "gpt-4o-mini")
       Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
@@ -304,12 +327,10 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
   # --- Idempotency ---
 
   def test_wrapping_is_idempotent
-    VCR.use_cassette("contrib/ruby_llm/basic_chat") do
+    VCR.use_cassette(ruby_llm_cassette("basic_chat")) do
       rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+      configure_ruby_llm_for_vcr
 
       chat = RubyLLM.chat(model: "gpt-4o-mini")
 
@@ -331,12 +352,10 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
   # --- Class-level instrumentation ---
 
   def test_class_level_instrumentation_traces_new_instances
-    VCR.use_cassette("contrib/ruby_llm/basic_chat") do
+    VCR.use_cassette(ruby_llm_cassette("basic_chat")) do
       rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+      configure_ruby_llm_for_vcr
 
       # Set the default tracer provider for class-level instrumentation
       Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
@@ -377,16 +396,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     skip "RubyLLM gem not available" unless defined?(::RubyLLM)
 
     with_tmp_file(data: "This is test content") do |tmpfile|
-      # Create a Content object with an attachment (this triggers the Content object return)
-      content = ::RubyLLM::Content.new("Hello, this is the actual text content")
-      content.add_attachment(tmpfile.path)
-
-      # Create a message with the Content object (simulates message with attachment)
-      msg = ::RubyLLM::Message.new(role: :user, content: content)
-
-      # Verify the precondition: msg.content returns a Content object, not a string
-      assert msg.content.is_a?(::RubyLLM::Content),
-        "Precondition failed: Expected Content object when message has attachments"
+      msg = user_message_with_attachment("Hello, this is the actual text content", tmpfile.path)
 
       # Create a minimal chat-like object to test the helper method
       chat_class = Class.new do
@@ -425,18 +435,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     skip "RubyLLM gem not available" unless defined?(::RubyLLM)
 
     with_png_file do |tmpfile|
-      # Create a Content object with an image attachment
-      content = ::RubyLLM::Content.new("What's in this image?")
-      content.add_attachment(tmpfile.path)
-
-      # Create a message with the Content object
-      msg = ::RubyLLM::Message.new(role: :user, content: content)
-
-      # Verify the precondition: msg.content returns a Content object
-      assert msg.content.is_a?(::RubyLLM::Content),
-        "Precondition failed: Expected Content object when message has image attachment"
-      assert_equal 1, msg.content.attachments.count,
-        "Expected one attachment"
+      msg = user_message_with_attachment("What's in this image?", tmpfile.path)
 
       # Create a minimal chat-like object to test the helper method
       chat_class = Class.new do
@@ -486,9 +485,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
       chat = ::RubyLLM.chat(model: "gpt-4o-mini")
 
       # Add message with image attachment using RubyLLM's API
-      content = ::RubyLLM::Content.new("Describe this image")
-      content.add_attachment(tmpfile.path)
-      chat.add_message(role: :user, content: content)
+      add_user_message_with_attachment(chat, "Describe this image", tmpfile.path)
 
       # Instrument the chat to get access to the helper method
       Braintrust.instrument!(:ruby_llm, target: chat)

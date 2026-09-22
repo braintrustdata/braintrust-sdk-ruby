@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require_relative "integration_helper"
 require "braintrust/contrib/ruby_llm/deprecated"
 
 class Braintrust::Contrib::RubyLLM::DeprecatedTest < Minitest::Test
+  include Braintrust::Contrib::RubyLLM::IntegrationHelper
+
   # --- .wrap ---
 
   def test_wrap_delegates_to_instrument
@@ -105,12 +108,10 @@ class Braintrust::Contrib::RubyLLM::DeprecatedTest < Minitest::Test
   def test_unwrap_disables_instrumentation_for_subsequent_requests
     skip "RubyLLM gem not available" unless defined?(::RubyLLM::Chat)
 
-    VCR.use_cassette("contrib/ruby_llm/basic_chat") do
+    VCR.use_cassette(ruby_llm_cassette("basic_chat")) do
       rig = setup_otel_test_rig
 
-      RubyLLM.configure do |config|
-        config.openai_api_key = get_openai_key
-      end
+      configure_ruby_llm_for_vcr
 
       chat = RubyLLM.chat(model: "gpt-4o-mini")
 
