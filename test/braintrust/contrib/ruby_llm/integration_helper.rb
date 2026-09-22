@@ -34,19 +34,20 @@ module Braintrust
           end
         end
 
-        # True when the OpenAI provider talks the Responses API, which ruby_llm 2.0
-        # made the default. 1.x only ever spoke Chat Completions.
-        def ruby_llm_responses_api?
-          version = Gem.loaded_specs["ruby_llm"]&.version
-          !version.nil? && version >= Gem::Version.new("2.0.0")
+        # Major version of the loaded ruby_llm gem.
+        def ruby_llm_major
+          Gem.loaded_specs["ruby_llm"]&.version&.segments&.first || 1
         end
 
         # Cassette path for a ruby_llm interaction.
         #
-        # 1.x and 2.0 hit different endpoints with different payloads, so each
-        # protocol gets its own recording rather than one being replayed for both.
+        # Breaking wire changes land on majors: 2.0 moved the OpenAI provider from
+        # Chat Completions to the Responses API. Recording per major means each
+        # version replays the endpoint it actually calls, and versions that share a
+        # wire format share a recording. A new major needs its own cassettes, which
+        # are recorded by running its appraisal with a real OPENAI_API_KEY.
         def ruby_llm_cassette(name)
-          ruby_llm_responses_api? ? "contrib/ruby_llm/responses/#{name}" : "contrib/ruby_llm/#{name}"
+          "contrib/ruby_llm/v#{ruby_llm_major}/#{name}"
         end
       end
     end
