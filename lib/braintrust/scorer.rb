@@ -152,10 +152,10 @@ module Braintrust
           case block.arity
           when 3
             Log.warn_once(:scorer_positional_3, "Scorer with positional params (input, expected, output) is deprecated. Use keyword args: |input:, expected:, output:| instead.")
-            ->(**kw) { block.call(kw[:input], kw[:expected], kw[:output]) }
+            ->(input: nil, expected: nil, output: nil) { block.call(input, expected, output) }
           when 4, -4, -1
             Log.warn_once(:scorer_positional_4, "Scorer with positional params (input, expected, output, metadata) is deprecated. Use keyword args: |input:, expected:, output:, metadata:| instead.")
-            ->(**kw) { block.call(kw[:input], kw[:expected], kw[:output], kw[:metadata]) }
+            ->(input: nil, expected: nil, output: nil, metadata: nil) { block.call(input, expected, output, metadata) }
           else
             raise ArgumentError, "Scorer must accept keyword args or 3-4 positional params (got arity #{block.arity})"
           end
