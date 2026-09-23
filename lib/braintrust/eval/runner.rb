@@ -27,6 +27,11 @@ module Braintrust
         @eval_context = eval_context
         @tracer = eval_context.tracer_provider.tracer("braintrust-eval")
 
+        # Whether any scorer/classifier can receive `trace:`. Computed once: the
+        # per-case flush that makes traces queryable over BTQL is a real network
+        # wait, so it's only worth paying when something will actually consume it.
+        @needs_trace = (eval_context.scorers + eval_context.classifiers).any? { |c| wants_trace?(c) }
+
         # Mutexes for thread-safe result collection
         @score_mutex = Mutex.new
         @classification_mutex = Mutex.new
@@ -54,6 +59,11 @@ module Braintrust
 
         # Convert Queue to Array after all threads complete
         error_array = [].tap { |a| a << errors.pop until errors.empty? }
+
+        # Deliver any spans still buffered. Callers that supply their own
+        # tracer_provider get no at_exit hook (see Trace.setup), so without this
+        # the tail of the run would wait on the processor's schedule delay.
+        flush_spans
 
         # Calculate duration
         duration = Time.now - start_time
@@ -108,9 +118,11 @@ module Braintrust
             next
           end
 
-          # Flush spans so they're queryable via BTQL, then build trace
-          eval_context.tracer_provider.force_flush if eval_context.tracer_provider.respond_to?(:force_flush)
-          kase.trace = build_trace(eval_span)
+          # Build the trace, then flush spans so they're queryable via BTQL.
+          # Both are skipped unless a scorer/classifier declared `trace:` and the
+          # trace is actually resolvable (build_trace returns nil in local-only mode).
+          kase.trace = build_trace(eval_span) if @needs_trace
+          flush_spans if kase.trace
 
           # Run scorers
           begin
@@ -227,6 +239,23 @@ module Braintrust
           record_span_error(score_span, e, "ScorerError")
           raise
         end
+      end
+
+      # Whether a callable can receive `trace:`: it either declares the keyword
+      # or accepts arbitrary kwargs and may forward it. Reuses the #call_parameters
+      # introspection Internal::Callable::KeywordFilter already depends on.
+      # @param callable [Scorer, Classifier]
+      # @return [Boolean]
+      def wants_trace?(callable)
+        return true unless callable.respond_to?(:call_parameters)
+
+        callable.call_parameters.any? { |type, name| name == :trace || type == :keyrest }
+      end
+
+      # Force the tracer provider to export buffered spans, if it supports it.
+      def flush_spans
+        provider = eval_context.tracer_provider
+        provider.force_flush if provider.respond_to?(:force_flush)
       end
 
       # Build a lazy Trace for a case, backed by BTQL.

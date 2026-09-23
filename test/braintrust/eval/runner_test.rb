@@ -1302,6 +1302,117 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
   end
 
   # ============================================
+  # Runner#run tests - per-case flush gating
+  # ============================================
+  #
+  # The per-case force_flush exists only so a `trace:`-consuming scorer/classifier
+  # can BTQL-query that case's spans. It is a real network wait (10-25s+ against a
+  # live backend), so it must not run when nothing will consume the trace.
+  #
+  # Counts below include the single end-of-run flush, which always happens.
+
+  def test_no_per_case_flush_when_no_scorer_declares_trace
+    rig = setup_otel_test_rig
+    flushes = count_force_flushes(rig.tracer_provider)
+
+    scorer = Braintrust::Scorer.new("simple") { |output:, expected:| (output == expected) ? 1.0 : 0.0 }
+    result = run_flush_eval(rig, scorers: [scorer], cases: 3)
+
+    assert result.success?
+    assert_equal 1, flushes.length, "expected only the end-of-run flush"
+  end
+
+  def test_no_per_case_flush_for_legacy_positional_scorer
+    rig = setup_otel_test_rig
+    flushes = count_force_flushes(rig.tracer_provider)
+
+    # Deprecated positional signature is wrapped internally; the wrapper must not
+    # look like **kwargs, or it would be treated as a possible trace consumer.
+    scorer = Braintrust::Scorer.new("legacy") { |_input, expected, output| (output == expected) ? 1.0 : 0.0 }
+    result = run_flush_eval(rig, scorers: [scorer], cases: 3)
+
+    assert result.success?
+    assert_equal 1, flushes.length, "expected only the end-of-run flush"
+  end
+
+  def test_per_case_flush_when_scorer_declares_trace
+    rig = setup_otel_test_rig
+    flushes = count_force_flushes(rig.tracer_provider)
+
+    scorer = Braintrust::Scorer.new("trace_reader") { |output:, trace:| trace.nil? ? 0.0 : 1.0 }
+    result = run_flush_eval(rig, scorers: [scorer], cases: 3)
+
+    assert result.success?
+    assert_equal 4, flushes.length, "expected one flush per case plus the end-of-run flush"
+  end
+
+  def test_per_case_flush_when_only_a_classifier_declares_trace
+    rig = setup_otel_test_rig
+    flushes = count_force_flushes(rig.tracer_provider)
+
+    scorer = Braintrust::Scorer.new("simple") { |output:| 1.0 }
+    classifier = Braintrust::Classifier.new("kind") { |output:, trace:| {name: "kind", id: "seen", label: "Seen"} }
+    result = run_flush_eval(rig, scorers: [scorer], classifiers: [classifier], cases: 2)
+
+    assert result.success?
+    assert_equal 3, flushes.length, "expected one flush per case plus the end-of-run flush"
+  end
+
+  def test_per_case_flush_when_scorer_accepts_arbitrary_kwargs
+    rig = setup_otel_test_rig
+    flushes = count_force_flushes(rig.tracer_provider)
+
+    # **kwargs might forward trace:, so stay conservative and keep flushing.
+    scorer = Braintrust::Scorer.new("splat") { |**kwargs| 1.0 }
+    result = run_flush_eval(rig, scorers: [scorer], cases: 2)
+
+    assert result.success?
+    assert_equal 3, flushes.length, "expected one flush per case plus the end-of-run flush"
+  end
+
+  def test_no_per_case_flush_when_trace_is_unavailable
+    rig = setup_otel_test_rig
+    flushes = count_force_flushes(rig.tracer_provider)
+    received_trace = :not_called
+
+    scorer = Braintrust::Scorer.new("trace_reader") { |output:, trace:|
+      received_trace = trace
+      1.0
+    }
+
+    # No experiment_id: build_trace returns nil, so the flush buys nothing.
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: [scorer],
+      cases: [{input: "a"}, {input: "b"}],
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    result = Braintrust::Eval::Runner.new(context).run
+
+    assert result.success?
+    assert_nil received_trace
+    assert_equal 1, flushes.length, "expected only the end-of-run flush"
+  end
+
+  def test_run_flushes_once_after_all_cases
+    rig = setup_otel_test_rig
+    flushed_after = nil
+    scored = 0
+
+    scorer = Braintrust::Scorer.new("counter") { |output:|
+      scored += 1
+      1.0
+    }
+    rig.tracer_provider.define_singleton_method(:force_flush) { |timeout: nil| flushed_after = scored }
+
+    result = run_flush_eval(rig, scorers: [scorer], cases: 3)
+
+    assert result.success?
+    assert_equal 3, flushed_after, "end-of-run flush should happen after every case has been scored"
+  end
+
+  # ============================================
   # Runner#run tests - structured scorer returns
   # ============================================
 
@@ -2063,6 +2174,36 @@ class Braintrust::Eval::RunnerTest < Minitest::Test
     params = [].tap { |a| a << received.pop until received.empty? }
     assert_equal 3, params.length
     assert(params.all? { |p| p == {"model" => "gpt-4"} })
+  end
+
+  private
+
+  # Replace the provider's #force_flush with a recorder. Returns the array of
+  # recorded calls so a test can assert how many flushes a run performed.
+  def count_force_flushes(tracer_provider)
+    calls = []
+    tracer_provider.define_singleton_method(:force_flush) do |timeout: nil|
+      calls << timeout
+      OpenTelemetry::SDK::Trace::Export::SUCCESS
+    end
+    calls
+  end
+
+  # Run an eval with a fully-populated experiment context, so build_trace resolves.
+  def run_flush_eval(rig, scorers:, classifiers: [], cases: 1)
+    context = Braintrust::Eval::Context.build(
+      task: ->(input:) { input.upcase },
+      scorers: scorers,
+      classifiers: classifiers,
+      cases: (1..cases).map { |i| {input: "case-#{i}", expected: "CASE-#{i}"} },
+      experiment_id: "exp-123",
+      experiment_name: "test-experiment",
+      project_id: "proj-456",
+      project_name: "test-project",
+      state: rig.state,
+      tracer_provider: rig.tracer_provider
+    )
+    Braintrust::Eval::Runner.new(context).run
   end
 end
 

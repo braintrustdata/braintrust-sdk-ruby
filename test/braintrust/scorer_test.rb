@@ -131,6 +131,38 @@ class Braintrust::ScorerTest < Minitest::Test
   end
 
   # ============================================
+  # call_parameters introspection
+  # ============================================
+  #
+  # Callers introspect #call_parameters to decide what a scorer can consume.
+  # Eval::Runner uses it to skip its per-case span flush when nothing declares
+  # `trace:`, so the legacy positional wrappers must report the keywords they
+  # actually take rather than an opaque **kwargs.
+
+  def test_legacy_3_param_block_reports_declared_keywords
+    suppress_logs do
+      scorer = Braintrust::Scorer.new("legacy3") { |input, expected, output| 1.0 }
+
+      assert_equal [[:key, :input], [:key, :expected], [:key, :output]], scorer.call_parameters
+    end
+  end
+
+  def test_legacy_4_param_block_reports_declared_keywords
+    suppress_logs do
+      scorer = Braintrust::Scorer.new("legacy4") { |input, expected, output, metadata| 1.0 }
+
+      assert_equal [[:key, :input], [:key, :expected], [:key, :output], [:key, :metadata]],
+        scorer.call_parameters
+    end
+  end
+
+  def test_keyword_block_reports_its_own_parameters
+    scorer = Braintrust::Scorer.new("kw") { |output:, trace:| 1.0 }
+
+    assert_equal [[:keyreq, :output], [:keyreq, :trace]], scorer.call_parameters
+  end
+
+  # ============================================
   # Validation
   # ============================================
 
