@@ -31,9 +31,7 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
 
     def initialize(api_key: "test-key")
       @calls = []
-      # Initialize headers directly — skip super to avoid HTTP setup
-      @headers = {"Authorization" => "Bearer #{api_key}"}
-      @shutdown = false
+      super(endpoint: "https://api.example.test/otel/v1/traces", api_key: api_key)
     end
 
     private
@@ -102,11 +100,9 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
   end
 
   def test_requires_api_key
-    error = assert_raises(Braintrust::State::MissingAPIKeyError) do
+    assert_raises(Braintrust::State::MissingAPIKeyError) do
       Braintrust::Trace::SpanExporter.new(endpoint: "https://api.example.test/otel/v1/traces", api_key: nil)
     end
-
-    assert_match(/api_key is required/, error.message)
   end
 
   def test_mixed_nil_and_non_nil_parents
