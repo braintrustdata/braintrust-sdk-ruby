@@ -158,6 +158,7 @@ The SDK automatically instruments these LLM libraries:
 | OpenAI    | `openai`      | >= 0.1.0 | `:openai`        | [Link](./examples/contrib/openai.rb)      |
 |           | `ruby-openai` | >= 7.0.0 | `:ruby_openai`   | [Link](./examples/contrib/ruby-openai.rb) |
 | Multiple  | `ruby_llm`    | >= 1.8.0 | `:ruby_llm`      | [Link](./examples/contrib/ruby_llm.rb)    |
+| Workflows | `roast-ai`    | >= 1.0.0 | `:roast`         | [Link](./examples/contrib/roast.rb)       |
 
 ### Manually applying instrumentation
 

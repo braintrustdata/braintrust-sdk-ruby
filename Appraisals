@@ -46,6 +46,14 @@ OPTIONAL_GEMS.each do |gem_name, versions|
   end
 end
 
+# Roast 1.x requires Ruby 3.3+. Its appraisal runs on compatible CI jobs.
+if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.3")
+  appraise "roast" do
+    gem "roast-ai", "~> 1.2"
+    gem "ruby_llm", "~> 1.13" # Roast 1.2 calls RubyLLM 1.x APIs
+  end
+end
+
 # OpenTelemetry - test minimum and latest versions together
 appraise "opentelemetry-min" do
   gem "opentelemetry-sdk", "~> 1.3.0"
