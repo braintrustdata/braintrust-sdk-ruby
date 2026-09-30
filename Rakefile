@@ -31,6 +31,7 @@ end
 
 def appraisal_for(example)
   case example
+  when /roast/ then "roast"
   when /ruby_llm/ then "ruby_llm"
   when /ruby-openai/, /ruby_openai/, /alexrudall/ then "ruby-openai"
   when /anthropic/ then "anthropic"
@@ -114,6 +115,7 @@ namespace :test do
     [
       {name: :anthropic},
       {name: :openai},
+      {name: :roast},
       {name: :ruby_llm},
       {name: :ruby_openai, appraisal: "ruby-openai"}
     ].each do |integration|
