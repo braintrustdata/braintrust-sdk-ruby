@@ -57,3 +57,6 @@ gemfiles/*.gemfile.lock
 # Ignore local Docker files (for dev env customizations)
 docker-compose.override.yml
 Dockerfile.local
+
+# BTX: cached braintrust-spec downloads (fetched on demand)
+/test/btx/.spec-cache/

@@ -34,6 +34,7 @@ module Braintrust
 
               tracer.in_span("anthropic.messages.create") do |span|
                 metadata = build_metadata(params)
+                Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "llm"})
                 set_input(span, params)
 
                 response = nil
@@ -98,6 +99,13 @@ module Braintrust
             def set_input(span, params)
               input_messages = []
 
+              # User/assistant messages come first, then the system prompt is
+              # appended (matching the cross-language spec / backend format).
+              if params[:messages]
+                messages_array = params[:messages].map(&:to_h)
+                input_messages.concat(messages_array)
+              end
+
               if params[:system_]
                 system_content = params[:system_]
                 if system_content.is_a?(Array)
@@ -110,11 +118,6 @@ module Braintrust
                 end
               end
 
-              if params[:messages]
-                messages_array = params[:messages].map(&:to_h)
-                input_messages.concat(messages_array)
-              end
-
               Support::OTel.set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
             end
 
@@ -122,10 +125,10 @@ module Braintrust
               return unless response.respond_to?(:content) && response.content
 
               content_array = response.content.map(&:to_h)
-              output = [{
+              output = {
                 role: response.respond_to?(:role) ? response.role : "assistant",
                 content: content_array
-              }]
+              }
               Support::OTel.set_json_attr(span, "braintrust.output_json", output)
             end
 
@@ -196,7 +199,8 @@ module Braintrust
                 metadata = ctx[:metadata]
                 messages_instance = ctx[:messages_instance]
 
-                tracer.in_span("anthropic.messages.create") do |span|
+                tracer.in_span("anthropic.messages.stream") do |span|
+                  Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "llm"})
                   messages_instance.send(:set_input, span, params)
                   Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
                 end
@@ -215,7 +219,8 @@ module Braintrust
               metadata = ctx[:metadata]
               messages_instance = ctx[:messages_instance]
 
-              tracer.in_span("anthropic.messages.create") do |span|
+              tracer.in_span("anthropic.messages.stream") do |span|
+                Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "llm"})
                 messages_instance.send(:set_input, span, params)
                 Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
 
