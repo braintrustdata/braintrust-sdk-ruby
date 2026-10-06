@@ -7,7 +7,7 @@ require "openai"
 require "opentelemetry/sdk"
 
 # Usage:
-#   OPENAI_API_KEY=your-openai-key bundle exec appraisal openai ruby examples/contrib/openai.rb
+#   OPENAI_API_KEY=your-openai-key bundle exec appraisal ruby-openai ruby examples/contrib/ruby_openai/basic.rb
 
 # Check for API keys
 unless ENV["OPENAI_API_KEY"]
@@ -23,23 +23,25 @@ end
 Braintrust.init(blocking_login: true)
 
 # Create OpenAI client
-client = OpenAI::Client.new(api_key: ENV["OPENAI_API_KEY"])
+client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
 
 # Get a tracer and wrap the API call in a span
-tracer = OpenTelemetry.tracer_provider.tracer("openai-example")
+tracer = OpenTelemetry.tracer_provider.tracer("ruby-openai-example")
 
 root_span = nil
-tracer.in_span("examples/contrib/openai.rb") do |span|
+tracer.in_span("examples/contrib/ruby_openai/basic.rb") do |span|
   root_span = span
 
-  # Make a chat completion request (automatically traced!)
-  client.chat.completions.create(
-    messages: [
-      {role: "system", content: "You are a helpful assistant."},
-      {role: "user", content: "Say hello and tell me a short joke."}
-    ],
-    model: "gpt-4o-mini",
-    max_tokens: 100
+  # Make a chat request (automatically traced!)
+  client.chat(
+    parameters: {
+      model: "gpt-4o-mini",
+      messages: [
+        {role: "system", content: "You are a helpful assistant."},
+        {role: "user", content: "Say hello and tell me a short joke."}
+      ],
+      max_tokens: 100
+    }
   )
 end
 

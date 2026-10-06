@@ -64,6 +64,9 @@ fi
 
 # Determine which appraisal to use based on the filename/path
 case "${EXAMPLE_FILE}" in
+  *roast*)
+    APPRAISAL="roast"
+    ;;
   *alexrudall*|*ruby_openai*|*ruby-openai*)
     APPRAISAL="ruby-openai"
     ;;
