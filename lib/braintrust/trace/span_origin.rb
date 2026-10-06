@@ -27,7 +27,7 @@ module Braintrust
         super(SpanOrigin.enrich_batch(span_data), timeout: timeout)
       end
 
-      # Shared transform for exporters that compose preparation explicitly.
+      # Enrich a batch of SpanData with span origin provenance.
       def self.enrich_batch(span_data)
         # Environment is process-global and stable; read it once per batch
         # rather than once per span. It is cheap (ENV reads only).

@@ -31,7 +31,7 @@ module Braintrust
     # @param api_url [String, nil] API URL (overrides BRAINTRUST_API_URL env var)
     # @param filter_ai_spans [Boolean, nil] Enable AI span filtering (overrides BRAINTRUST_OTEL_FILTER_AI_SPANS env var)
     # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
-    # @param span_customizers [Array<SpanCustomizer>, nil] Ordered export customizers (copied and frozen)
+    # @param span_customizers [Array<#on_span_export>, nil] Ordered export customizers (copied and frozen)
     # @return [Config] the created config
     def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil,
       filter_ai_spans: nil, span_filter_funcs: nil, span_customizers: nil)

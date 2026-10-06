@@ -24,7 +24,7 @@ module Braintrust
     # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use
     # @param filter_ai_spans [Boolean, nil] Enable AI span filtering
     # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
-    # @param span_customizers [Array<SpanCustomizer>, nil] Ordered synchronous export customizers
+    # @param span_customizers [Array<#on_span_export>, nil] Ordered synchronous export customizers
     # @param exporter [Exporter, nil] Optional exporter override (for testing)
     # @return [State] the created state
     def self.from_env(api_key: nil, org_name: nil, default_project: nil, app_url: nil, api_url: nil, blocking_login: false, enable_tracing: true, tracer_provider: nil, filter_ai_spans: nil, span_filter_funcs: nil, span_customizers: nil, exporter: nil)

@@ -6,18 +6,23 @@ module Braintrust
   module Trace
     # Ordered export-time transformations, independent of origin and transport.
     class SpanCustomizers
+      # A hook failed. Messages are SDK-generated: they identify the customizer
+      # and the kind of failure, never span payloads or the hook's own exception
+      # message, either of which may contain sensitive data.
+      class Error < StandardError; end
+
+      ID_FIELDS = %i[trace_id span_id parent_span_id].freeze
+      private_constant :ID_FIELDS
+
       def initialize(customizers = nil)
         @customizers = (customizers || []).dup.freeze
-      end
-
-      def empty?
-        @customizers.empty?
+        @customizers.each { |customizer| validate!(customizer) }
       end
 
       # Transform the whole batch before the exporter groups or serializes it.
-      # Errors propagate to the exporter so it can fail the batch without sending.
+      # Raises Error so the exporter can fail the batch without sending.
       def customize(span_data)
-        return span_data if empty?
+        return span_data if @customizers.empty?
 
         # Hooks may call instrumented clients. Suppress tracing so those spans
         # cannot re-enter the exporter and customize themselves forever.
@@ -28,34 +33,50 @@ module Braintrust
 
       private
 
+      # Reject objects without the hook up front, so a misspelled method name
+      # fails at registration instead of silently skipping redaction.
+      def validate!(customizer)
+        return if customizer.respond_to?(:on_span_export)
+
+        raise ArgumentError, "#{label(customizer)} must implement on_span_export"
+      end
+
       def customize_span(span)
         # Snapshot IDs so in-place mutation through to_span_data cannot slip past validation.
-        trace_id = span.trace_id.dup.freeze
-        span_id = span.span_id.dup.freeze
-        parent_span_id = span.parent_span_id.dup.freeze
-        # Preserve drops caused by SDK limits; entries a customizer deletes are not drops.
-        dropped_attributes = dropped(span.total_recorded_attributes, span.attributes)
-        dropped_events = dropped(span.total_recorded_events, span.events)
-        dropped_links = dropped(span.total_recorded_links, span.links)
+        ids = identity(span)
+        drops = dropped_counts(span)
         view = nil
         @customizers.each do |customizer|
-          next unless customizer.respond_to?(:on_span_export)
           view ||= writable_view(span)
+          result = invoke(customizer, view)
+          span = unwrap(result, customizer)
+          raise Error, "#{label(customizer)} changed span IDs; trace_id, span_id and parent_span_id must be preserved" unless identity(span) == ids
 
-          result = customizer.on_span_export(view)
-          span = result.is_a?(SpanExportData) ? result.to_span_data : result
-          unless span.is_a?(OpenTelemetry::SDK::Trace::SpanData)
-            raise TypeError, "SpanCustomizer#on_span_export must return SpanExportData or SpanData"
-          end
-          unless span.trace_id == trace_id && span.span_id == span_id && span.parent_span_id == parent_span_id
-            raise ArgumentError, "SpanCustomizer#on_span_export must preserve trace, span and parent IDs"
-          end
-          view = result.is_a?(SpanExportData) ? result : nil
+          view = (result if result.is_a?(SpanExportData))
         end
-        span.total_recorded_attributes = span.attributes&.size.to_i + dropped_attributes
-        span.total_recorded_events = span.events&.size.to_i + dropped_events
-        span.total_recorded_links = span.links&.size.to_i + dropped_links
-        span
+        restore_counts(span, drops)
+      end
+
+      def invoke(customizer, view)
+        customizer.on_span_export(view)
+      # Rescue broadly: hook errors must fail the batch, not kill the export thread.
+      rescue StandardError, ScriptError, SystemStackError => e
+        raise Error, "#{label(customizer)} raised #{e.class}"
+      end
+
+      def unwrap(result, customizer)
+        span = result.is_a?(SpanExportData) ? result.to_span_data : result
+        return span if span.is_a?(OpenTelemetry::SDK::Trace::SpanData)
+
+        raise Error, "#{label(customizer)} returned #{result.class}; hooks must return the span or a replacement SpanData"
+      end
+
+      def label(customizer)
+        customizer.class.name || customizer.class.inspect
+      end
+
+      def identity(span)
+        ID_FIELDS.map { |field| span.public_send(field).dup }
       end
 
       # OTel and replacement spans may carry frozen attributes. Only the hash
@@ -63,6 +84,22 @@ module Braintrust
       def writable_view(span)
         span.attributes = span.attributes&.dup || {}
         SpanExportData.new(span)
+      end
+
+      # Preserve drops caused by SDK limits; entries a customizer deletes are not drops.
+      def dropped_counts(span)
+        {
+          attributes: dropped(span.total_recorded_attributes, span.attributes),
+          events: dropped(span.total_recorded_events, span.events),
+          links: dropped(span.total_recorded_links, span.links)
+        }
+      end
+
+      def restore_counts(span, drops)
+        span.total_recorded_attributes = span.attributes&.size.to_i + drops[:attributes]
+        span.total_recorded_events = span.events&.size.to_i + drops[:events]
+        span.total_recorded_links = span.links&.size.to_i + drops[:links]
+        span
       end
 
       def dropped(total, entries)

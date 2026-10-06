@@ -32,12 +32,14 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
       replacement.attributes = {"braintrust.parent" => "project_name:redacted", "braintrust.input_json" => '"[redacted]"'}
       replacement
     end
-    second = customizer do |span|
-      span.name += ":second"
-      span.attributes["customized"] = true
-      span
-    end
-    customizers = [Object.new, Braintrust::SpanCustomizer.new, first, second]
+    second = Class.new do
+      def on_span_export(span)
+        span.name += ":second"
+        span.attributes["customized"] = true
+        span
+      end
+    end.new
+    customizers = [first, second]
     provider = make_provider
     state = Braintrust.init(
       api_key: "test-api-key", default_project: "original",
@@ -113,14 +115,35 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
     end
   end
 
-  def test_unserializable_replacement_fails_before_first_destination_is_sent
+  def test_unserializable_replacement_fails_only_its_destination_group
     hook = customizer do |span|
       span.start_timestamp = "invalid" if span.name == "second"
       span
     end
 
-    assert_equal FAILURE, make_exporter([hook]).export(two_destinations)
-    assert_empty @requests
+    assert_equal FAILURE, suppress_logs { make_exporter([hook]).export(two_destinations) }
+    assert_equal ["project_name:first"], @requests.map { |request| request[:headers]["X-Bt-Parent"] }
+  end
+
+  def test_in_memory_exporter_applies_origin_then_customizers
+    origin_seen = nil
+    hook = customizer do |span|
+      origin_seen = span.attributes.key?(Braintrust::Trace::SpanOrigin::CONTEXT_JSON_ATTR_KEY)
+      span.name = "customized"
+      span
+    end
+    exporter = Test::Support::InMemoryExporter.new(span_customizers: [hook])
+
+    assert_equal SUCCESS, exporter.export([make_span("original")])
+    assert origin_seen, "origin enrichment must run before customizers"
+    assert_equal "customized", exporter.finished_spans.fetch(0).name
+  end
+
+  def test_in_memory_exporter_fails_closed_like_span_exporter
+    exporter = Test::Support::InMemoryExporter.new(span_customizers: [customizer { |_span| raise "boom" }])
+
+    assert_equal FAILURE, suppress_logs { exporter.export(two_destinations) }
+    assert_empty exporter.finished_spans
   end
 
   def test_identity_is_read_only_while_attributes_are_writable
@@ -288,10 +311,56 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
     assert_match(/span_customizers/, error.message)
   end
 
+  def test_registration_rejects_objects_without_hooks
+    typo = Class.new do
+      def on_span_exported(span) = span
+    end
+    [Object.new, typo.new, ->(span) { span }].each do |invalid|
+      error = assert_raises(ArgumentError) { make_exporter([invalid]) }
+      assert_match(/on_span_export/, error.message)
+    end
+    assert_raises(ArgumentError) do
+      Braintrust.init(
+        api_key: "test-api-key", default_project: "original",
+        blocking_login: true, set_global: false, auto_instrument: false,
+        tracer_provider: make_provider, span_customizers: [Object.new]
+      )
+    end
+  end
+
+  def test_failure_log_names_customizer_and_kind_without_exception_message
+    named = Class.new do
+      def self.name = "RedactPII"
+
+      def on_span_export(_span) = raise("leaked secret@example.com")
+    end
+    cases = {
+      named.new => /RedactPII raised RuntimeError/,
+      customizer { |_span| nil } => /Object returned NilClass/,
+      customizer { |span| span.to_span_data.dup.tap { |copy| copy.span_id = "x" * 8 } } => /Object changed span IDs/
+    }
+
+    cases.each do |hook, pattern|
+      log = capture_log { assert_equal FAILURE, make_exporter([hook]).export([make_span("original")]) }
+      assert_match(pattern, log)
+      refute_match(/secret@example\.com|private/, log)
+    end
+  end
+
   private
 
   def customizer(&block)
     Object.new.tap { |object| object.define_singleton_method(:on_span_export, &block) }
+  end
+
+  def capture_log
+    output = StringIO.new
+    original = Braintrust::Log.logger
+    Braintrust::Log.logger = Logger.new(output)
+    yield
+    output.string
+  ensure
+    Braintrust::Log.logger = original
   end
 
   def make_provider(**options)

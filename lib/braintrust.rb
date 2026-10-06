@@ -2,7 +2,6 @@
 
 require_relative "braintrust/version"
 require_relative "braintrust/config"
-require_relative "braintrust/span_customizer"
 require_relative "braintrust/state"
 require_relative "braintrust/trace"
 require_relative "braintrust/api"
@@ -43,7 +42,7 @@ module Braintrust
   # @param tracer_provider [TracerProvider, nil] Optional tracer provider to use instead of creating one
   # @param filter_ai_spans [Boolean, nil] Enable AI span filtering (overrides BRAINTRUST_OTEL_FILTER_AI_SPANS env var)
   # @param span_filter_funcs [Array<Proc>, nil] Custom span filter functions
-  # @param span_customizers [Array<SpanCustomizer>, nil] Ordered synchronous export customizers
+  # @param span_customizers [Array<#on_span_export>, nil] Ordered synchronous export customizers
   # @param exporter [Exporter, nil] Optional exporter override (for testing)
   # @param auto_instrument [Boolean, Hash, nil] Auto-instrumentation config:
   #   - nil (default): use BRAINTRUST_AUTO_INSTRUMENT env var, default true if not set
