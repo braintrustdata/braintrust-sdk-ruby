@@ -27,17 +27,19 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
   # The parent OTLP::Exporter#export calls encode then send_bytes,
   # so both must be overridden for stub span data to work.
   class RecordingExporter < Braintrust::Trace::SpanExporter
-    attr_reader :calls
+    attr_reader :calls, :encoded
 
     def initialize(api_key: "test-key")
       @calls = []
+      @encoded = []
       super(endpoint: "https://api.example.test/otel/v1/traces", api_key: api_key)
     end
 
     private
 
-    # Skip protobuf encoding — return dummy bytes
+    # Skip protobuf encoding — record the spans and return dummy bytes
     def encode(span_data)
+      @encoded.concat(span_data)
       "encoded"
     end
 
@@ -100,9 +102,28 @@ class Braintrust::Trace::SpanExporterTest < Minitest::Test
   end
 
   def test_requires_api_key
-    assert_raises(Braintrust::State::MissingAPIKeyError) do
+    error = assert_raises(Braintrust::State::MissingAPIKeyError) do
       Braintrust::Trace::SpanExporter.new(endpoint: "https://api.example.test/otel/v1/traces", api_key: nil)
     end
+
+    assert_match(/api_key is required/, error.message)
+  end
+
+  def test_stamps_span_origin_on_exported_spans
+    exporter = RecordingExporter.new
+
+    exporter.export([make_span("span1", parent: "experiment_id:exp-1")])
+
+    context = JSON.parse(exporter.encoded.fetch(0).attributes.fetch(Braintrust::Trace::SpanOrigin::CONTEXT_JSON_ATTR_KEY))
+    assert_equal "braintrust.sdk.ruby", context.dig("span_origin", "name")
+  end
+
+  def test_returns_failure_after_shutdown
+    exporter = RecordingExporter.new
+    exporter.shutdown
+
+    assert_equal FAILURE, exporter.export([make_span("span1")])
+    assert_empty exporter.calls
   end
 
   def test_mixed_nil_and_non_nil_parents
