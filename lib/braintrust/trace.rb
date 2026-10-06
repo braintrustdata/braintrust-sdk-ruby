@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "opentelemetry/sdk"
+require "uri"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
 require_relative "trace/span_exporter"
@@ -185,14 +186,18 @@ module Braintrust
         return ""
       end
 
+      # Encode each path segment so names with spaces or slashes remain one segment.
+      escaped_org_name = URI::DEFAULT_PARSER.escape(org_name, /[^A-Za-z0-9\-._~]/)
+      escaped_parent_id = URI::DEFAULT_PARSER.escape(parent_id, /[^A-Za-z0-9\-._~]/)
+
       # Build the permalink URL based on parent type
       if parent_type == "experiment_id"
         # For experiments: {app_url}/app/{org}/object?object_type=experiment&object_id={experiment_id}&r={trace_id}&s={span_id}
-        "#{app_url}/app/#{org_name}/object?object_type=experiment&object_id=#{parent_id}&r=#{trace_id}&s=#{span_id}"
+        "#{app_url}/app/#{escaped_org_name}/object?object_type=experiment&object_id=#{parent_id}&r=#{trace_id}&s=#{span_id}"
       else
         # For projects: {app_url}/app/{org}/p/{project}/logs?r={trace_id}&s={span_id}
         # parent_type is typically "project_name"
-        "#{app_url}/app/#{org_name}/p/#{parent_id}/logs?r=#{trace_id}&s=#{span_id}"
+        "#{app_url}/app/#{escaped_org_name}/p/#{escaped_parent_id}/logs?r=#{trace_id}&s=#{span_id}"
       end
     rescue => e
       Log.error("Failed to generate permalink: #{e.message}")

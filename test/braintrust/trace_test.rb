@@ -106,6 +106,16 @@ class Braintrust::TraceTest < Minitest::Test
     assert_equal expected, link
   end
 
+  def test_permalink_escapes_organization_and_project_path_segments
+    rig = setup_otel_test_rig(org_name: "Braintrust SDKs", default_project: "Project A/B")
+
+    span = nil
+    rig.tracer.in_span("test-operation") { |current| span = current }
+
+    expected = "https://app.example.com/app/Braintrust%20SDKs/p/Project%20A%2FB/logs?r=#{span.context.hex_trace_id}&s=#{span.context.hex_span_id}"
+    assert_equal expected, Braintrust::Trace.permalink(span)
+  end
+
   def test_permalink_with_experiment_parent
     # Set up OpenTelemetry with memory exporter (includes Braintrust processor)
     rig = setup_otel_test_rig
