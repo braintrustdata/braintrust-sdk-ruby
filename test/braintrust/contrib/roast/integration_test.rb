@@ -37,17 +37,23 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
     workflow_attrs = JSON.parse(workflow.attributes.fetch("braintrust.span_attributes"))
     assert_equal "task", workflow_attrs.fetch("type")
     assert_equal "roast.workflow", workflow_attrs.fetch("name")
+    refute workflow.attributes.key?("braintrust.input_json")
+    refute workflow.attributes.key?("braintrust.output_json")
     workflow_metadata = JSON.parse(workflow.attributes.fetch("braintrust.metadata"))
     refute workflow_metadata.key?("provider")
+    assert_equal "workflow.rb", workflow_metadata.fetch("contrib.roast.workflow.name")
     assert_equal "braintrust.contrib.roast", JSON.parse(workflow.attributes.fetch("braintrust.context_json")).dig("span_origin", "instrumentation", "name")
 
     cogs = spans.reject { |span| span == workflow }
     assert_equal ["roast.cog.first", "roast.cog.second"], cogs.map(&:name).sort
+    assert cogs.none? { |span| span.attributes.key?("braintrust.input_json") }
+    assert cogs.none? { |span| span.attributes.key?("braintrust.output_json") }
     assert_equal cogs.map(&:name).sort, cogs.map { |span| JSON.parse(span.attributes.fetch("braintrust.span_attributes")).fetch("name") }.sort
     assert cogs.all? { |span| span.parent_span_id == [workflow.hex_span_id].pack("H*") }
     cog_metadata = cogs.map { |span| JSON.parse(span.attributes.fetch("braintrust.metadata")) }
-    assert_equal ["ruby", "ruby"], cog_metadata.map { |metadata| metadata.fetch("cog_type") }
-    assert cog_metadata.all? { |metadata| metadata.fetch("outcome") == "completed" && !metadata.key?("provider") }
+    assert_equal ["ruby", "ruby"], cog_metadata.map { |metadata| metadata.fetch("contrib.roast.cog.type") }
+    assert_equal ["first", "second"], cog_metadata.map { |metadata| metadata.fetch("contrib.roast.cog.name") }.sort
+    assert cog_metadata.all? { |metadata| metadata.fetch("contrib.roast.cog.outcome") == "completed" && !metadata.key?("provider") }
     assert cogs.all? { |span| JSON.parse(span.attributes.fetch("braintrust.context_json")).dig("span_origin", "instrumentation", "name") == "braintrust.contrib.roast" }
   end
 
@@ -64,7 +70,8 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
         chat(:answer) { no_show_stats! }
       end
       execute do
-        chat(:answer) { "What is the capital of France? Answer in one word." }
+        ruby(:question) { "What is the capital of France? Answer in one word." }
+        chat(:answer) { ruby!(:question).value }
       end
     ROAST
     ClimateControl.modify(OPENAI_API_KEY: get_openai_key) do
@@ -74,12 +81,60 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
     end
 
     spans = rig.drain
+    workflow = spans.find { |span| span.name == "roast.workflow" }
+    question = spans.find { |span| span.name == "roast.cog.question" }
     cog = spans.find { |span| span.name == "roast.cog.answer" }
     llm = spans.find { |span| span.name == "ruby_llm.chat" }
     refute_nil cog
     refute_nil llm
     assert_equal [cog.hex_span_id].pack("H*"), llm.parent_span_id
+    prompt = "What is the capital of France? Answer in one word."
+    refute question.attributes.key?("braintrust.input_json")
+    assert_equal prompt, JSON.parse(question.attributes.fetch("braintrust.output_json"))
+    refute cog.attributes.key?("braintrust.input_json")
     assert_equal "Paris", JSON.parse(cog.attributes.fetch("braintrust.output_json"))
+    refute workflow.attributes.key?("braintrust.output_json")
+    input_messages = JSON.parse(llm.attributes.fetch("braintrust.input_json"))
+    assert input_messages.any? { |message| message["content"] == prompt }, input_messages.inspect
+    assert_equal "Paris", JSON.parse(llm.attributes.fetch("braintrust.output_json")).first.dig("message", "content")
+  end
+
+  def test_workflow_records_only_supplied_invocation_arguments
+    rig = setup_otel_test_rig
+    Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
+    assert Braintrust.instrument!(:roast)
+
+    params = ::Roast::WorkflowParams.new([], ["request"], {})
+    with_workflow("execute do\n  ruby(:step) { 1 }\nend\n") do |path|
+      run_workflow(path, params: params)
+    end
+
+    workflow = rig.drain.find { |span| span.name == "roast.workflow" }
+    assert_equal({"args" => ["request"]}, JSON.parse(workflow.attributes.fetch("braintrust.input_json")))
+    refute workflow.attributes.key?("braintrust.output_json")
+  end
+
+  def test_workflow_constructed_before_instrumentation_keeps_cog_nesting
+    rig = setup_otel_test_rig
+    Braintrust::Contrib.init(tracer_provider: rig.tracer_provider)
+
+    with_workflow("execute do\n  ruby(:question) { 'Why?' }\nend\n") do |path|
+      dir = File.dirname(path)
+      params = ::Roast::WorkflowParams.new([], [], {})
+      workflow_context = ::Roast::WorkflowContext.new(params: params, tmpdir: dir, workflow_dir: Pathname.new(dir))
+      workflow = ::Roast::Workflow.new(path, workflow_context)
+      workflow.prepare!
+      assert Braintrust.instrument!(:roast, target: workflow)
+      workflow.start!
+    end
+
+    spans = rig.drain
+    workflow_span = spans.find { |span| span.name == "roast.workflow" }
+    cog_span = spans.find { |span| span.name == "roast.cog.question" }
+    refute_nil workflow_span
+    refute_nil cog_span
+    assert_equal [workflow_span.hex_span_id].pack("H*"), cog_span.parent_span_id
+    assert_equal "Why?", JSON.parse(cog_span.attributes.fetch("braintrust.output_json"))
   end
 
   def test_from_file_keeps_enclosing_span_as_workflow_parent
@@ -114,7 +169,7 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
     cog = rig.drain.find { |span| span.name == "roast.cog.explode" }
     refute_nil cog
     assert_equal OpenTelemetry::Trace::Status::ERROR, cog.status.code
-    assert_equal "failed", JSON.parse(cog.attributes.fetch("braintrust.metadata")).fetch("outcome")
+    assert_equal "failed", JSON.parse(cog.attributes.fetch("braintrust.metadata")).fetch("contrib.roast.cog.outcome")
   end
 
   def test_parallel_cogs_keep_workflow_parent
@@ -166,9 +221,8 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
 
   private
 
-  def run_workflow(path)
+  def run_workflow(path, params: ::Roast::WorkflowParams.new([], [], {}))
     dir = File.dirname(path)
-    params = ::Roast::WorkflowParams.new([], [], {})
     context = ::Roast::WorkflowContext.new(params: params, tmpdir: dir, workflow_dir: Pathname.new(dir))
     workflow = ::Roast::Workflow.new(path, context)
     workflow.prepare!

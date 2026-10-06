@@ -26,12 +26,17 @@ module Braintrust
             return super if context&.[](:enabled) == false || class_context&.[](:enabled) == false
 
             tracer = Braintrust::Contrib::Roast::Tracing.tracer_for(self)
-            parent_context = Braintrust::Contrib.context_for(@workflow_context.params)&.[](:roast_parent_context)
+            workflow_context = @workflow_context
+            workflow_path = @workflow_path
+            params = workflow_context.params
+            parent_context = Braintrust::Contrib.context_for(params)&.[](:roast_parent_context)
             trace_workflow = proc do
               tracer.in_span("roast.workflow") do |span|
                 Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "task", name: "roast.workflow"})
-                Support::OTel.set_json_attr(span, "braintrust.metadata", {"workflow" => File.basename(@workflow_path.to_s)})
-                Braintrust::Contrib::Context.set!(@workflow_context, roast_span_context: ::OpenTelemetry::Context.current)
+                Support::OTel.set_json_attr(span, "braintrust.metadata", {"contrib.roast.workflow.name" => File.basename(workflow_path.to_s)})
+                input = {targets: params.targets, args: params.args, kwargs: params.kwargs}.reject { |_, value| value.nil? || value.empty? }
+                Support::OTel.set_json_attr(span, "braintrust.input_json", input) unless input.empty?
+                Braintrust::Contrib::Context.set!(workflow_context, roast_span_context: ::OpenTelemetry::Context.current)
                 super()
               end
             end

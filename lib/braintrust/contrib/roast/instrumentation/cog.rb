@@ -78,12 +78,15 @@ module Braintrust
               "completed"
             end
             Support::OTel.set_json_attr(span, "braintrust.metadata", {
-              "cog_type" => type,
-              "cog_name" => name.to_s,
-              "outcome" => outcome
+              "contrib.roast.cog.type" => type,
+              "contrib.roast.cog.name" => name.to_s,
+              "contrib.roast.cog.outcome" => outcome
             })
 
-            output_value = output.response if output&.respond_to?(:response)
+            output_value = case output
+            when ::Roast::Cogs::Ruby::Output then output.value
+            when ::Roast::Cogs::Chat::Output then output.response
+            end
             Support::OTel.set_json_attr(span, "braintrust.output_json", output_value) if output_value.is_a?(String)
             span.status = ::OpenTelemetry::Trace::Status.error("Cog failed") if failed?
           end

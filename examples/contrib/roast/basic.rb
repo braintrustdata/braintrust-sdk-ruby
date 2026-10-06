@@ -7,7 +7,7 @@ require "roast"
 require "opentelemetry/sdk"
 
 # Usage:
-#   OPENAI_API_KEY=... BRAINTRUST_API_KEY=... bundle exec appraisal roast ruby examples/contrib/roast.rb
+#   OPENAI_API_KEY=... BRAINTRUST_API_KEY=... bundle exec appraisal roast ruby examples/contrib/roast/basic.rb
 
 unless ENV["OPENAI_API_KEY"] && ENV["BRAINTRUST_API_KEY"]
   warn "OPENAI_API_KEY and BRAINTRUST_API_KEY are required"
