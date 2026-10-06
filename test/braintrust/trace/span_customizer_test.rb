@@ -132,7 +132,8 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
       span.name = "customized"
       span
     end
-    exporter = Test::Support::InMemoryExporter.new(span_customizers: [hook])
+    exporter = Test::Support::InMemoryExporter.new
+    exporter.middleware.add(Braintrust::Trace::SpanCustomizers.new([hook]))
 
     assert_equal SUCCESS, exporter.export([make_span("original")])
     assert origin_seen, "origin enrichment must run before customizers"
@@ -140,7 +141,8 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
   end
 
   def test_in_memory_exporter_fails_closed_like_span_exporter
-    exporter = Test::Support::InMemoryExporter.new(span_customizers: [customizer { |_span| raise "boom" }])
+    exporter = Test::Support::InMemoryExporter.new
+    exporter.middleware.add(Braintrust::Trace::SpanCustomizers.new([customizer { |_span| raise "boom" }]))
 
     assert_equal FAILURE, suppress_logs { exporter.export(two_destinations) }
     assert_empty exporter.finished_spans
@@ -299,7 +301,7 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
     assert_equal 1, exported.dropped_events_count, "limit drops are preserved, deletions are not counted"
   end
 
-  def test_init_rejects_customizers_with_exporter_override
+  def test_init_rejects_customizers_with_exporter_lacking_middleware
     error = assert_raises(ArgumentError) do
       Braintrust.init(
         api_key: "test-api-key", default_project: "original",
@@ -309,6 +311,20 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
       )
     end
     assert_match(/span_customizers/, error.message)
+  end
+
+  def test_init_applies_customizers_to_exporter_override_with_middleware
+    exporter = Test::Support::InMemoryExporter.new
+    provider = make_provider
+    Braintrust.init(
+      api_key: "test-api-key", default_project: "original",
+      blocking_login: true, set_global: false, auto_instrument: false,
+      tracer_provider: provider, exporter: exporter,
+      span_customizers: [customizer { |span| span.tap { span.name = "customized" } }]
+    )
+    provider.tracer("app").start_span("original").finish
+
+    assert_equal ["customized"], exporter.finished_spans.map(&:name)
   end
 
   def test_registration_rejects_objects_without_hooks
@@ -368,7 +384,9 @@ class Braintrust::Trace::SpanCustomizerTest < Minitest::Test
   end
 
   def make_exporter(customizers)
-    Braintrust::Trace::SpanExporter.new(endpoint: ENDPOINT, api_key: "test-key", span_customizers: customizers).tap do |exporter|
+    middleware = Braintrust::Trace::SpanCustomizers.new(customizers)
+    Braintrust::Trace::SpanExporter.new(endpoint: ENDPOINT, api_key: "test-key").tap do |exporter|
+      exporter.middleware.add(middleware)
       @exporters << exporter
     end
   end

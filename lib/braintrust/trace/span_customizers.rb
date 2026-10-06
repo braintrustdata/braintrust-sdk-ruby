@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "span_export_data"
+require_relative "../logger"
 
 module Braintrust
   module Trace
@@ -19,8 +20,21 @@ module Braintrust
         @customizers.each { |customizer| validate!(customizer) }
       end
 
+      # Export middleware: customize the batch, then continue. Fail-closed: if any
+      # hook fails, logs and returns FAILURE without passing any of the batch on.
+      # @yieldparam span_data [Array<OpenTelemetry::SDK::Trace::SpanData>] customized spans
+      # @return [Integer] export result from downstream, or FAILURE
+      def call(span_data)
+        customized = customize(span_data)
+      rescue Error => e
+        Log.error("Span customization failed; batch not sent: #{e.message}")
+        OpenTelemetry::SDK::Trace::Export::FAILURE
+      else
+        yield customized
+      end
+
       # Transform the whole batch before the exporter groups or serializes it.
-      # Raises Error so the exporter can fail the batch without sending.
+      # Raises Error so the batch can fail without sending.
       def customize(span_data)
         return span_data if @customizers.empty?
 

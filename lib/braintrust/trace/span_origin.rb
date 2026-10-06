@@ -8,10 +8,10 @@ module Braintrust
   module Trace
     # Span origin provenance decoration.
     #
-    # This is a *behavior*, not a type. Prepend it onto any exporter whose
-    # +export(span_data, timeout:)+ it can +super+ into, and every exported
-    # SpanData gains a +braintrust.context_json+ attribute carrying span origin
-    # (SDK name/version, instrumentation scope, environment).
+    # This is a *behavior*, not a type. Add it to an exporter's middleware
+    # (+middleware.add(SpanOrigin)+, see ExportMiddleware) and every
+    # exported SpanData gains a +braintrust.context_json+ attribute carrying
+    # span origin (SDK name/version, instrumentation scope, environment).
     #
     # Because it only ever touches the SpanData copies handed to *this*
     # exporter, the enrichment is invisible to any other exporter sharing the
@@ -20,11 +20,12 @@ module Braintrust
     module SpanOrigin
       CONTEXT_JSON_ATTR_KEY = "braintrust.context_json"
 
-      # Exporter behavior: enrich each SpanData with span origin before export.
+      # Export middleware: enrich each SpanData with span origin, then continue.
       # @param span_data [Array<OpenTelemetry::SDK::Trace::SpanData>]
-      # @return [Integer] export result from the wrapped exporter
-      def export(span_data, timeout: nil)
-        super(SpanOrigin.enrich_batch(span_data), timeout: timeout)
+      # @yieldparam span_data [Array<OpenTelemetry::SDK::Trace::SpanData>] enriched spans
+      # @return [Integer] export result from downstream
+      def self.call(span_data)
+        yield enrich_batch(span_data)
       end
 
       # Enrich a batch of SpanData with span origin provenance.

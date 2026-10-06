@@ -4,6 +4,7 @@ require "opentelemetry/sdk"
 require "opentelemetry/exporter/otlp"
 require_relative "trace/span_processor"
 require_relative "trace/span_exporter"
+require_relative "trace/span_customizers"
 require_relative "trace/span_filter"
 require_relative "internal/env"
 require_relative "logger"
@@ -88,17 +89,18 @@ module Braintrust
       # Get config from state if available
       config ||= state.respond_to?(:config) ? state.config : nil
 
-      # Customizers only run in SpanExporter; refuse to silently skip them (e.g. redaction).
-      if exporter && config&.span_customizers&.any?
-        raise ArgumentError, "span_customizers are not supported with a custom exporter"
+      # Customizers run as export middleware; refuse to silently skip them (e.g. redaction).
+      customizers = config&.span_customizers
+      if customizers&.any? && exporter && !exporter.is_a?(ExportMiddleware)
+        raise ArgumentError, "span_customizers require an exporter with export middleware (see Trace::ExportMiddleware)"
       end
 
       # Create OTLP HTTP exporter unless override provided
       exporter ||= SpanExporter.new(
         endpoint: "#{state.api_url}/otel/v1/traces",
-        api_key: state.api_key,
-        span_customizers: config&.span_customizers
+        api_key: state.api_key
       )
+      exporter.middleware.add(SpanCustomizers.new(customizers)) if customizers&.any?
 
       # Use SimpleSpanProcessor for InMemorySpanExporter (testing), BatchSpanProcessor for production
       span_processor = if exporter.is_a?(OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter)
