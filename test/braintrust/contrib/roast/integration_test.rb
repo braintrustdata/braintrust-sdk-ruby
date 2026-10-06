@@ -37,12 +37,18 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
     workflow_attrs = JSON.parse(workflow.attributes.fetch("braintrust.span_attributes"))
     assert_equal "task", workflow_attrs.fetch("type")
     assert_equal "roast.workflow", workflow_attrs.fetch("name")
+    workflow_metadata = JSON.parse(workflow.attributes.fetch("braintrust.metadata"))
+    refute workflow_metadata.key?("provider")
+    assert_equal "braintrust.contrib.roast", JSON.parse(workflow.attributes.fetch("braintrust.context_json")).dig("span_origin", "instrumentation", "name")
 
     cogs = spans.reject { |span| span == workflow }
     assert_equal ["roast.cog.first", "roast.cog.second"], cogs.map(&:name).sort
     assert_equal cogs.map(&:name).sort, cogs.map { |span| JSON.parse(span.attributes.fetch("braintrust.span_attributes")).fetch("name") }.sort
     assert cogs.all? { |span| span.parent_span_id == [workflow.hex_span_id].pack("H*") }
-    assert_equal ["ruby", "ruby"], cogs.map { |span| JSON.parse(span.attributes.fetch("braintrust.metadata")).fetch("cog_type") }
+    cog_metadata = cogs.map { |span| JSON.parse(span.attributes.fetch("braintrust.metadata")) }
+    assert_equal ["ruby", "ruby"], cog_metadata.map { |metadata| metadata.fetch("cog_type") }
+    assert cog_metadata.all? { |metadata| metadata.fetch("outcome") == "completed" && !metadata.key?("provider") }
+    assert cogs.all? { |span| JSON.parse(span.attributes.fetch("braintrust.context_json")).dig("span_origin", "instrumentation", "name") == "braintrust.contrib.roast" }
   end
 
   def test_chat_cog_contains_ruby_llm_request
@@ -108,6 +114,7 @@ class Braintrust::Contrib::Roast::IntegrationTest < Minitest::Test
     cog = rig.drain.find { |span| span.name == "roast.cog.explode" }
     refute_nil cog
     assert_equal OpenTelemetry::Trace::Status::ERROR, cog.status.code
+    assert_equal "failed", JSON.parse(cog.attributes.fetch("braintrust.metadata")).fetch("outcome")
   end
 
   def test_parallel_cogs_keep_workflow_parent

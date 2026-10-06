@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../patcher"
+require_relative "integration"
 require_relative "instrumentation/workflow"
 require_relative "instrumentation/cog"
 

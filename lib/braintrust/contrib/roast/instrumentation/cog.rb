@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../support/otel"
+require_relative "../tracing"
 
 module Braintrust
   module Contrib
@@ -26,26 +27,21 @@ module Braintrust
             parent_context = roast_parent_context
             return super unless tracing_enabled? && parent_context
 
-            tracer = Braintrust::Contrib.tracer_for(self)
+            tracer = Braintrust::Contrib::Roast::Tracing.tracer_for(self)
             proxy = BarrierProxy.new(barrier) do |async_task, task|
               ::OpenTelemetry::Context.with_current(parent_context) do
                 span_name = "roast.cog.#{name}"
                 tracer.in_span(span_name) do |span|
+                  # Braintrust uses span_attributes for type/name; Roast details go in metadata.
                   Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "task", name: span_name})
-                  Support::OTel.set_json_attr(span, "braintrust.metadata", {
-                    "provider" => "roast",
-                    "cog_type" => type,
-                    "cog_name" => name.to_s
-                  })
-
                   Braintrust::Contrib::Context.set!(self, roast_span_context: ::OpenTelemetry::Context.current)
-                  result = task.call(async_task)
-                  record_outcome(span)
-                  result
+                  task.call(async_task)
                 rescue => e
                   span.record_exception(e)
                   span.status = ::OpenTelemetry::Trace::Status.error(e.message)
                   raise
+                ensure
+                  record_outcome(span)
                 end
               end
             end
@@ -81,7 +77,11 @@ module Braintrust
             else
               "completed"
             end
-            span.set_attribute("roast.cog.outcome", outcome)
+            Support::OTel.set_json_attr(span, "braintrust.metadata", {
+              "cog_type" => type,
+              "cog_name" => name.to_s,
+              "outcome" => outcome
+            })
 
             output_value = output.response if output&.respond_to?(:response)
             Support::OTel.set_json_attr(span, "braintrust.output_json", output_value) if output_value.is_a?(String)

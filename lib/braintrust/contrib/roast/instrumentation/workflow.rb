@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../support/otel"
+require_relative "../tracing"
 
 module Braintrust
   module Contrib
@@ -24,15 +25,12 @@ module Braintrust
             class_context = Braintrust::Contrib.context_for(self.class)
             return super if context&.[](:enabled) == false || class_context&.[](:enabled) == false
 
-            tracer = Braintrust::Contrib.tracer_for(self)
+            tracer = Braintrust::Contrib::Roast::Tracing.tracer_for(self)
             parent_context = Braintrust::Contrib.context_for(@workflow_context.params)&.[](:roast_parent_context)
             trace_workflow = proc do
               tracer.in_span("roast.workflow") do |span|
                 Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "task", name: "roast.workflow"})
-                Support::OTel.set_json_attr(span, "braintrust.metadata", {
-                  "provider" => "roast",
-                  "workflow" => File.basename(@workflow_path.to_s)
-                })
+                Support::OTel.set_json_attr(span, "braintrust.metadata", {"workflow" => File.basename(@workflow_path.to_s)})
                 Braintrust::Contrib::Context.set!(@workflow_context, roast_span_context: ::OpenTelemetry::Context.current)
                 super()
               end
