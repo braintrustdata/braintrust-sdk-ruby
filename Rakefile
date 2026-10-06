@@ -56,7 +56,7 @@ end
 
 desc "Run all examples"
 task :examples do
-  examples = FileList["examples/**/*.rb"].exclude("examples/**/README.md")
+  examples = FileList["examples/**/*.rb"].exclude("examples/contrib/roast/workflow.rb")
 
   puts "Running #{examples.length} examples..."
 

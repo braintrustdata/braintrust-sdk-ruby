@@ -17,7 +17,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
   - [Braintrust.init](#braintrustinit)
   - [Environment variables](#environment-variables)
 - [Tracing](#tracing)
-  - [Supported providers](#supported-providers)
+  - [Supported integrations](#supported-integrations)
   - [Manually applying instrumentation](#manually-applying-instrumentation)
   - [Creating custom spans](#creating-custom-spans)
   - [Attachments](#attachments)
@@ -148,17 +148,17 @@ Braintrust.init(
 
 ## Tracing
 
-### Supported providers
+### Supported integrations
 
-The SDK automatically instruments these LLM libraries:
+The SDK automatically instruments these libraries:
 
-| Provider  | Gem           | Versions | Integration Name | Examples                                  |
-| --------- | ------------- | -------- | ---------------- | ----------------------------------------- |
-| Anthropic | `anthropic`   | >= 0.3.0 | `:anthropic`     | [Link](./examples/contrib/anthropic.rb)   |
-| OpenAI    | `openai`      | >= 0.1.0 | `:openai`        | [Link](./examples/contrib/openai.rb)      |
-|           | `ruby-openai` | >= 7.0.0 | `:ruby_openai`   | [Link](./examples/contrib/ruby-openai.rb) |
-| Multiple  | `ruby_llm`    | >= 1.8.0 | `:ruby_llm`      | [Link](./examples/contrib/ruby_llm.rb)    |
-| Workflows | `roast-ai`    | >= 1.0.0 | `:roast`         | [Link](./examples/contrib/roast.rb)       |
+| Category | Gem           | Versions | Integration Name | Examples                                        |
+| --------- | ------------- | -------- | ---------------- | ----------------------------------------------- |
+| Anthropic | `anthropic`   | >= 0.3.0 | `:anthropic`     | [Link](./examples/contrib/anthropic/basic.rb)   |
+| OpenAI    | `openai`      | >= 0.1.0 | `:openai`        | [Link](./examples/contrib/openai/basic.rb)      |
+|           | `ruby-openai` | >= 7.0.0 | `:ruby_openai`   | [Link](./examples/contrib/ruby_openai/basic.rb) |
+| Multiple  | `ruby_llm`    | >= 1.8.0 | `:ruby_llm`      | [Link](./examples/contrib/ruby_llm/basic.rb)    |
+| Workflows | `roast-ai`    | >= 1.0.0 | `:roast`         | [Link](./examples/contrib/roast/basic.rb)       |
 
 ### Manually applying instrumentation
 

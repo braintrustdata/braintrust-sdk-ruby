@@ -7,7 +7,7 @@ require "anthropic"
 require "opentelemetry/sdk"
 
 # Usage:
-#   ANTHROPIC_API_KEY=your-key bundle exec appraisal anthropic ruby examples/contrib/anthropic.rb
+#   ANTHROPIC_API_KEY=your-key bundle exec appraisal anthropic ruby examples/contrib/anthropic/basic.rb
 
 # Check for API keys
 unless ENV["ANTHROPIC_API_KEY"]
@@ -29,7 +29,7 @@ client = Anthropic::Client.new(api_key: ENV["ANTHROPIC_API_KEY"])
 tracer = OpenTelemetry.tracer_provider.tracer("anthropic-example")
 
 root_span = nil
-tracer.in_span("examples/contrib/anthropic.rb") do |span|
+tracer.in_span("examples/contrib/anthropic/basic.rb") do |span|
   root_span = span
 
   # Make a message request (automatically traced!)
