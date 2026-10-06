@@ -24,11 +24,15 @@ module Braintrust
       # @param span_data [Array<OpenTelemetry::SDK::Trace::SpanData>]
       # @return [Integer] export result from the wrapped exporter
       def export(span_data, timeout: nil)
+        super(SpanOrigin.enrich_batch(span_data), timeout: timeout)
+      end
+
+      # Enrich a batch of SpanData with span origin provenance.
+      def self.enrich_batch(span_data)
         # Environment is process-global and stable; read it once per batch
         # rather than once per span. It is cheap (ENV reads only).
         environment = Internal::Env.detect_environment
-        enriched = span_data.map { |sd| SpanOrigin.enrich(sd, environment: environment) }
-        super(enriched, timeout: timeout)
+        span_data.map { |sd| enrich(sd, environment: environment) }
       end
 
       # Enrich a single SpanData with span origin provenance.

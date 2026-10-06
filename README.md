@@ -20,6 +20,7 @@ This is the official Ruby SDK for [Braintrust](https://www.braintrust.dev), for 
   - [Supported integrations](#supported-integrations)
   - [Manually applying instrumentation](#manually-applying-instrumentation)
   - [Creating custom spans](#creating-custom-spans)
+  - [Span customizers](#span-customizers)
   - [Attachments](#attachments)
   - [Viewing traces](#viewing-traces)
 - [Evals](#evals)
@@ -120,6 +121,7 @@ Braintrust.init
 | `filter_ai_spans` | `ENV['BRAINTRUST_OTEL_FILTER_AI_SPANS']` | Only export AI-related spans                                                |
 | `org_name`        | `ENV['BRAINTRUST_ORG_NAME']`             | Organization name                                                           |
 | `set_global`      | `true`                                   | Set as global state. Set to `false` for isolated instances                  |
+| `span_customizers` | `[]`                                   | Redact or transform spans before export (see [Span customizers](#span-customizers))                 |
 
 **Example with options:**
 
@@ -192,6 +194,33 @@ tracer.in_span("process-request") do |span|
   response = client.chat.completions.create(...)
 end
 ```
+
+### Span customizers
+
+Redact or transform span data before it leaves your application, e.g. to strip PII from LLM inputs and outputs:
+
+```ruby
+# Any object that responds to #on_span_export
+class RedactContent
+  def on_span_export(span)
+    %w[braintrust.input_json braintrust.output_json].each do |key|
+      span.attributes[key] = JSON.generate("[redacted]") if span.attributes.key?(key)
+    end
+    span.attributes.delete("user.email")
+    span
+  end
+end
+
+Braintrust.init(span_customizers: [RedactContent.new])
+```
+
+**When configuring customizers...**
+
+- Do not change the `trace_id`, `span_id`, or `parent_span_id` fields.
+- Always return the span (or a replacement `OpenTelemetry::SDK::Trace::SpanData`).
+- Keep them fast; otherwise they may slow down exporting.
+- Customizers run in order on every finished span sent to Braintrust.
+- If it raises or returns something invalid, the batch is dropped and an error is logged.
 
 ### Attachments
 
@@ -568,7 +597,7 @@ The dev server requires the `rack` gem and a Rack-compatible web server.
 | [Passenger](https://www.phusionpassenger.com/) | 6.x               |                                      |
 | [WEBrick](https://github.com/ruby/webrick)     | Not supported     | Does not support server-sent events. |
 
-See examples: [server/eval.ru](./examples/server/eval.ru), 
+See examples: [server/eval.ru](./examples/server/eval.ru),
 
 ## Documentation
 
