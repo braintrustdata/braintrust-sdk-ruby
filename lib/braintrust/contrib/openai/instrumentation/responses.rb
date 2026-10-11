@@ -39,6 +39,7 @@ module Braintrust
               tracer.in_span("openai.responses.create") do |span|
                 metadata = build_metadata(params)
 
+                Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "llm"})
                 set_input(span, params)
 
                 response = nil
@@ -140,6 +141,7 @@ module Braintrust
               time_to_first_token = nil
 
               tracer.in_span("openai.responses.create") do |span|
+                Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "llm"})
                 responses_instance.send(:set_input, span, params)
                 Support::OTel.set_json_attr(span, "braintrust.metadata", metadata)
 

@@ -57,6 +57,32 @@ class Braintrust::Contrib::Anthropic::Instrumentation::CommonTest < Minitest::Te
     assert_equal 120, metrics["prompt_tokens"]
   end
 
+  def test_handles_granular_cache_creation_breakdown
+    # When Anthropic returns the per-TTL cache_creation breakdown, report the
+    # granular metrics and drop the aggregate (which would double count).
+    usage = {
+      "input_tokens" => 12,
+      "output_tokens" => 5,
+      "cache_read_input_tokens" => 0,
+      "cache_creation_input_tokens" => 1369,
+      "cache_creation" => {
+        "ephemeral_5m_input_tokens" => 1369,
+        "ephemeral_1h_input_tokens" => 0
+      }
+    }
+
+    metrics = Common.parse_usage_tokens(usage)
+
+    # Both TTL variants present in the breakdown are reported (including zero),
+    # and the aggregate is dropped so the totals are not double counted.
+    assert_equal 1369, metrics["prompt_cache_creation_5m_tokens"]
+    assert_equal 0, metrics["prompt_cache_creation_1h_tokens"]
+    refute metrics.key?("prompt_cache_creation_tokens"), "aggregate dropped when breakdown present"
+    # prompt_tokens still accumulates the creation tokens: 12 + 0 + 1369
+    assert_equal 1381, metrics["prompt_tokens"]
+    assert_equal 1386, metrics["tokens"]
+  end
+
   def test_handles_object_with_to_h
     # SDK returns objects with to_h method
     usage_object = Struct.new(:input_tokens, :output_tokens, keyword_init: true)
