@@ -15,5 +15,6 @@ gem "vcr", "~> 6.0"
 gem "webmock", "~> 3.0"
 gem "yard", "~> 0.9"
 gem "ruby_llm", "~> 1.9.0"
+gem "faraday", ">= 2.0.1"
 
 gemspec path: "../"
