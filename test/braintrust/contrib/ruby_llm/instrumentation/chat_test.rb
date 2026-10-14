@@ -14,6 +14,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatTest < Minitest::Test
     mock = Minitest::Mock.new
     mock.expect(:include?, false, [Chat::InstanceMethods])
     mock.expect(:prepend, nil, [Chat::InstanceMethods])
+    mock.expect(:prepend, nil, [Chat::CompleteTracing])
 
     base.define_singleton_method(:ancestors) { mock }
     base.define_singleton_method(:prepend) { |mod| mock.prepend(mod) }
@@ -21,6 +22,28 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatTest < Minitest::Test
     Chat.included(base)
 
     mock.verify
+  end
+
+  def test_included_traces_complete_when_generate_is_not_defined
+    base = Class.new { def complete = nil }
+
+    Chat.included(base)
+
+    assert_includes base.ancestors, Chat::CompleteTracing
+    refute_includes base.ancestors, Chat::GenerateTracing
+  end
+
+  def test_included_traces_generate_when_defined
+    base = Class.new do
+      def complete = nil
+
+      def generate = nil
+    end
+
+    Chat.included(base)
+
+    assert_includes base.ancestors, Chat::GenerateTracing
+    refute_includes base.ancestors, Chat::CompleteTracing
   end
 
   def test_included_skips_prepend_when_already_applied
@@ -286,6 +309,43 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
           }
         ]
         assert_equal expected_tools, metadata["tools"]
+      end
+    end
+  end
+
+  def test_tool_calling_creates_a_chat_span_per_request
+    skip "ruby_llm 1.x nests a chat span per request inside complete()" if ruby_llm_major < 2
+
+    with_weather_test_tool do |tool_class|
+      VCR.use_cassette(ruby_llm_cassette("tool_calling")) do
+        rig = setup_otel_test_rig
+
+        configure_ruby_llm_for_vcr
+
+        chat = RubyLLM.chat(model: "gpt-4o-mini")
+        Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
+        chat.with_tools(tool_class)
+
+        response = chat.ask("What's the weather like in San Francisco?")
+
+        spans = rig.drain
+        chat_spans = spans.select { |s| s.name == "ruby_llm.chat" }.sort_by(&:start_timestamp)
+
+        # 2.x runs the whole tool loop inside complete(): one request for the tool call, one for the answer.
+        assert_equal 2, chat_spans.length
+
+        tool_call_output, answer_output = chat_spans.map { |s| JSON.parse(s.attributes["braintrust.output_json"]).first }
+
+        assert_equal "tool_calls", tool_call_output["finish_reason"]
+        assert_equal "weather_test", tool_call_output.dig("message", "tool_calls", 0, "function", "name")
+
+        assert_equal "stop", answer_output["finish_reason"]
+        assert_equal response.content, answer_output.dig("message", "content")
+
+        # Each span carries its own request's usage, as recorded in the cassette.
+        metrics = chat_spans.map { |s| JSON.parse(s.attributes["braintrust.metrics"]) }
+        assert_equal [74, 124], metrics.map { |m| m["prompt_tokens"] }
+        assert_equal [23, 19], metrics.map { |m| m["completion_tokens"] }
       end
     end
   end

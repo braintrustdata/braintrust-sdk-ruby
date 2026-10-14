@@ -13,42 +13,56 @@ module Braintrust
     module RubyLLM
       module Instrumentation
         # Chat instrumentation for RubyLLM.
-        # Wraps complete() and execute_tool() methods to create spans.
+        # Wraps the method that makes one chat request, and execute_tool(), to create spans.
         module Chat
           def self.included(base)
             # Guard against double-wrapping
-            base.prepend(InstanceMethods) unless applied?(base)
+            return if applied?(base)
+
+            base.prepend(InstanceMethods)
+            base.prepend(base.public_method_defined?(:generate) ? GenerateTracing : CompleteTracing)
           end
 
           def self.applied?(base)
             base.ancestors.include?(InstanceMethods)
           end
 
-          module InstanceMethods
-            # Wrap complete() to trace chat completions.
-            # Each call creates a span - recursive calls from tool execution
-            # create nested spans (each is a separate API call).
+          # ruby_llm 1.x: each complete() call makes one request, and recursive calls from
+          # tool execution create nested spans.
+          module CompleteTracing
             def complete(&block)
               return block ? super : super() unless tracing_enabled?
 
+              trace_chat_request(block) { |wrapper| super(&wrapper) }
+            end
+          end
+
+          # ruby_llm 2.x: complete() loops over step(), which calls generate() once per
+          # request, so each generate() call gets its own span.
+          module GenerateTracing
+            def generate(&block)
+              return block ? super : super() unless tracing_enabled?
+
+              trace_chat_request(block) { |wrapper| super(&wrapper) }
+            end
+          end
+
+          module InstanceMethods
+            private
+
+            # Traces one chat request. Yields the streaming wrapper block, or nil when not
+            # streaming, for the caller to pass to super.
+            def trace_chat_request(block)
               tracer = Braintrust::Contrib.tracer_for(self)
 
               tracer.in_span("ruby_llm.chat") do |span|
                 if block
-                  # Streaming: pass a block that calls super() with the wrapper
-                  handle_streaming_complete(span, block) do |&wrapper|
-                    super(&wrapper)
-                  end
+                  handle_streaming_complete(span, block) { |&wrapper| yield wrapper }
                 else
-                  # Non-streaming: pass a block that calls super()
-                  handle_non_streaming_complete(span) do
-                    super()
-                  end
+                  handle_non_streaming_complete(span) { yield nil }
                 end
               end
             end
-
-            private
 
             # Wrap execute_tool() to trace tool executions.
             # This is a private method in RubyLLM - wrapping it avoids
