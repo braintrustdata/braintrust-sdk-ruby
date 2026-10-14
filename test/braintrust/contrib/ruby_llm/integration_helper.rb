@@ -39,11 +39,15 @@ module Braintrust
           Gem.loaded_specs["ruby_llm"]&.version&.segments&.first || 1
         end
 
-        # Drains the rig and returns its single ruby_llm.chat span. On 2.x, complete()
-        # also emits a ruby_llm.complete parent span.
+        # Drains the rig and returns its single ruby_llm.chat span, checking that 2.x also
+        # emitted exactly one ruby_llm.complete parent and 1.x none.
         def drain_chat_span(rig)
-          chat_spans = rig.drain.select { |s| s.name == "ruby_llm.chat" }
+          spans = rig.drain
+          chat_spans = spans.select { |s| s.name == "ruby_llm.chat" }
+          complete_spans = spans.select { |s| s.name == "ruby_llm.complete" }
+
           assert_equal 1, chat_spans.length, "Expected exactly 1 ruby_llm.chat span"
+          assert_equal (ruby_llm_major >= 2) ? 1 : 0, complete_spans.length, "Unexpected ruby_llm.complete span count"
           chat_spans.first
         end
 
