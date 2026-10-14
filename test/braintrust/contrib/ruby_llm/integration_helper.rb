@@ -34,6 +34,19 @@ module Braintrust
           end
         end
 
+        # Major version of the loaded ruby_llm gem.
+        def ruby_llm_major
+          Gem.loaded_specs["ruby_llm"]&.version&.segments&.first || 1
+        end
+
+        # Drains the rig and returns its single ruby_llm.chat span. On 2.x, complete()
+        # also emits a ruby_llm.complete parent span.
+        def drain_chat_span(rig)
+          chat_spans = rig.drain.select { |s| s.name == "ruby_llm.chat" }
+          assert_equal 1, chat_spans.length, "Expected exactly 1 ruby_llm.chat span"
+          chat_spans.first
+        end
+
         # Cassette path for a ruby_llm interaction, for the loaded ruby_llm version.
         def ruby_llm_cassette(name)
           versioned_cassette("ruby_llm", name)

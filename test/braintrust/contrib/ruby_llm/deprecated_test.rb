@@ -120,8 +120,7 @@ class Braintrust::Contrib::RubyLLM::DeprecatedTest < Minitest::Test
 
       # First request should create a span
       chat.ask("Say 'test'")
-      spans_before = rig.drain
-      assert_equal 1, spans_before.length, "Expected 1 span before unwrap"
+      drain_chat_span(rig)
 
       # Now unwrap the chat instance
       suppress_logs { Braintrust::Trace::Contrib::Github::Crmne::RubyLLM.unwrap(chat) }

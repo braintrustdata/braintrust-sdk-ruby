@@ -7,7 +7,7 @@ module Braintrust
   module Contrib
     module RubyLLM
       # Patcher for RubyLLM chat completions.
-      # Instruments RubyLLM::Chat#complete and #execute_tool methods.
+      # Instruments RubyLLM::Chat#complete (plus #generate on 2.x) and #execute_tool.
       class ChatPatcher < Braintrust::Contrib::Patcher
         class << self
           def applicable?

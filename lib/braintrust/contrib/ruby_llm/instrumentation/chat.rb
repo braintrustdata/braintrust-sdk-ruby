@@ -38,12 +38,31 @@ module Braintrust
           end
 
           # ruby_llm 2.x: complete() loops over step(), which calls generate() once per
-          # request, so each generate() call gets its own span.
+          # request, so each generate() call gets its own span. complete() gets a parent
+          # span so a turn's chat and tool spans share one trace when the caller has no span.
           module GenerateTracing
             def generate(&block)
               return block ? super : super() unless tracing_enabled?
 
               trace_chat_request(block) { |wrapper| super(&wrapper) }
+            end
+
+            def complete(&block)
+              return block ? super : super() unless tracing_enabled?
+
+              tracer = Braintrust::Contrib.tracer_for(self)
+
+              tracer.in_span("ruby_llm.complete") do |span|
+                Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "task"})
+                input_messages = build_input_messages
+                Support::OTel.set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
+
+                response = block ? super : super()
+
+                # No metrics here: each request's tokens live on its ruby_llm.chat child span.
+                Support::OTel.set_json_attr(span, "braintrust.output_json", [format_message_for_input(response)]) if response
+                response
+              end
             end
           end
 
