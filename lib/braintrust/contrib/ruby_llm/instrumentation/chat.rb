@@ -232,22 +232,18 @@ module Braintrust
                 tool_schema = tool_params_schema(tool) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
               end
 
-              # Strip RubyLLM-specific fields to match native OpenAI format
+              # Strip RubyLLM-specific fields to match native OpenAI format. Build copies: the
+              # parameters hash is the tool's cached schema, which RubyLLM sends to the provider.
               function_key = tool_schema&.key?(:function) ? :function : "function"
-              if tool_schema && tool_schema[function_key]
-                tool_params = tool_schema[function_key][:parameters] || tool_schema[function_key]["parameters"]
-                if tool_params.is_a?(Hash)
-                  tool_params = tool_params.dup if tool_params.frozen?
-                  tool_params.delete("strict")
-                  tool_params.delete(:strict)
-                  tool_params.delete("additionalProperties")
-                  tool_params.delete(:additionalProperties)
-                  params_key = tool_schema[function_key].key?(:parameters) ? :parameters : "parameters"
-                  tool_schema[function_key][params_key] = tool_params
-                end
-              end
+              function = tool_schema && tool_schema[function_key]
+              return tool_schema unless function
 
-              tool_schema
+              params_key = function.key?(:parameters) ? :parameters : "parameters"
+              tool_params = function[params_key]
+              return tool_schema unless tool_params.is_a?(Hash)
+
+              stripped = tool_params.reject { |key, _| %w[strict additionalProperties].include?(key.to_s) }
+              tool_schema.merge(function_key => function.merge(params_key => stripped))
             end
 
             # A tool's JSON Schema, across ruby_llm versions.
