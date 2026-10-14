@@ -456,20 +456,7 @@ module Braintrust
 
               # Set metrics (token usage + time_to_first_token)
               # RubyLLM stores tokens directly in the response hash, not in a nested usage object
-              metrics = {}
-              if result.respond_to?(:to_h)
-                result_hash = result.to_h
-                usage = {
-                  "input_tokens" => result_hash[:input_tokens],
-                  "output_tokens" => result_hash[:output_tokens],
-                  "cached_tokens" => result_hash[:cached_tokens],
-                  "cache_creation_tokens" => result_hash[:cache_creation_tokens]
-                }.compact
-
-                unless usage.empty?
-                  metrics = Common.parse_usage_tokens(usage)
-                end
-              end
+              metrics = Common.message_usage_metrics(result)
               metrics["time_to_first_token"] = time_to_first_token if time_to_first_token
               Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
             end
@@ -512,20 +499,7 @@ module Braintrust
               Support::OTel.set_json_attr(span, "braintrust.output_json", output)
 
               # Set metrics (token usage + time_to_first_token)
-              metrics = {}
-              if response.respond_to?(:to_h)
-                response_hash = response.to_h
-                usage = {
-                  "input_tokens" => response_hash[:input_tokens],
-                  "output_tokens" => response_hash[:output_tokens],
-                  "cached_tokens" => response_hash[:cached_tokens],
-                  "cache_creation_tokens" => response_hash[:cache_creation_tokens]
-                }.compact
-
-                unless usage.empty?
-                  metrics = Common.parse_usage_tokens(usage)
-                end
-              end
+              metrics = Common.message_usage_metrics(response)
               metrics["time_to_first_token"] = time_to_first_token if time_to_first_token
               Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
             end
