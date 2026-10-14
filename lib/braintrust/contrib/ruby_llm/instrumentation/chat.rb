@@ -13,42 +13,75 @@ module Braintrust
     module RubyLLM
       module Instrumentation
         # Chat instrumentation for RubyLLM.
-        # Wraps complete() and execute_tool() methods to create spans.
+        # Wraps the method that makes one chat request, and execute_tool(), to create spans.
         module Chat
           def self.included(base)
             # Guard against double-wrapping
-            base.prepend(InstanceMethods) unless applied?(base)
+            return if applied?(base)
+
+            base.prepend(InstanceMethods)
+            base.prepend(base.public_method_defined?(:generate) ? GenerateTracing : CompleteTracing)
           end
 
           def self.applied?(base)
             base.ancestors.include?(InstanceMethods)
           end
 
-          module InstanceMethods
-            # Wrap complete() to trace chat completions.
-            # Each call creates a span - recursive calls from tool execution
-            # create nested spans (each is a separate API call).
+          # ruby_llm 1.x: each complete() call makes one request, and recursive calls from
+          # tool execution create nested spans.
+          module CompleteTracing
+            def complete(&block)
+              return block ? super : super() unless tracing_enabled?
+
+              trace_chat_request(block) { |wrapper| super(&wrapper) }
+            end
+          end
+
+          # ruby_llm 2.x: complete() loops over step(), which calls generate() once per
+          # request, so each generate() call gets its own span. complete() gets a parent
+          # span so a turn's chat and tool spans share one trace when the caller has no span.
+          module GenerateTracing
+            def generate(&block)
+              return block ? super : super() unless tracing_enabled?
+
+              trace_chat_request(block) { |wrapper| super(&wrapper) }
+            end
+
             def complete(&block)
               return block ? super : super() unless tracing_enabled?
 
               tracer = Braintrust::Contrib.tracer_for(self)
 
+              tracer.in_span("ruby_llm.complete") do |span|
+                Support::OTel.set_json_attr(span, "braintrust.span_attributes", {type: "task"})
+                input_messages = build_input_messages
+                Support::OTel.set_json_attr(span, "braintrust.input_json", input_messages) if input_messages.any?
+
+                response = block ? super : super()
+
+                # No metrics here: each request's tokens live on its ruby_llm.chat child span.
+                Support::OTel.set_json_attr(span, "braintrust.output_json", [format_message_for_input(response)]) if response
+                response
+              end
+            end
+          end
+
+          module InstanceMethods
+            private
+
+            # Traces one chat request. Yields the streaming wrapper block, or nil when not
+            # streaming, for the caller to pass to super.
+            def trace_chat_request(block)
+              tracer = Braintrust::Contrib.tracer_for(self)
+
               tracer.in_span("ruby_llm.chat") do |span|
                 if block
-                  # Streaming: pass a block that calls super() with the wrapper
-                  handle_streaming_complete(span, block) do |&wrapper|
-                    super(&wrapper)
-                  end
+                  handle_streaming_complete(span, block) { |&wrapper| yield wrapper }
                 else
-                  # Non-streaming: pass a block that calls super()
-                  handle_non_streaming_complete(span) do
-                    super()
-                  end
+                  handle_non_streaming_complete(span) { yield nil }
                 end
               end
             end
-
-            private
 
             # Wrap execute_tool() to trace tool executions.
             # This is a private method in RubyLLM - wrapping it avoids
@@ -199,22 +232,18 @@ module Braintrust
                 tool_schema = tool_params_schema(tool) ? build_basic_tool_schema(tool) : build_minimal_tool_schema(tool)
               end
 
-              # Strip RubyLLM-specific fields to match native OpenAI format
+              # Strip RubyLLM-specific fields to match native OpenAI format. Build copies: the
+              # parameters hash is the tool's cached schema, which RubyLLM sends to the provider.
               function_key = tool_schema&.key?(:function) ? :function : "function"
-              if tool_schema && tool_schema[function_key]
-                tool_params = tool_schema[function_key][:parameters] || tool_schema[function_key]["parameters"]
-                if tool_params.is_a?(Hash)
-                  tool_params = tool_params.dup if tool_params.frozen?
-                  tool_params.delete("strict")
-                  tool_params.delete(:strict)
-                  tool_params.delete("additionalProperties")
-                  tool_params.delete(:additionalProperties)
-                  params_key = tool_schema[function_key].key?(:parameters) ? :parameters : "parameters"
-                  tool_schema[function_key][params_key] = tool_params
-                end
-              end
+              function = tool_schema && tool_schema[function_key]
+              return tool_schema unless function
 
-              tool_schema
+              params_key = function.key?(:parameters) ? :parameters : "parameters"
+              tool_params = function[params_key]
+              return tool_schema unless tool_params.is_a?(Hash)
+
+              stripped = tool_params.reject { |key, _| %w[strict additionalProperties].include?(key.to_s) }
+              tool_schema.merge(function_key => function.merge(params_key => stripped))
             end
 
             # A tool's JSON Schema, across ruby_llm versions.
@@ -423,20 +452,7 @@ module Braintrust
 
               # Set metrics (token usage + time_to_first_token)
               # RubyLLM stores tokens directly in the response hash, not in a nested usage object
-              metrics = {}
-              if result.respond_to?(:to_h)
-                result_hash = result.to_h
-                usage = {
-                  "input_tokens" => result_hash[:input_tokens],
-                  "output_tokens" => result_hash[:output_tokens],
-                  "cached_tokens" => result_hash[:cached_tokens],
-                  "cache_creation_tokens" => result_hash[:cache_creation_tokens]
-                }.compact
-
-                unless usage.empty?
-                  metrics = Common.parse_usage_tokens(usage)
-                end
-              end
+              metrics = Common.message_usage_metrics(result)
               metrics["time_to_first_token"] = time_to_first_token if time_to_first_token
               Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
             end
@@ -479,20 +495,7 @@ module Braintrust
               Support::OTel.set_json_attr(span, "braintrust.output_json", output)
 
               # Set metrics (token usage + time_to_first_token)
-              metrics = {}
-              if response.respond_to?(:to_h)
-                response_hash = response.to_h
-                usage = {
-                  "input_tokens" => response_hash[:input_tokens],
-                  "output_tokens" => response_hash[:output_tokens],
-                  "cached_tokens" => response_hash[:cached_tokens],
-                  "cache_creation_tokens" => response_hash[:cache_creation_tokens]
-                }.compact
-
-                unless usage.empty?
-                  metrics = Common.parse_usage_tokens(usage)
-                end
-              end
+              metrics = Common.message_usage_metrics(response)
               metrics["time_to_first_token"] = time_to_first_token if time_to_first_token
               Support::OTel.set_json_attr(span, "braintrust.metrics", metrics) unless metrics.empty?
             end

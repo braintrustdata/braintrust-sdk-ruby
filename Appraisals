@@ -22,11 +22,13 @@ OPTIONAL_GEMS = {
     "8.0" => {constraint: "~> 8.0", deps: {}},
     "latest" => {constraint: ">= 8.0", deps: {}}
   },
+  # faraday >= 2.14 stops resolution backtracking to faraday 2.0.0, which cannot load the net_http
+  # adapter, once faraday-net_http releases past the newest faraday's cap.
   "ruby_llm" => {
-    "1.8" => {constraint: "~> 1.8.0", deps: {}},
-    "1.9" => {constraint: "~> 1.9.0", deps: {}},
-    "2.0" => {constraint: "~> 2.0.0", deps: {}},
-    "latest" => {constraint: ">= 2.0", deps: {}}
+    "1.8" => {constraint: "~> 1.8.0", deps: {"faraday" => ">= 2.14"}},
+    "1.9" => {constraint: "~> 1.9.0", deps: {"faraday" => ">= 2.14"}},
+    "2.0" => {constraint: "~> 2.0.0", deps: {"faraday" => ">= 2.14"}},
+    "latest" => {constraint: ">= 2.0", deps: {"faraday" => ">= 2.14"}}
   }
 }
 
