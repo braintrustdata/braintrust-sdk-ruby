@@ -360,6 +360,24 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     end
   end
 
+  def test_tool_metadata_leaves_the_tool_schema_sent_to_the_provider_intact
+    skip "Tool calling test requires ruby_llm >= 1.9" unless self.class.supports_tool_calling?
+
+    with_weather_test_tool do |tool_class|
+      configure_ruby_llm_for_vcr
+      schema_of = ->(tool) { tool.respond_to?(:parameters_schema) ? tool.parameters_schema : tool.params_schema }
+      expected = Marshal.load(Marshal.dump(schema_of.call(tool_class.new)))
+
+      chat = RubyLLM.chat(model: "gpt-4o-mini")
+      Braintrust.instrument!(:ruby_llm, target: chat)
+      chat.with_tools(tool_class)
+      chat.send(:extract_tools_metadata)
+
+      assert_equal expected, schema_of.call(chat.tools.values.first)
+      assert_equal expected, schema_of.call(tool_class.new)
+    end
+  end
+
   # --- Direct complete() ---
 
   def test_direct_complete_creates_span
