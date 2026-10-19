@@ -4,6 +4,10 @@
 # Tests that specifically need auto-instrumentation can opt-in via auto_instrument: true.
 ENV["BRAINTRUST_AUTO_INSTRUMENT"] ||= "false"
 
+# Disable the anthropic gem's native OpenTelemetry spans (anthropic >= 1.79), as users of our
+# anthropic instrumentation would, so only Braintrust spans are under test.
+ENV["ANTHROPIC_OPEN_TELEMETRY"] ||= "false"
+
 # Start SimpleCov BEFORE loading any code to track
 # Skip coverage when running under appraisal (different dependency scenarios)
 unless ENV["BUNDLE_GEMFILE"]&.include?("gemfiles/")

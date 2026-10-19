@@ -22,11 +22,13 @@ OPTIONAL_GEMS = {
     "8.0" => {constraint: "~> 8.0", deps: {}},
     "latest" => {constraint: ">= 8.0", deps: {}}
   },
+  # faraday 2.0.0 doesn't depend on faraday-net_http, so the resolver can pair it with an
+  # adapter newer faraday excludes, leaving :net_http unregistered.
   "ruby_llm" => {
-    "1.8" => {constraint: "~> 1.8.0", deps: {}},
-    "1.9" => {constraint: "~> 1.9.0", deps: {}},
-    "2.0" => {constraint: "~> 2.0.0", deps: {}},
-    "latest" => {constraint: ">= 2.0", deps: {}}
+    "1.8" => {constraint: "~> 1.8.0", deps: {"faraday" => ">= 2.0.1"}},
+    "1.9" => {constraint: "~> 1.9.0", deps: {"faraday" => ">= 2.0.1"}},
+    "2.0" => {constraint: "~> 2.0.0", deps: {"faraday" => ">= 2.0.1"}},
+    "latest" => {constraint: ">= 2.0", deps: {"faraday" => ">= 2.0.1"}}
   }
 }
 
@@ -51,6 +53,7 @@ if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.3")
   appraise "roast" do
     gem "roast-ai", "~> 1.2"
     gem "ruby_llm", "~> 1.13" # Roast 1.2 calls RubyLLM 1.x APIs
+    gem "faraday", ">= 2.0.1" # See ruby_llm in OPTIONAL_GEMS
   end
 end
 
@@ -78,6 +81,7 @@ appraise "contrib" do
   gem "openai", ">= 0.34"
   gem "anthropic", ">= 1.11"
   gem "ruby_llm", ">= 2.0"
+  gem "faraday", ">= 2.0.1" # See ruby_llm in OPTIONAL_GEMS
   gem "base64" # needed for openai gem on Ruby 3.4+
   gem "cgi" # needed for openai/anthropic gems on Ruby 4.0+
 end
@@ -87,6 +91,7 @@ appraise "server" do
   gem "openai", ">= 0.34"
   gem "anthropic", ">= 1.11"
   gem "ruby_llm", ">= 2.0"
+  gem "faraday", ">= 2.0.1" # See ruby_llm in OPTIONAL_GEMS
   gem "base64" # needed for openai gem on Ruby 3.4+
   gem "cgi" # needed for openai/anthropic gems on Ruby 4.0+
   gem "rack", "~> 3.0"
