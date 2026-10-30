@@ -601,7 +601,7 @@ See examples: [server/eval.ru](./examples/server/eval.ru),
 
 ## Documentation
 
-- [Braintrust Documentation](https://www.braintrust.dev/docs)
+- [Braintrust Documentation](https://docs.braintrust.dev)
 - [API Reference](https://gemdocs.org/gems/braintrust/)
 
 ## Troubleshooting
