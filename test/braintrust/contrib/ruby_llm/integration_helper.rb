@@ -34,20 +34,9 @@ module Braintrust
           end
         end
 
-        # Major version of the loaded ruby_llm gem.
-        def ruby_llm_major
-          Gem.loaded_specs["ruby_llm"]&.version&.segments&.first || 1
-        end
-
-        # Cassette path for a ruby_llm interaction.
-        #
-        # Breaking wire changes land on majors: 2.0 moved the OpenAI provider from
-        # Chat Completions to the Responses API. Recording per major means each
-        # version replays the endpoint it actually calls, and versions that share a
-        # wire format share a recording. A new major needs its own cassettes, which
-        # are recorded by running its appraisal with a real OPENAI_API_KEY.
+        # Cassette path for a ruby_llm interaction, for the loaded ruby_llm version.
         def ruby_llm_cassette(name)
-          "contrib/ruby_llm/v#{ruby_llm_major}/#{name}"
+          versioned_cassette("ruby_llm", name)
         end
       end
     end

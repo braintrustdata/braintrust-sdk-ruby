@@ -2,7 +2,7 @@
 
 # Optional dependencies to test.
 # Each version entry is a hash with:
-#   constraint: version constraint for the gem
+#   constraint: version constraint for the gem (or an array of them for a range)
 #   deps: hash of additional gem dependencies to install, mapping gem name to
 #         constraint (or nil for no constraint). Works around upstream gems that
 #         haven't declared dependencies properly (e.g. base64/cgi removed from stdlib).
@@ -13,9 +13,10 @@ OPTIONAL_GEMS = {
     "latest" => {constraint: ">= 0.34", deps: {"base64" => nil, "cgi" => nil}}
   },
   "anthropic" => {
-    "1.11" => {constraint: "~> 1.11.0", deps: {"base64" => nil, "cgi" => nil}},
-    "1.12" => {constraint: "~> 1.12.0", deps: {"base64" => nil, "cgi" => nil}},
-    "latest" => {constraint: ">= 1.11", deps: {"base64" => nil, "cgi" => nil}}
+    "min" => {constraint: "~> 1.11.0", deps: {"base64" => nil, "cgi" => nil}},
+    "1.11" => {constraint: [">= 1.11", "< 2.0"], deps: {"base64" => nil, "cgi" => nil}},
+    "2.0" => {constraint: [">= 2.0", "< 2.3"], deps: {"base64" => nil, "cgi" => nil}}, # 2.0 moved to API version 2026-10-21
+    "latest" => {constraint: ">= 2.3", deps: {"base64" => nil, "cgi" => nil}} # 2.3 dropped ?beta=true from beta endpoints.
   },
   "ruby-openai" => {
     "7.0" => {constraint: "~> 7.0", deps: {}},
@@ -37,7 +38,7 @@ OPTIONAL_GEMS.each do |gem_name, versions|
   versions.each do |name, config|
     suffix = (name == "latest") ? "" : "-#{name.tr(".", "-")}"
     appraise "#{gem_name}#{suffix}" do
-      gem gem_name, config[:constraint]
+      gem gem_name, *config[:constraint]
       config[:deps].each { |dep, version| gem dep, *[version].compact }
     end
   end

@@ -54,14 +54,14 @@ class Braintrust::Contrib::Anthropic::InstrumentationTest < Minitest::Test
   # --- Backward compatibility: wrap() vs instrument!() ---
 
   def test_wrap_and_instrument_produce_identical_spans
-    VCR.use_cassette("anthropic/basic_message", allow_playback_repeats: true) do
+    VCR.use_cassette(anthropic_cassette("basic_message"), allow_playback_repeats: true) do
       # Test with old wrap() API
       rig_wrap = setup_otel_test_rig
       client_wrap = Anthropic::Client.new(api_key: get_anthropic_key)
       suppress_logs { Braintrust::Trace::Anthropic.wrap(client_wrap, tracer_provider: rig_wrap.tracer_provider) }
 
       client_wrap.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         messages: [{role: "user", content: "Say 'test'"}]
       )
@@ -73,7 +73,7 @@ class Braintrust::Contrib::Anthropic::InstrumentationTest < Minitest::Test
       Braintrust.instrument!(:anthropic, target: client_instrument, tracer_provider: rig_instrument.tracer_provider)
 
       client_instrument.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         messages: [{role: "user", content: "Say 'test'"}]
       )

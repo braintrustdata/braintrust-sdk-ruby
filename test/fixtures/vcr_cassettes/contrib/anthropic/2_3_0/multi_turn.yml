@@ -1,0 +1,110 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-5-5","max_tokens":100,"messages":[{"role":"user","content":"My
+        name is Alice."},{"role":"assistant","content":"Hello Alice! Nice to meet
+        you."},{"role":"user","content":"What''s my name?"}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Anthropic::Client/Ruby 2.3.0
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.3.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.11
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2026-10-21'
+      Authorization:
+      - Bearer <ANTHROPIC_API_KEY>
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '213'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 30 Oct 2026 21:26:46 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-10-30T21:26:46Z'
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2026-10-30T21:26:46Z'
+      Anthropic-Ratelimit-Requests-Limit:
+      - '45000'
+      Anthropic-Ratelimit-Requests-Remaining:
+      - '44999'
+      Anthropic-Ratelimit-Requests-Reset:
+      - '2026-10-30T21:26:45Z'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2026-10-30T21:26:46Z'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Request-Id:
+      - req_011CgZ8TrGvMBjqGc1pjaPUF
+      Traceresponse:
+      - 00-92d2d78c8b5e5904c5e4ee00705c29e2-f765fc817d563b2c-01
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      Anthropic-Workspace-Id:
+      - wrkspc_018bFG1FgNVWqx5pthtdGTzS
+      Vary:
+      - Accept-Encoding
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Server:
+      - cloudflare
+      Server-Timing:
+      - x-originResponse;dur=856
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - a52d8007f8f51dfc-CMH
+    body:
+      encoding: ASCII-8BIT
+      string: '{"model":"claude-sonnet-5-5","id":"msg_011CgZ8TrTazTHTvfDpXrN1q","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"","signature":"CAQSjAUKEAgTGAI4AUIIdGhpbmtpbmcSDHWL6NbhI7mp5fuYLhoMTHOgMZEJHOGTNr9uIjDA6Yid66Z6L0T5o8HDmiRNRr82eJ40B26yUxeOSLx80r/k9iIwMzuOY9IN3DZQsagqqQQsAiQIqArNclxr/8sKgDeC2sGiqlhu6aqDfqrNIFgvFCED+HVzmRBm/mZVqlzS3kTJIKu3C2FX1tfT0z501aTBjHY74JqD9fTabZqP0uJ2uMw1MhlYFtx8RHREGi2tXwF0f/HkMHDICMGjGTblgUfNj96THlMd2vknPqtYqfX87S4aBAE6I7lQ7zYw1igeTUNxfDzuwu/YXjf/GZKMd28bKwHbOWBW8T8l5ggLvQivRsTCN8pizZzSUEZzgWfGQ6R6xhN/yx8l7SfO56gcKgRajK49TQbSQXQDL9YmZDYQLNV0bk2Zj8ht0aoViyF+ZCtp0TexBBhCUZMrieMpzHxclTgUe5LjnsmIS+NMUaBC3nVPDiNMfOGFWMmwmINIXC9kChvx82gMNbpLdSVV1YH9vUZJqYvIwmspTiWKtzCHvivycygeBYz9dBn8slTecHSE9kOcC0+Hy+yhjfV+g9VUoCD/ZsbT4mctM+hHTqMGL89nSQH7T+8biXa7quDK4WuDN5Qd4jyY596qCuTsHvK1ZQOTnn5P7JHga+K9ibitQUt2fg4ABZT8y9QxuuPc6NVHFyKNTmmVCwyd9qiV/ZX/HVJDPT4QgofNfbc1fOsv/pY6SPMYI2LUFZSQa8obi+a66SNSJhwyyHUzYbrBcDavSxFhKP61VUeD1JgqVrf4SJZ3APridk6y6wZQVwUfZfhqgVu55hhudMjUhh3fuLfxivK/0Wj+d8sSGAE="},{"type":"text","text":"Your
+        name is Alice, as you told me at the start of our conversation."}],"container":null,"stop_reason":"end_turn","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":39,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":33,"output_tokens_details":{"thinking_tokens":10},"service_tier":"standard","inference_geo":"global","speed":"standard"},"diagnostics":null}'
+  recorded_at: Fri, 30 Oct 2026 21:26:46 GMT
+recorded_with: VCR 6.4.0

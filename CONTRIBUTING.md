@@ -10,6 +10,7 @@ Thanks for contributing! Follow TDD practices: write tests first, implement mini
   - [Adding new integrations for AI Libraries](#adding-new-integrations-for-ai-libraries)
 - [Testing](#testing)
   - [With different Ruby versions](#with-different-ruby-versions)
+  - [With VCR](#with-vcr)
 
 ## Quick Setup
 
@@ -225,14 +226,6 @@ See existing tests in `test/braintrust/contrib/` for complete examples of testin
 
 ## Testing
 
-We use VCR for making http tests fast. You can run tests with these enabled,
-off, etc. If you add new tests you'll need to record new cassettes. See this
-for more details.
-
-```bash
-rake -T test:vcr
-```
-
 ### With different Ruby versions
 
 CI tests against Ruby 3.2, 3.3, and 3.4. To test locally with a different Ruby version:
@@ -257,3 +250,32 @@ mise use ruby@3.4
 ruby --version  # => 3.4.x
 bundle exec rake test
 ```
+
+### With VCR
+
+We use VCR for making http tests fast. You can run tests with these enabled, off, etc. If you add new tests you'll need to record new cassettes. See this for more details.
+
+```bash
+rake -T test:vcr
+```
+
+#### Cassettes for different integration versions
+
+Cassettes live in folders named for the minimum gem version they apply to, with underscores for dots, because VCR replaces dots in cassette paths:
+
+```
+test/fixtures/vcr_cassettes/contrib/anthropic/
+├── 1_11_0/   # anthropic >= 1.11, < 2.0
+├── 2_0_0/    # anthropic >= 2.0, < 2.3
+└── 2_3_0/    # anthropic >= 2.3
+```
+
+Tests name a cassette with the integration's helper (e.g. `anthropic_cassette("basic_message")`), which resolves the gem's version to the appropriate folder. Each folder holds a full set of cassettes, and each has a matching appraisal named for its minimum version (e.g. `anthropic-2-0`).
+
+To re-record a folder, run its appraisal with real API keys in `.env`:
+
+```bash
+VCR_MODE=all bundle exec appraisal anthropic-2-0 ruby -Ilib:test -e "Dir.glob('test/braintrust/contrib/anthropic/**/*_test.rb').each { |f| require_relative f }"
+```
+
+To support a new breaking gem version, add an appraisal range for it, cap the previous range below it, create its empty folder, and record it as above.

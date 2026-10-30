@@ -9,12 +9,16 @@ require "braintrust/contrib/anthropic/patcher"
 class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::Test
   include Braintrust::Contrib::Anthropic::IntegrationHelper
 
+  # Model for tests that send temperature, top_p or top_k, which DEFAULT_MODEL rejects.
+  # Use the newest model that still accepts them; when none does, delete those tests.
+  SAMPLING_MODEL = "claude-sonnet-4-6"
+
   def setup
     skip_unless_anthropic!
   end
 
   def test_creates_span_for_basic_message
-    VCR.use_cassette("anthropic/basic_message") do
+    VCR.use_cassette(anthropic_cassette("basic_message")) do
       # Set up test rig (includes Braintrust processor)
       rig = setup_otel_test_rig
 
@@ -24,7 +28,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a simple message request
       message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         messages: [
           {role: "user", content: "Say 'test'"}
@@ -61,7 +65,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal "anthropic", metadata["provider"]
       assert_equal "/v1/messages", metadata["endpoint"]
-      assert_equal "claude-sonnet-4-20250514", metadata["model"]
+      assert_equal DEFAULT_MODEL, metadata["model"]
       assert_equal 10, metadata["max_tokens"]
 
       # Verify braintrust.metrics contains token usage with Anthropic-specific fields
@@ -81,7 +85,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   def test_creates_span_with_class_level_patching
     # Run in fork to isolate class-level patching and OTLP exporter side effects
     assert_in_fork do
-      VCR.use_cassette("anthropic/basic_message") do
+      VCR.use_cassette(anthropic_cassette("basic_message")) do
         # Set up test rig
         rig = setup_otel_test_rig
 
@@ -97,7 +101,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
         # Make a simple message request
         message = client.messages.create(
-          model: "claude-sonnet-4-20250514",
+          model: DEFAULT_MODEL,
           max_tokens: 10,
           messages: [
             {role: "user", content: "Say 'test'"}
@@ -121,7 +125,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_system_prompt
-    VCR.use_cassette("anthropic/system_prompt") do
+    VCR.use_cassette(anthropic_cassette("system_prompt")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -131,7 +135,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a request with system prompt
       message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 20,
         system_: "You are a helpful assistant that always responds briefly.",
         messages: [
@@ -170,7 +174,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_tool_use
-    VCR.use_cassette("anthropic/tool_use") do
+    VCR.use_cassette(anthropic_cassette("tool_use")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -180,7 +184,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a request with tools
       message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 100,
         tools: [
           {
@@ -237,7 +241,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_streaming
-    VCR.use_cassette("anthropic/streaming") do
+    VCR.use_cassette(anthropic_cassette("streaming")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -247,7 +251,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a streaming request
       stream = client.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "Count to 5"}
@@ -278,7 +282,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_streaming_output_aggregation
-    VCR.use_cassette("anthropic/streaming_aggregation") do
+    VCR.use_cassette(anthropic_cassette("streaming_aggregation")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -289,7 +293,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Make a streaming request
       collected_text = ""
       stream = client.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "Count to 3"}
@@ -345,7 +349,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_vision_with_base64
-    VCR.use_cassette("anthropic/vision_base64") do
+    VCR.use_cassette(anthropic_cassette("vision_base64")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -358,7 +362,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a request with base64 image
       message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {
@@ -406,7 +410,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_reasoning_thinking_blocks
-    VCR.use_cassette("anthropic/reasoning") do
+    VCR.use_cassette(anthropic_cassette("reasoning")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -416,14 +420,16 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a request with reasoning enabled
       message = client.messages.create(
-        model: "claude-3-7-sonnet-latest",
-        max_tokens: 2000,
+        model: DEFAULT_MODEL,
+        max_tokens: 4000,
         thinking: {
-          type: "enabled",
-          budget_tokens: 1024
+          type: "adaptive",
+          display: "summarized"
         },
+        # Adaptive thinking may skip thinking at default effort; max makes it think.
+        output_config: {effort: "max"},
         messages: [
-          {role: "user", content: "What is 2+2? Think step by step."}
+          {role: "user", content: "How many prime numbers are there between 100 and 150? Think step by step."}
         ]
       )
 
@@ -464,7 +470,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_multi_turn_conversation
-    VCR.use_cassette("anthropic/multi_turn") do
+    VCR.use_cassette(anthropic_cassette("multi_turn")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -474,7 +480,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a multi-turn conversation request
       message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 100,
         messages: [
           {role: "user", content: "My name is Alice."},
@@ -515,8 +521,8 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
     end
   end
 
-  def test_handles_temperature_and_stop_sequences
-    VCR.use_cassette("anthropic/temperature_stop") do
+  def test_handles_stop_sequences
+    VCR.use_cassette(anthropic_cassette("stop_sequences")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -524,12 +530,10 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       client = Anthropic::Client.new(api_key: get_anthropic_key)
       Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
 
-      # Make a request with temperature and stop sequences
+      # Make a request with stop sequences
       message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 100,
-        temperature: 0.7,
-        top_p: 0.95,
         stop_sequences: ["END"],
         messages: [
           {role: "user", content: "Count to 3, then say END."}
@@ -548,8 +552,6 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Verify metadata includes parameters
       assert span.attributes.key?("braintrust.metadata")
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
-      assert_equal 0.7, metadata["temperature"]
-      assert_equal 0.95, metadata["top_p"]
       assert_equal ["END"], metadata["stop_sequences"]
 
       # Verify stop reason is captured
@@ -563,8 +565,46 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
     end
   end
 
+  def test_handles_sampling_params
+    skip_unless_sampling_params_accepted!
+
+    VCR.use_cassette(anthropic_cassette("sampling_params")) do
+      # Set up test rig
+      rig = setup_otel_test_rig
+
+      # Create Anthropic client and instrument it
+      client = Anthropic::Client.new(api_key: get_anthropic_key)
+      Braintrust.instrument!(:anthropic, target: client, tracer_provider: rig.tracer_provider)
+
+      # temperature and top_p can't be sent together, so top_p gets its own request
+      client.messages.create(
+        model: SAMPLING_MODEL,
+        max_tokens: 20,
+        temperature: 0.7,
+        top_k: 40,
+        messages: [{role: "user", content: "Say 'test'"}]
+      )
+      client.messages.create(
+        model: SAMPLING_MODEL,
+        max_tokens: 20,
+        top_p: 0.95,
+        messages: [{role: "user", content: "Say 'test'"}]
+      )
+
+      # Drain and verify spans
+      spans = rig.drain
+      assert_equal 2, spans.length
+
+      # Verify metadata includes sampling parameters
+      metadata = spans.map { |span| JSON.parse(span.attributes["braintrust.metadata"]) }
+      assert_equal 0.7, metadata[0]["temperature"]
+      assert_equal 40, metadata[0]["top_k"]
+      assert_equal 0.95, metadata[1]["top_p"]
+    end
+  end
+
   def test_handles_tool_use_multi_turn
-    VCR.use_cassette("anthropic/tool_use_multi_turn") do
+    VCR.use_cassette(anthropic_cassette("tool_use_multi_turn")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -574,7 +614,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # First request - model should use tool
       first_message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 200,
         tools: [
           {
@@ -604,7 +644,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       if tool_use_block
         # Second request - provide tool result
         second_message = client.messages.create(
-          model: "claude-sonnet-4-20250514",
+          model: DEFAULT_MODEL,
           max_tokens: 200,
           tools: [
             {
@@ -681,7 +721,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_streaming_with_text_each
-    VCR.use_cassette("anthropic/streaming_text_each") do
+    VCR.use_cassette(anthropic_cassette("streaming_text_each")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -692,7 +732,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       # Make a streaming request using .text.each
       collected_text = ""
       stream = client.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "Count to 3"}
@@ -749,7 +789,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_streaming_with_accumulated_text
-    VCR.use_cassette("anthropic/streaming_accumulated_text") do
+    VCR.use_cassette(anthropic_cassette("streaming_accumulated_text")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -759,7 +799,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a streaming request using .accumulated_text
       stream = client.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "Say hello"}
@@ -805,7 +845,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_streaming_with_accumulated_message
-    VCR.use_cassette("anthropic/streaming_accumulated_message") do
+    VCR.use_cassette(anthropic_cassette("streaming_accumulated_message")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -815,7 +855,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a streaming request using .accumulated_message
       stream = client.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "What is 2+2?"}
@@ -859,7 +899,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
   end
 
   def test_handles_streaming_with_close
-    VCR.use_cassette("anthropic/streaming_close") do
+    VCR.use_cassette(anthropic_cassette("streaming_close")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -869,7 +909,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
 
       # Make a streaming request and close early without consuming
       stream = client.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "Write a long story"}
@@ -895,6 +935,16 @@ class Braintrust::Contrib::Anthropic::Instrumentation::MessagesTest < Minitest::
       assert span.attributes.key?("braintrust.metadata")
       metadata = JSON.parse(span.attributes["braintrust.metadata"])
       assert_equal true, metadata["stream"]
+    end
+  end
+
+  private
+
+  # anthropic >= 2.0 sends API version 2026-10-21, which rejects temperature,
+  # top_p and top_k on every model.
+  def skip_unless_sampling_params_accepted!
+    if Gem.loaded_specs["anthropic"].version >= Gem::Version.new("2.0.0")
+      skip "Sampling params are rejected by the API version anthropic >= 2.0 sends"
     end
   end
 end
