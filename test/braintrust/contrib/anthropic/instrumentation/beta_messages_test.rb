@@ -15,7 +15,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
   end
 
   def test_creates_span_for_beta_message
-    VCR.use_cassette("anthropic/beta_basic_message") do
+    VCR.use_cassette(anthropic_cassette("beta_basic_message")) do
       # Set up test rig (includes Braintrust processor)
       rig = setup_otel_test_rig
 
@@ -25,7 +25,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
 
       # Make a simple beta message request
       message = client.beta.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         messages: [
           {role: "user", content: "Say 'test'"}
@@ -63,7 +63,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
       assert_equal "anthropic", metadata["provider"]
       assert_equal "/v1/messages", metadata["endpoint"]
       assert_equal "beta", metadata["api_version"], "Should have api_version: beta"
-      assert_equal "claude-sonnet-4-20250514", metadata["model"]
+      assert_equal DEFAULT_MODEL, metadata["model"]
       assert_equal 10, metadata["max_tokens"]
 
       # Verify braintrust.metrics contains token usage
@@ -80,7 +80,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
   end
 
   def test_creates_span_with_betas_array
-    VCR.use_cassette("anthropic/beta_with_betas_array") do
+    VCR.use_cassette(anthropic_cassette("beta_with_betas_array")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -90,7 +90,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
 
       # Make a request with betas array
       message = client.beta.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         betas: ["structured-outputs-2025-11-13"],
         messages: [
@@ -121,7 +121,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
     # Skip on SDK versions or environments where these models aren't available
     skip_unless_structured_outputs_available!
 
-    VCR.use_cassette("anthropic/beta_structured_outputs") do
+    VCR.use_cassette(anthropic_cassette("beta_structured_outputs")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -145,7 +145,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
       }
 
       message = client.beta.messages.create(
-        model: "claude-sonnet-4-5-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 100,
         betas: ["structured-outputs-2025-11-13"],
         output_format: output_format,
@@ -176,7 +176,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
     # Beta streaming requires SDK >= 1.16.0 due to SDK bug with BetaRawMessageStartEvent
     skip_unless_beta_streaming_available!
 
-    VCR.use_cassette("anthropic/beta_streaming") do
+    VCR.use_cassette(anthropic_cassette("beta_streaming")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -186,7 +186,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
 
       # Make a streaming request via beta API
       stream = client.beta.messages.stream(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 50,
         messages: [
           {role: "user", content: "Count to 3"}
@@ -218,7 +218,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
   end
 
   def test_beta_and_stable_coexist
-    VCR.use_cassette("anthropic/beta_and_stable_coexist") do
+    VCR.use_cassette(anthropic_cassette("beta_and_stable_coexist")) do
       # Set up test rig
       rig = setup_otel_test_rig
 
@@ -228,7 +228,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
 
       # Make a stable API call
       stable_message = client.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         messages: [
           {role: "user", content: "Say 'stable'"}
@@ -237,7 +237,7 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
 
       # Make a beta API call
       beta_message = client.beta.messages.create(
-        model: "claude-sonnet-4-20250514",
+        model: DEFAULT_MODEL,
         max_tokens: 10,
         messages: [
           {role: "user", content: "Say 'beta'"}
@@ -270,6 +270,13 @@ class Braintrust::Contrib::Anthropic::Instrumentation::BetaMessagesTest < Minite
   end
 
   private
+
+  def skip_unless_beta_messages!
+    unless defined?(::Anthropic::Resources::Beta) &&
+        defined?(::Anthropic::Resources::Beta::Messages)
+      skip "Beta::Messages not available in this SDK version"
+    end
+  end
 
   def skip_unless_beta_streaming_available!
     # Beta streaming requires SDK >= 1.16.0 due to SDK bug where

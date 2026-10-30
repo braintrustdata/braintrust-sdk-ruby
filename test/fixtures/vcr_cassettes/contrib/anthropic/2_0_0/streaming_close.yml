@@ -1,0 +1,137 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-5-5","max_tokens":50,"messages":[{"role":"user","content":"Write
+        a long story"}],"stream":true}'
+    headers:
+      Accept-Encoding:
+      - identity
+      Accept:
+      - text/event-stream
+      User-Agent:
+      - Anthropic::Client/Ruby 2.2.0
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.2.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.11
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2026-10-21'
+      Authorization:
+      - Bearer <ANTHROPIC_API_KEY>
+      X-Stainless-Helper-Method:
+      - stream
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '119'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 30 Oct 2026 21:26:09 GMT
+      Content-Type:
+      - text/event-stream; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Cache-Control:
+      - no-cache
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-10-30T21:26:09Z'
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2026-10-30T21:26:09Z'
+      Anthropic-Ratelimit-Requests-Limit:
+      - '45000'
+      Anthropic-Ratelimit-Requests-Remaining:
+      - '44999'
+      Anthropic-Ratelimit-Requests-Reset:
+      - '2026-10-30T21:26:09Z'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2026-10-30T21:26:09Z'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Request-Id:
+      - req_011CgZ8R8vCuee4w6sMuN4aa
+      Traceresponse:
+      - 00-358fc5f040ff33d4a55c61945257ea0e-6b481147321f999a-01
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      Anthropic-Workspace-Id:
+      - wrkspc_018bFG1FgNVWqx5pthtdGTzS
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Vary:
+      - Accept-Encoding
+      Server:
+      - cloudflare
+      Server-Timing:
+      - x-originResponse;dur=84
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - a52d7f21eb932c38-CMH
+    body:
+      encoding: UTF-8
+      string: |+
+        event: message_start
+        data: {"type":"message_start","message":{"model":"claude-sonnet-5-5","id":"msg_011CgZ8R96ceNcGRCcCZaRJE","type":"message","role":"assistant","content":[],"container":null,"stop_reason":null,"stop_sequence":null,"stop_details":null,"usage":{"input_tokens":13,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":8,"service_tier":"standard","inference_geo":"global","speed":"standard"},"diagnostics":null} }
+
+        event: content_block_start
+        data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}   }
+
+        event: ping
+        data: {"type": "ping"}
+
+        event: content_block_delta
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":""}            }
+
+        event: content_block_delta
+        data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"CAQShAYKEAgTGAI4AUIIdGhpbmtpbmcSDM/+OWSWiFN3jS6OvxoMpWuPSq1DdJwA+daPIjB7sKi8QXEo1shz3SP2Y2VAOrWb848I869ueaeUPIJTuFta9xgX64vqI6LHbXE0uuoqoQUnzv7ZVb7DwYSXckZNwGVC8Df1JUHnnC9PdjHt4a0Mx1h8+FZ1uxDl/hKYlTbNQrJEsYmtASTgIm+ai35mfbcsFsJrIHoeH3H1omPSRW60S6UguhIx94nIJ/StlREiFHbnT8UGi/MjdbgHv02TXskiJDZuiTUYEitFrZsm8DtWLHWXk7bK75JAIxw+F4rbUl6gMwBtjdwoftKUR6PddjoPx5R1NYxtDR4JquMH+jLhnRTCRjMPd+msyjJYF5iGxFGsoM3Nz0O1po17F6xAYfiEarQKgDKE3ge6iyFuFaW9/NTs6Nflr/n6JuAmtiVqQp1PvjISQa3Munr8CI23c6gk9B122MsVdkNRVLXl4/MDwonS+1F85G4BM+fx6AgEuf9zRUL9k8Ts4JhqbcCuXNMMh7Ycs2KlnYHbXuuV4HLJ52oJLzwlmORaLrUuvdtSMvD3nSGMCdJPUpv62trKsdnXVKXRP0aLts9emyKGbnE6G8kMocQUYSfthXaq0KoXwVjlqXy0LBghzd6Bpn4ca9digcZ/skxNun5XE923g1M20zqhtuugPWxZ94gu/fu0VvQlo1aIYc3JhFitn2RRjngG8LDfKKTXCGLOV/EQdKq7g/z/V9LCgRLbhXgCejHh0e3AfWwSGe6jkDXDo2uJRkAkY+OHMWQFgybMEJ1XUp1EdT5PVRQaB05QNHQPTrKNwtf6v7dis1gX6i1bpzW+masGs4CcJfkbK8g4sMLX4Fo9qlXcBij2WzluH0an2NwDwzXgJ3nECVyzaHGiSb7EeA3pDu2m9nmVvtv/1bigUCGkjjCH07o+3E9TjYdqYQhjtReAL4yqW0VhRT3Js5N/fPv9D8kpzGg7d3odAUl2UvbeDaC1bHuYHfFODkwKC0caP7D3GAE="}   }
+
+        event: content_block_stop
+        data: {"type":"content_block_stop","index":0    }
+
+        event: message_delta
+        data: {"type":"message_delta","delta":{"stop_reason":"max_tokens","stop_sequence":null,"stop_details":null,"container":null},"usage":{"input_tokens":13,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":50,"output_tokens_details":{"thinking_tokens":50}}       }
+
+        event: message_stop
+        data: {"type":"message_stop"   }
+
+  recorded_at: Fri, 30 Oct 2026 21:26:10 GMT
+recorded_with: VCR 6.4.1
+...

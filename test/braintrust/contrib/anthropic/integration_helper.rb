@@ -7,6 +7,10 @@ module Braintrust
   module Contrib
     module Anthropic
       module IntegrationHelper
+        # Model the cassette-backed tests request by default. When it's retired,
+        # bump it and re-record each cassette version folder under its appraisal.
+        DEFAULT_MODEL = "claude-sonnet-5-5"
+
         # Skip test unless anthropic gem is available.
         # Loads the gem if available.
         def skip_unless_anthropic!
@@ -24,12 +28,9 @@ module Braintrust
           end
         end
 
-        # Skip test unless Beta::Messages is available.
-        def skip_unless_beta_messages!
-          unless defined?(::Anthropic::Resources::Beta) &&
-              defined?(::Anthropic::Resources::Beta::Messages)
-            skip "Beta::Messages not available in this SDK version"
-          end
+        # Cassette path for an anthropic interaction, for the loaded anthropic version.
+        def anthropic_cassette(name)
+          versioned_cassette("anthropic", name)
         end
       end
     end

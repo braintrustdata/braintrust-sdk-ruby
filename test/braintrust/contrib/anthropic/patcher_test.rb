@@ -180,6 +180,13 @@ class Braintrust::Contrib::Anthropic::BetaMessagesPatcherTest < Minitest::Test
 
   private
 
+  def skip_unless_beta_messages!
+    unless defined?(::Anthropic::Resources::Beta) &&
+        defined?(::Anthropic::Resources::Beta::Messages)
+      skip "Beta::Messages not available in this SDK version"
+    end
+  end
+
   # Helper to mock client.beta.messages.singleton_class chain
   def mock_beta_chain(*methods, returns:)
     current = returns

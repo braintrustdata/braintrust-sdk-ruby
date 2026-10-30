@@ -1,0 +1,109 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-5-5","max_tokens":4000,"thinking":{"type":"adaptive","display":"summarized"},"output_config":{"effort":"max"},"messages":[{"role":"user","content":"How
+        many prime numbers are there between 100 and 150? Think step by step."}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Anthropic::Client/Ruby 2.3.0
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - Linux
+      X-Stainless-Package-Version:
+      - 2.3.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.11
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2026-10-21'
+      Authorization:
+      - Bearer <ANTHROPIC_API_KEY>
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '249'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 30 Oct 2026 21:27:00 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-10-30T21:26:54Z'
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '1999000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2026-10-30T21:27:00Z'
+      Anthropic-Ratelimit-Requests-Limit:
+      - '45000'
+      Anthropic-Ratelimit-Requests-Remaining:
+      - '44999'
+      Anthropic-Ratelimit-Requests-Reset:
+      - '2026-10-30T21:26:54Z'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '11999000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2026-10-30T21:26:54Z'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Request-Id:
+      - req_011CgZ8UTnMDES9STgAaJC1s
+      Traceresponse:
+      - 00-5bfbb59a1080282ce0267bf2c2b662d8-94cb969689449b30-01
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      Anthropic-Workspace-Id:
+      - wrkspc_018bFG1FgNVWqx5pthtdGTzS
+      Vary:
+      - Accept-Encoding
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Server:
+      - cloudflare
+      Server-Timing:
+      - x-originResponse;dur=6226
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - a52d803bdb5a610f-CMH
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNS01IiwiaWQiOiJtc2dfMDExQ2daOFVUeTFxSEYxMlpaM1k5VjV2IiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRoaW5raW5nIiwidGhpbmtpbmciOiJJIGNvdW50IDEwIHByaW1lcyBiZXR3ZWVuIDEwMCBhbmQgMTUwOiAxMDEsIDEwMywgMTA3LCAxMDksIDExMywgMTI3LCAxMzEsIDEzNywgMTM5LCAxNDkuIExldCBtZSBkb3VibGUtY2hlY2sgdGhpcyBieSBnb2luZyB0aHJvdWdoIG9kZCBudW1iZXJzIGluIHRoYXQgcmFuZ2UgYW5kIGVsaW1pbmF0aW5nIG11bHRpcGxlcyBvZiAzLCA1LCA3LCBhbmQgMTEsIHNpbmNlIHRob3NlIGFyZSB0aGUgb25seSBwcmltZXMgSSBuZWVkIHRvIHRlc3QgdXAgdG8g4oiaMTUwLlxuXG4iLCJzaWduYXR1cmUiOiJDQVFTcFEwS0VBZ1RHQUk0QVVJSWRHaHBibXRwYm1jU0RNYWN1a2tZbkMybUlVYWlXUm9NR2M2eFFWSkJMUEtVTGwwUUlqRHp3cVgyVVZJeWpqeFBJNjkrdFQycWlDT1ZXdW5ybjM0eDRxdlV3UE1MYjNOTVhFQVNhanpzUGNTRlM1MlQ3TDBxd2d6SVZSNXF5L24wVkpYMUN4YjJ6b2oybjByQWQ0YW1QaFFUTS9XQjNxUzlnd2ZCSXA3aXR3MEptRW81bUpkV1FjL0xzd3ozRU9XeXR1YUFRRmtNWE4yZ1JrVERuRTRLU0k5cjJJaktEbnMyZERldzd3cG9Bc0tScFNpb3VHelFEb09EdDdrS0d0bWkwRGJUZHBlTVJNTGlsYyt5L2hreFF5WG9sNWgzTkNMV3VrWjFrb1VSU0gvTlcyZ0tNUG40SWhXQ0hVL2FWT1hBUW5NeC8yNFk5L25iN0xDR3NqVzlxejFzNHBjL3oycTN5bThzeFBSMmF4MU1YelFUNEh3YXE3T2FSNTRLaFZSaEtLeVplbVU4dlVnVHlmK3FpT2NRMFBXbllnaUpocW9YZG5FNU9SME5tWFZTd3FDaW5DYU56MUFOWktWQmVPdVRYTWhLK0ZBUUtJRkhROVBWYllyc3NCWVpxbFVkTGFMU2FoUEJ1NDBRQjJKNVVTOXhQcGNkUFlQVkFsMEdlR2VCcnFqTW1YT1VxelI1RTVkWHVObEIyMnVYSFpQNGUyaTlJdzl1Kzdqcm96R0JpdkJmN3Rsb0cvaUt1aU92UmNVR3pBOCtmVlBseWR6VlB0OWo4Y0ExVE0vMFFoSktXdXVJWmFkSFhGUTBSZGpBcnVwNHpPb1lnSmFnMWgvdE9rSUNZUjI2K1ZiV1VyTWhTZHVrdXZoNGZvOE1rVUlFWllTMkZkc2U5bHJEZHJhbS9EV1dVTGNiK2h2Q1dKV1pHN2xlTG04VDEwSGRTK05WcmtFeVZYd0VjWDBNZ2tZNnFMWUhYZFR6M01FckRKUy9kS3JSYzRUZVdrNzVJb2NFOStjbDhSTEc0N0pEbHZ0UGpnbkVJSkhtVGEzajRQRUlwU1U5SmR0dW91NE9WbDI2cTBtSE40OXl0MVFLOUY3d1RjZnlLRHlyT0h4aGpGVHp3bElIc252eXdzMjRCWGppRE5ScFAvek9rZXlsZFZNR3J6TlBjSU5hTTdsdHljUXFrZTViZzd2OEZiWHA1Wkpxc3BONGpMSGFleUJmcTdtQ1RnNWh6NEVRMmNpOWVNZ28raFVPSTdPK0pMQTc5WC80bFcydTlsZjJ3UGRBZ2trb1prS2FFUWVZaUc1cVJWUTh3YW9TdjBIK2NHbDZ0OGg3bS83OVhZZGpQOXorL2hkejAyNUoxcXdIWDlPZ3ZidlpGNVFaajRHdkdqdTZibVJEZWhPdStIQ3c0S1NReURZeGQ4V0RJNWRUTzhFNHFyeFhNVWg5dmh5L1Y4V3paK0NUVlkvWUdRU0E1T3BVTThBVnozbjN4M01VWStpNG52Sm5kUGZVbGlFNTFJNW1zRjFqbHVUUDRESFZGYVZJUVZWYjNONGl5WWthTFFkNERvcldDRWNLOFVPK1N0NjVZWUd4WUVzT1A2UmljTGszd3pBeGZKb2FaUU1RcG9JbjBSOE9MNi9aTW9Oc3lEVG5jYVU0Y3Z1NHlPR21iZEtOYXhWWTdmMElHSGszbk82dURhK1FPUEpoNjZKd29Jb3F6aDE5dnZJVER5TXV4eWkvdWF4Z0NiSWtLaE9hMU1sOUFLMDJqbVM3SG16Q1dWWTZTVjBrZEY2M3pzOGkwckhQSVV6WnZZOUtHc3NuQTVvN1ppbUFURi9nQ0l3WFh4RlFDcEhKYWhmTnpCR3luRERUbWJ4a1VuS2tUK0FIT0pLTGRhbHhSUWluVWRCRDdMc0F3bzlDT3V0KzdLcERkUFkwZ2VpcC9GUWU0WFU0RC9KTnlRdWErNGxoTE1jY29IVDREdDViL2cvSGhvSndFNGNSVlJlaldBN0xKK1dYd0FrajNDWm1ZaC9SUTdvSDhFUWdUUzJpRnpkbHdSVXorL1plbXczbU55R2VTRWZtSzhCUTUraDBUMElmMUNxMk5Hb21lT2xYSXRvRHB2d0oyaHhFZi9qSzg4ejF5NE1kYkdoQjg3ZkUyZ29SQzZrbVpJZnFLUmR5eERKUlZmbzdyNWIxSmtGUGNob3ZuZEdlRm1tTW0rTE55bWlBVjRjQ0pDS3V0QjB2a2FyYk81ckVVM05JQ0JnK1F4aUJIaWRPMG92T21DRDVKdzRYY3BpZjdaS2lWbW1kcUNtT1FPZkdsNzdIUlh5SGozUk9MZmEya2xDUWRGZ1lHWDNkd214aU9scmVMaDBKemgyME5sdnI3cXJkNUNTQmxoS2VLUkcxckV0SlE2S09MOWlnYktiVjkzV1E5b3hneWs4ZllzUEl0YnU3YWQwd1Naa3BvY0o3NHRkWFd3T3ZpTkRVVUduVW1uMFNtTUtWRGdtWEFHTHJ3UnBmOUJTbFVYVGhQMU0xZUNyL0U1bjQxaEFrSlZrVTZ2QWtWWHVySDhOd2hmK3ZoRWFHRWtqK0JqV2ExODR6UkNOOUtMT1pmWnhPU2JlbTdZeTU2dW94aUswdVpaQmhIcWxaRUsxcTRlT09USE5Mcm1CVXpTTnQyUXNRbUV1TlRnN0dHNTZDeTcwOHdKbFVrcXJBZHNnTldJbHdvdnBnNnZCenlMZ1BFNGpORGFmVlFWZ29jTTNVaHNMdjArRXJ3NGRpR1pveGV6VGVyVGpMYkdEblFnRjFlU1lCVTJDbjFKUGI4VGd6WmpON1l1L2VkbkFGMVVxWlUwWHpQc010L1VVNUo4dWFWR1YxVUpGUSt2eUVvYWFaTzJlZzhmMnl6ZmhGeFhKdzlzeEdjQWk4MURiNGhPSVZ3Q0p2QW1WVWN0cTB2SW1vSzR1U2NZMGNwaTFSTUExV1FCUFpEeG1neHRzbDN0aUM2U2dXOHkvVjVZYU82dzhWUTlRWUFRPT0ifSx7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IlRoZXJlIGFyZSAqKjEwKiogcHJpbWVzIGJldHdlZW4gMTAwIGFuZCAxNTAuIEkgZm91bmQgdGhlbSB3aXRoIGEgc2lldmUuXG5cbioqU3RlcCAxOiBGaW5kIHdoaWNoIHByaW1lcyB0byB0ZXN0LioqXG5TaW5jZSAxM8KyID0gMTY5ID4gMTUwLCBhIGNvbXBvc2l0ZSBudW1iZXIgYmVsb3cgMTUwIG11c3QgaGF2ZSBhIHByaW1lIGZhY3RvciBvZiAxMSBvciBsZXNzLiBTbyBJIG9ubHkgbmVlZCB0byBjaGVjayBkaXZpc2liaWxpdHkgYnkgMiwgMywgNSwgNywgYW5kIDExLlxuXG4qKlN0ZXAgMjogUmVtb3ZlIGV2ZW4gbnVtYmVycy4qKlxuT25seSB0aGUgb2RkIG51bWJlcnMgcmVtYWluOlxuMTAxLCAxMDMsIDEwNSwgMTA3LCAxMDksIDExMSwgMTEzLCAxMTUsIDExNywgMTE5LCAxMjEsIDEyMywgMTI1LCAxMjcsIDEyOSwgMTMxLCAxMzMsIDEzNSwgMTM3LCAxMzksIDE0MSwgMTQzLCAxNDUsIDE0NywgMTQ5XG5cbioqU3RlcCAzOiBSZW1vdmUgbXVsdGlwbGVzIG9mIDMuKipcblJlbW92ZSAxMDUsIDExMSwgMTE3LCAxMjMsIDEyOSwgMTM1LCAxNDEsIDE0Ny5cblxuKipTdGVwIDQ6IFJlbW92ZSBtdWx0aXBsZXMgb2YgNS4qKlxuUmVtb3ZlIDExNSwgMTI1LCAxNDUuXG5cbioqU3RlcCA1OiBSZW1vdmUgbXVsdGlwbGVzIG9mIDcuKipcblJlbW92ZSAxMTkgKDcgw5cgMTcpIGFuZCAxMzMgKDcgw5cgMTkpLlxuXG4qKlN0ZXAgNjogUmVtb3ZlIG11bHRpcGxlcyBvZiAxMS4qKlxuUmVtb3ZlIDEyMSAoMTEgw5cgMTEpIGFuZCAxNDMgKDExIMOXIDEzKS5cblxuKipTdGVwIDc6IExpc3Qgd2hhdCByZW1haW5zLioqXG4xMDEsIDEwMywgMTA3LCAxMDksIDExMywgMTI3LCAxMzEsIDEzNywgMTM5LCAxNDlcblxuKipBbnN3ZXI6IDEwIHByaW1lcy4qKiJ9XSwiY29udGFpbmVyIjpudWxsLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTAwMiwib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjp7InRoaW5raW5nX3Rva2VucyI6NTc3fSwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIiwic3BlZWQiOiJzdGFuZGFyZCJ9LCJkaWFnbm9zdGljcyI6bnVsbH0=
+  recorded_at: Fri, 30 Oct 2026 21:27:00 GMT
+recorded_with: VCR 6.4.0

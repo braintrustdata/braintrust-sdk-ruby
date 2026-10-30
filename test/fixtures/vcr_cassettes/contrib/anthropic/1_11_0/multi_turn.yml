@@ -1,0 +1,110 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-5-5","max_tokens":100,"messages":[{"role":"user","content":"My
+        name is Alice."},{"role":"assistant","content":"Hello Alice! Nice to meet
+        you."},{"role":"user","content":"What''s my name?"}]}'
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - application/json
+      User-Agent:
+      - Ruby
+      Host:
+      - api.anthropic.com
+      X-Stainless-Arch:
+      - x64
+      X-Stainless-Lang:
+      - ruby
+      X-Stainless-Os:
+      - Linux
+      X-Stainless-Package-Version:
+      - 1.11.0
+      X-Stainless-Runtime:
+      - ruby
+      X-Stainless-Runtime-Version:
+      - 3.2.11
+      Content-Type:
+      - application/json
+      Anthropic-Version:
+      - '2023-06-01'
+      X-Api-Key:
+      - "<ANTHROPIC_API_KEY>"
+      X-Stainless-Retry-Count:
+      - '0'
+      X-Stainless-Timeout:
+      - '600.0'
+      Content-Length:
+      - '213'
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 30 Oct 2026 21:04:25 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Input-Tokens-Limit:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Remaining:
+      - '10000000'
+      Anthropic-Ratelimit-Input-Tokens-Reset:
+      - '2026-10-30T21:04:24Z'
+      Anthropic-Ratelimit-Output-Tokens-Limit:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Remaining:
+      - '2000000'
+      Anthropic-Ratelimit-Output-Tokens-Reset:
+      - '2026-10-30T21:04:25Z'
+      Anthropic-Ratelimit-Requests-Limit:
+      - '45000'
+      Anthropic-Ratelimit-Requests-Remaining:
+      - '44999'
+      Anthropic-Ratelimit-Requests-Reset:
+      - '2026-10-30T21:04:24Z'
+      Anthropic-Ratelimit-Tokens-Limit:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Remaining:
+      - '12000000'
+      Anthropic-Ratelimit-Tokens-Reset:
+      - '2026-10-30T21:04:24Z'
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Request-Id:
+      - req_011CgZ6kybC2S6619cLAMDyF
+      Traceresponse:
+      - 00-8cce3ad3482698d52c5f8dcc108a891f-4e12d395f673a1ec-01
+      Anthropic-Organization-Id:
+      - 27796668-7351-40ac-acc4-024aee8995a5
+      Anthropic-Workspace-Id:
+      - wrkspc_018bFG1FgNVWqx5pthtdGTzS
+      Vary:
+      - Accept-Encoding
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Server:
+      - cloudflare
+      Server-Timing:
+      - x-originResponse;dur=914
+      Cf-Cache-Status:
+      - DYNAMIC
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - a52d5f48ce3f376a-CMH
+    body:
+      encoding: ASCII-8BIT
+      string: '{"model":"claude-sonnet-5-5","id":"msg_011CgZ6kysoWFKHHxTzh7He3","type":"message","role":"assistant","content":[{"type":"thinking","thinking":"","signature":"CAQSjAUKEAgTGAI4AUIIdGhpbmtpbmcSDDUhI8qBuOc8aOnNqBoMKyd11FoYv5/krqVDIjBb5gZ/CycaDiJx4ZPspsy7QsOWbvTpwlIz3SZjF2K5wSuL374lZAyDN0GHWrzUwN8qqQTXKXvNibI/h+F4Vrkf4ai8w3BkjTY+ZZ5pivP8rAxsHodfALr99kandf9lVbzOJcH5z9CV51mxiiCO9eI+QaPPSlgkx6EL3U/pCx+AQqRZu2/f0HHr1EXthPUFIJnUWP6LCnzKhTKkJqymp+Xh6/huBQtV0FOnfgAE/JQAJXy9/u3fGRbZum/N7eDhhxN7TC0ULZbR+Wx+Iw+4wAhP6vKLjWHsgS/235R3q6cR3xc4dMi3R0Aweo4PHDn9uRBFGY0xnrNO/fBAapp+2Hs8HcLu8XnH4R82+9tFVvuizVbKAFuFFRsT1qcz3ReXJ59rwiFiNv0G0aASXfexHUneeQBGUHu6xTR5Q1UfLdzdo3jqZ57dEQ+mdOsZVLs86CbLusoJ/m8NV6Wv8hb56VNu2itNxybfFRekhFlfkxJ2WIvSU2QpXtrzxRPKaU/A3bsndD3HVhV+QvDtxn4RXos3r+6bdLCQF3FV2/nTOrfdsr9IjDoAqQr5QQxpzE+Nq86XSPsMWMXUFpSp+mxrRYmSaYicWP4nDZEfryjYUEWucwMU94A7nKi0mwuUC5fISm8KPkewTJ6Cxtzfs788fZ0LxXFZWk///SQqEEk/bqyJ/JtPutON2sXC0CqlZwgokxHu+ORyI9kOp2E05j3XsZsvnQ5ORM+MHrPSyZAUVIXpe4jV96fmKlEpp1PXQOGvwrZUvTBupq/Bo1uE75u3+bol/eY+zluyesYaXw0YGAE="},{"type":"text","text":"Your
+        name is Alice, as you told me at the start of our conversation."}],"container":null,"stop_reason":"end_turn","stop_sequence":null,"stop_details":null,"usage":{"input_tokens":39,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":33,"output_tokens_details":{"thinking_tokens":10},"service_tier":"standard","inference_geo":"global","speed":"standard"},"diagnostics":null}'
+  recorded_at: Fri, 30 Oct 2026 21:04:25 GMT
+recorded_with: VCR 6.4.0
