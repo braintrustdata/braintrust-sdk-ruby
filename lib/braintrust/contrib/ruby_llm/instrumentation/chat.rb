@@ -388,7 +388,8 @@ module Braintrust
 
             # Format tool calls into OpenAI format
             def format_tool_calls(tool_calls)
-              tool_calls.map do |_id, tc|
+              # Both the pre-2.2 Hash and ToolCall::Collection expose values.
+              tool_calls.values.map do |tc|
                 args = tc.arguments
                 args_string = args.is_a?(String) ? args : JSON.generate(args)
 
