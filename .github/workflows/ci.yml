@@ -29,7 +29,8 @@ jobs:
       uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
       with:
         ruby-version: ${{ matrix.ruby-version }}
-        bundler: 'latest'
+        # Keep setup and Appraisal subprocesses on the lockfile's Bundler version.
+        bundler: 'Gemfile.lock'
         bundler-cache: true
 
     # Security: Provide secrets only to the step that needs them, not all steps
