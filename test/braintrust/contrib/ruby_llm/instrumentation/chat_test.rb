@@ -14,6 +14,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatTest < Minitest::Test
     mock = Minitest::Mock.new
     mock.expect(:include?, false, [Chat::InstanceMethods])
     mock.expect(:prepend, nil, [Chat::InstanceMethods])
+    mock.expect(:prepend, nil, [Chat::CompleteTracing])
 
     base.define_singleton_method(:ancestors) { mock }
     base.define_singleton_method(:prepend) { |mod| mock.prepend(mod) }
@@ -21,6 +22,28 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatTest < Minitest::Test
     Chat.included(base)
 
     mock.verify
+  end
+
+  def test_included_traces_complete_when_generate_is_not_defined
+    base = Class.new { def complete = nil }
+
+    Chat.included(base)
+
+    assert_includes base.ancestors, Chat::CompleteTracing
+    refute_includes base.ancestors, Chat::GenerateTracing
+  end
+
+  def test_included_traces_generate_when_defined
+    base = Class.new do
+      def complete = nil
+
+      def generate = nil
+    end
+
+    Chat.included(base)
+
+    assert_includes base.ancestors, Chat::GenerateTracing
+    refute_includes base.ancestors, Chat::CompleteTracing
   end
 
   def test_included_skips_prepend_when_already_applied
@@ -133,7 +156,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
       refute_nil response.content
       assert response.content.length > 0
 
-      span = rig.drain_one
+      span = drain_chat_span(rig)
 
       assert_equal "ruby_llm.chat", span.name
 
@@ -185,7 +208,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
 
       refute_empty chunks
 
-      span = rig.drain_one
+      span = drain_chat_span(rig)
 
       assert_equal "ruby_llm.chat", span.name
 
@@ -220,7 +243,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
 
   # --- Tool calling ---
 
-  def test_tool_calling_creates_nested_spans
+  def test_tool_calling_creates_chat_and_tool_spans
     skip "Tool calling test requires ruby_llm >= 1.9" unless self.class.supports_tool_calling?
 
     with_weather_test_tool do |tool_class|
@@ -290,6 +313,71 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
     end
   end
 
+  def test_tool_calling_creates_a_chat_span_per_request
+    skip "ruby_llm 1.x nests a chat span per request inside complete()" if ruby_llm_major < 2
+
+    with_weather_test_tool do |tool_class|
+      VCR.use_cassette(ruby_llm_cassette("tool_calling")) do
+        rig = setup_otel_test_rig
+
+        configure_ruby_llm_for_vcr
+
+        chat = RubyLLM.chat(model: "gpt-4o-mini")
+        Braintrust.instrument!(:ruby_llm, target: chat, tracer_provider: rig.tracer_provider)
+        chat.with_tools(tool_class)
+
+        response = chat.ask("What's the weather like in San Francisco?")
+
+        spans = rig.drain
+        chat_spans = spans.select { |s| s.name == "ruby_llm.chat" }.sort_by(&:start_timestamp)
+
+        # 2.x runs the whole tool loop inside complete(): one request for the tool call, one for the answer.
+        assert_equal 2, chat_spans.length
+
+        tool_call_output, answer_output = chat_spans.map { |s| JSON.parse(s.attributes["braintrust.output_json"]).first }
+
+        assert_equal "tool_calls", tool_call_output["finish_reason"]
+        assert_equal "weather_test", tool_call_output.dig("message", "tool_calls", 0, "function", "name")
+
+        assert_equal "stop", answer_output["finish_reason"]
+        assert_equal response.content, answer_output.dig("message", "content")
+
+        # Each span carries its own request's usage, as recorded in the cassette.
+        metrics = chat_spans.map { |s| JSON.parse(s.attributes["braintrust.metrics"]) }
+        assert_equal [74, 124], metrics.map { |m| m["prompt_tokens"] }
+        assert_equal [23, 19], metrics.map { |m| m["completion_tokens"] }
+
+        # complete() is a task span parenting the turn's chat and tool spans, so they share one trace.
+        complete_span = spans.find { |s| s.name == "ruby_llm.complete" }
+        assert_equal "task", JSON.parse(complete_span.attributes["braintrust.span_attributes"])["type"]
+        assert_equal response.content, JSON.parse(complete_span.attributes["braintrust.output_json"]).first["content"]
+        refute complete_span.attributes.key?("braintrust.metrics"), "Tokens belong on the chat spans only"
+
+        children = spans.reject { |s| s.equal?(complete_span) }
+        assert_equal 3, children.length
+        assert(children.all? { |s| s.parent_span_id == complete_span.span_id })
+      end
+    end
+  end
+
+  def test_tool_metadata_leaves_the_tool_schema_sent_to_the_provider_intact
+    skip "Tool calling test requires ruby_llm >= 1.9" unless self.class.supports_tool_calling?
+
+    with_weather_test_tool do |tool_class|
+      configure_ruby_llm_for_vcr
+      schema_of = ->(tool) { tool.respond_to?(:parameters_schema) ? tool.parameters_schema : tool.params_schema }
+      expected = Marshal.load(Marshal.dump(schema_of.call(tool_class.new)))
+
+      chat = RubyLLM.chat(model: "gpt-4o-mini")
+      Braintrust.instrument!(:ruby_llm, target: chat)
+      chat.with_tools(tool_class)
+      chat.send(:extract_tools_metadata)
+
+      assert_equal expected, schema_of.call(chat.tools.values.first)
+      assert_equal expected, schema_of.call(tool_class.new)
+    end
+  end
+
   # --- Direct complete() ---
 
   def test_direct_complete_creates_span
@@ -309,7 +397,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
       refute_nil response.content
       assert response.content.length > 0
 
-      span = rig.drain_one
+      span = drain_chat_span(rig)
 
       assert_equal "ruby_llm.chat", span.name
 
@@ -342,8 +430,8 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
 
       refute_nil response
 
-      # Drain and verify - should only have ONE span (not double-wrapped)
-      span = rig.drain_one
+      # Drain and verify - should only have ONE chat span (not double-wrapped)
+      span = drain_chat_span(rig)
 
       assert_equal "ruby_llm.chat", span.name
     end
@@ -374,7 +462,7 @@ class Braintrust::Contrib::RubyLLM::Instrumentation::ChatE2ETest < Minitest::Tes
       refute_nil response.content
 
       # Verify span was created (proving class-level instrumentation works)
-      span = rig.drain_one
+      span = drain_chat_span(rig)
 
       assert_equal "ruby_llm.chat", span.name
       assert span.attributes.key?("braintrust.input_json")

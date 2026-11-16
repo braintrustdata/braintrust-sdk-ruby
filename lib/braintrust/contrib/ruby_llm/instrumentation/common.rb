@@ -6,6 +6,24 @@ module Braintrust
       module Instrumentation
         # Common utilities for RubyLLM instrumentation.
         module Common
+          # Braintrust metrics for a RubyLLM message's token counts. ruby_llm 2.x renamed the cache
+          # counts from cached_tokens/cache_creation_tokens to cache_read_tokens/cache_write_tokens.
+          # @param message [Object] a RubyLLM message (anything responding to to_h)
+          # @return [Hash<String, Integer>] normalized metrics, empty when no counts are reported
+          def self.message_usage_metrics(message)
+            return {} unless message.respond_to?(:to_h)
+
+            counts = message.to_h
+            usage = {
+              "input_tokens" => counts[:input_tokens],
+              "output_tokens" => counts[:output_tokens],
+              "cached_tokens" => counts[:cached_tokens] || counts[:cache_read_tokens],
+              "cache_creation_tokens" => counts[:cache_creation_tokens] || counts[:cache_write_tokens]
+            }.compact
+
+            usage.empty? ? {} : parse_usage_tokens(usage)
+          end
+
           # Parse RubyLLM usage tokens into normalized Braintrust metrics.
           # RubyLLM normalizes token fields from all providers (OpenAI, Anthropic, etc.)
           # into a consistent format:
